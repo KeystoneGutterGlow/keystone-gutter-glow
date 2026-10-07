@@ -8,4 +8,5 @@ next-env.d.ts
 # local tooling / deploy state
 .claude/
 .vercel
-.env
+.env*
+!.env.example
