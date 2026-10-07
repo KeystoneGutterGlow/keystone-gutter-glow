@@ -1,0 +1,66 @@
+.slot {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background-color: var(--alu-1);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 9px, rgb(13 42 78 / 0.08) 9px 10px);
+  border: 1px solid var(--alu-2);
+  color: var(--navy);
+}
+
+.dark {
+  background-color: #12335c;
+  background-image: repeating-linear-gradient(-45deg, transparent 0 9px, rgb(255 255 255 / 0.07) 9px 10px);
+  border-color: var(--navy-line);
+  color: #fff;
+}
+
+/* Crop marks, like a layout sheet waiting for its print */
+.corner::before,
+.corner::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 0 solid currentColor;
+  opacity: 0.5;
+}
+.corner::before {
+  top: 12px;
+  left: 12px;
+  border-top-width: 1.5px;
+  border-left-width: 1.5px;
+}
+.corner::after {
+  top: 12px;
+  right: 12px;
+  border-top-width: 1.5px;
+  border-right-width: 1.5px;
+}
+
+.text {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px 20px;
+  max-width: 34ch;
+}
+
+.label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.want {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+.file {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  word-break: break-all;
+}

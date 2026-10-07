@@ -1,0 +1,390 @@
+.hero {
+  /* Where the vacuum nozzle sits along the gutter. Everything in the hero keys off this. */
+  --nozzle: 64%;
+  --ground: 30px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: min(100svh, 920px);
+  background: var(--enamel);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* ---------- Gutter strip ---------- */
+
+.strip {
+  position: relative;
+  flex: none;
+  height: 128px;
+}
+
+.roof {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.debris {
+  position: absolute;
+  top: 42px;
+  left: calc(var(--nozzle) + 50px);
+  width: calc(100% - var(--nozzle) - 50px);
+}
+
+.face {
+  position: absolute;
+  top: 74px;
+  left: 0;
+  right: 0;
+  height: 54px;
+}
+
+.overhang {
+  position: absolute;
+  top: 75px;
+  left: calc(var(--nozzle) + 60px);
+  width: calc(100% - var(--nozzle) - 60px);
+}
+
+/* The clean run catches the light. That's the "glow". */
+.glint {
+  position: absolute;
+  top: 76.5px;
+  left: 0;
+  width: calc(var(--nozzle) + 36px);
+  height: 2px;
+  background: var(--sky);
+  opacity: 0.55;
+}
+
+.neck {
+  position: absolute;
+  top: 8px;
+  left: calc(var(--nozzle) - 30px);
+  z-index: 3;
+  overflow: visible;
+}
+
+.pole {
+  position: absolute;
+  z-index: 2;
+  top: 140px;
+  bottom: calc(var(--ground) + 42px);
+  left: calc(var(--nozzle) - 4.5px);
+  width: 9px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 172px, #66717d 172px 180px),
+    linear-gradient(to right, #1b2129 0 2px, #4f5a66 2px 3.5px, #1b2129 3.5px);
+}
+.pole::after {
+  /* hand grip near the bottom */
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  bottom: 18px;
+  height: 46px;
+  background: #2b333c;
+  border-radius: 2px;
+}
+
+/* ---------- Copy ---------- */
+
+.body {
+  position: relative;
+  z-index: 4;
+  flex: 1;
+  display: grid;
+  grid-template-columns: calc(var(--nozzle) - 52px) 1fr;
+  align-content: center;
+  padding: clamp(40px, 6vh, 72px) 0 230px;
+}
+
+.copy {
+  padding-left: var(--gutter);
+  max-width: 760px;
+}
+
+.where {
+  margin-bottom: 22px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+
+.title {
+  font-size: clamp(2.2rem, 1rem + 4.1vw, 4.9rem);
+  line-height: 0.98;
+  letter-spacing: -0.012em;
+  margin-bottom: 26px;
+}
+.title > span {
+  display: block;
+}
+.titleVac {
+  font-style: italic;
+  font-weight: 600;
+}
+
+.lede {
+  max-width: 34rem;
+  font-size: 1.1875rem;
+  line-height: 1.5;
+  margin-bottom: 30px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 22px;
+  margin-bottom: 26px;
+}
+
+.fine {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.fine strong {
+  color: var(--navy);
+}
+
+.why {
+  font-size: 0.9875rem;
+}
+
+.side {
+  padding: 0 var(--gutter) 0 40px;
+  align-self: center;
+}
+
+/* ---------- Next-opening tag, clipped to the pole ---------- */
+
+.tag {
+  position: relative;
+  width: 100%;
+  max-width: 236px;
+  padding: 18px 20px 16px;
+  background: #fff;
+  border: 1.5px solid var(--navy);
+  box-shadow: 4px 4px 0 var(--alu-2);
+}
+.tag::before {
+  /* the clip back to the pole */
+  content: "";
+  position: absolute;
+  top: 26px;
+  right: 100%;
+  width: 40px;
+  height: 2px;
+  background: var(--navy);
+}
+.tagHole {
+  position: absolute;
+  top: 21px;
+  left: 10px;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--navy);
+  border-radius: 50%;
+}
+.tagLabel {
+  margin: 0 0 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.tagWhen {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1.1;
+  min-height: 2.2em;
+}
+.tagTime {
+  display: block;
+  color: var(--sky-ink);
+}
+.tagLeft {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.tagLink {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--sky);
+  text-underline-offset: 4px;
+  padding: 4px 0;
+}
+
+/* ---------- Rig: hose, tank, ground ---------- */
+
+.rig {
+  position: absolute;
+  inset: auto 0 0;
+  height: 200px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hose {
+  position: absolute;
+  left: var(--nozzle);
+  bottom: calc(var(--ground) - 4px);
+  width: calc(100% - var(--nozzle) - var(--gutter) - 102px);
+  height: 114px;
+  overflow: visible;
+}
+
+.tank {
+  position: absolute;
+  right: var(--gutter);
+  bottom: calc(var(--ground) - 2px);
+  width: 120px;
+}
+
+.tankNote {
+  position: absolute;
+  right: calc(100% + 18px);
+  top: 2px;
+  width: 9.5rem;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  color: var(--muted);
+  text-align: right;
+}
+.tankNote::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: calc(100% + 4px);
+  width: 22px;
+  height: 1.5px;
+  background: var(--muted);
+}
+
+.ground {
+  position: absolute;
+  inset: auto 0 0;
+  height: var(--ground);
+  border-top: 2px solid var(--navy);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 7px, rgb(13 42 78 / 0.18) 7px 8px);
+}
+
+/* ---------- Tablet ---------- */
+
+@media (max-width: 1099px) {
+  .hero {
+    --nozzle: 70%;
+    min-height: 0;
+  }
+}
+
+/* ---------- Phone: pole moves to the right margin, headline gets the full height ---------- */
+
+@media (max-width: 719px) {
+  .hero {
+    --nozzle: 88%;
+    --ground: 22px;
+  }
+
+  .strip {
+    height: 120px;
+    margin-top: -6px;
+  }
+
+  /* The pole hugs the right margin here, so the nozzle works right-to-left:
+     clean run behind it on the right, the packed run still ahead on the left. */
+  .neck {
+    left: calc(var(--nozzle) - 66px);
+    transform: scaleX(-1);
+  }
+  .debris {
+    left: 0;
+    width: calc(var(--nozzle) - 50px);
+  }
+  .overhang {
+    left: 0;
+    width: calc(var(--nozzle) - 60px);
+  }
+  .glint {
+    left: calc(var(--nozzle) - 36px);
+    width: auto;
+    right: 0;
+  }
+
+  .body {
+    grid-template-columns: calc(var(--nozzle) - 30px);
+    align-content: start;
+    padding: 34px 0 172px;
+  }
+
+  .where {
+    font-size: 0.875rem;
+    margin-bottom: 16px;
+  }
+
+  .title {
+    font-size: clamp(2.05rem, 9.6vw, 2.75rem);
+    margin-bottom: 18px;
+  }
+
+  .lede {
+    font-size: 1.0625rem;
+    margin-bottom: 24px;
+  }
+
+  .actions {
+    gap: 14px;
+  }
+  .actions :global(.btn) {
+    width: 100%;
+    min-height: 56px;
+  }
+
+  .side {
+    padding: 26px 0 0 var(--gutter);
+  }
+  .tag {
+    max-width: none;
+  }
+  .tag::before {
+    display: none;
+  }
+
+  .hose {
+    left: auto;
+    right: calc(100% - var(--nozzle));
+    width: 96px;
+    height: 74px;
+    transform: scaleX(-1);
+  }
+
+  .tank {
+    right: calc(100% - var(--nozzle) + 82px);
+    width: 84px;
+    transform: scaleX(-1);
+  }
+  .tank svg {
+    width: 84px;
+    height: auto;
+  }
+  .tankNote {
+    transform: scaleX(-1);
+    right: auto;
+    left: calc(100% + 10px);
+    top: auto;
+    bottom: 30px;
+    width: 7rem;
+    text-align: right;
+    display: none;
+  }
+}

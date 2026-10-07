@@ -1,0 +1,140 @@
+.area {
+  background: var(--enamel);
+  padding: 64px 0 56px;
+  border-top: 1px solid var(--alu-2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 64px);
+  align-items: start;
+}
+
+.intro h2 {
+  font-size: clamp(2rem, 1.4rem + 1.8vw, 2.8rem);
+  margin-bottom: 12px;
+}
+.intro > p {
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.map {
+  margin: 0 calc(-1 * var(--gutter)) 0 0;
+}
+.map :global(.mapTown) {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 17px;
+  fill: var(--navy);
+}
+.map :global(.mapSub) {
+  font-family: var(--font-body);
+  font-size: 13px;
+  fill: var(--muted);
+}
+.map :global(.mapNote) {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  fill: var(--sky-ink);
+}
+.map :global(.mapNj) {
+  font-style: normal;
+  font-weight: 700;
+  fill: var(--alu-3);
+}
+.map :global(.mapCounty) {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  fill: var(--alu-3);
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin-top: 12px;
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+.list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.list li::before {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: var(--sky);
+}
+.sub {
+  font-size: 0.875rem;
+}
+
+/* ---------- ZIP check ---------- */
+
+.check label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.checkRow {
+  display: flex;
+  gap: 8px;
+}
+.checkRow input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  padding: 0 14px;
+  border: 1.5px solid var(--navy);
+  border-radius: 2px;
+  background: #fff;
+  font-size: 1.0625rem;
+}
+.checkRow input::placeholder {
+  color: #6b7885;
+}
+.checkResult {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+  font-size: 0.9875rem;
+}
+
+@media (max-width: 899px) {
+  .area {
+    padding: 48px 0 44px;
+  }
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .map {
+    display: none;
+  }
+  .list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 16px;
+    margin-top: 4px;
+    border-top: 2px solid var(--navy);
+    font-size: 1.0625rem;
+    color: var(--navy);
+    font-weight: 700;
+  }
+  .list li {
+    min-height: 48px;
+    border-bottom: 1px solid var(--alu-2);
+    align-items: center;
+  }
+  .sub {
+    display: none;
+  }
+}

@@ -1,0 +1,316 @@
+/* Keystone Gutter Glow: tokens and base. See DESIGN.md for the reasoning. */
+
+:root {
+  --navy: #0d2a4e;
+  --navy-deep: #081b33;
+  --navy-line: #24476f;
+  --sky: #3bb0ee;
+  --sky-hover: #5cc0f3;
+  --sky-ledge: #1f82bd;
+  --sky-ink: #0a6aa6;
+  --sky-pale: #e3f3fc;
+  --enamel: #f3f5f6;
+  --white: #ffffff;
+  --alu-1: #e5e9ec;
+  --alu-2: #cdd4da;
+  --alu-3: #8c99a5;
+  --muted: #4b5a69;
+  --slate: #46525e;
+  --debris: #6b4a2e;
+  --leaf: #b4652f;
+  --mud: #a8937a;
+  --err: #b3261e;
+  --err-pale: #fbeceb;
+
+  --rail-w: 248px;
+  --gutter: clamp(18px, 4.2vw, 64px);
+  --content-max: 1240px;
+  --top-bar: 60px;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--enamel);
+  color: var(--navy);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+@media (min-width: 1100px) {
+  body {
+    padding-left: var(--rail-w);
+    font-size: 1.125rem;
+  }
+}
+
+@media (max-width: 1099px) {
+  :root {
+    --top-bar: 0px;
+  }
+  /* room for the bottom dock (applied on the footer, so nothing shows below it) */
+  :root {
+    --dock-clearance: calc(68px + env(safe-area-inset-bottom));
+  }
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  line-height: 1.04;
+  margin: 0;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0 0 1em;
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--sky);
+  outline-offset: 3px;
+}
+
+.on-dark :focus-visible {
+  outline-color: #fff;
+}
+
+::selection {
+  background: var(--sky);
+  color: var(--navy-deep);
+}
+
+section[id] {
+  scroll-margin-top: calc(var(--top-bar) + 8px);
+}
+
+@media (min-width: 1100px) {
+  section[id] {
+    scroll-margin-top: 0;
+  }
+}
+
+.wrap {
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.vh {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 100;
+  padding: 12px 16px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 700;
+  transform: translateY(-160%);
+  transition: transform 0.15s;
+}
+.skip:focus {
+  transform: none;
+}
+
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ---------- Buttons: flat, rectangular, with a hard ledge that presses in ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  min-height: 52px;
+  padding: 0 1.35rem;
+  border: 0;
+  border-radius: 2px;
+  background: var(--navy);
+  color: #fff;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.0625rem;
+  line-height: 1.1;
+  text-decoration: none;
+  box-shadow: 0 3px 0 var(--navy-deep);
+  transition:
+    transform 0.08s,
+    box-shadow 0.08s,
+    background-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:hover {
+  background: #133863;
+}
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--navy-deep);
+}
+.btn[disabled],
+.btn[aria-disabled="true"] {
+  background: var(--alu-2);
+  color: var(--muted);
+  box-shadow: 0 3px 0 var(--alu-3);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn--sky {
+  background: var(--sky);
+  color: var(--navy-deep);
+  box-shadow: 0 3px 0 var(--sky-ledge);
+}
+.btn--sky:hover {
+  background: var(--sky-hover);
+}
+.btn--sky:active {
+  box-shadow: 0 1px 0 var(--sky-ledge);
+}
+
+.btn--wide {
+  width: 100%;
+}
+
+.btn .arrow {
+  transition: transform 0.15s var(--ease-out);
+}
+.btn:hover .arrow {
+  transform: translateX(3px);
+}
+
+.textlink {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.28em;
+  text-decoration-color: var(--sky);
+  transition: text-decoration-color 0.15s;
+}
+.textlink:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ---------- The drawn K-style gutter face, shared by the hero and the rail stub ---------- */
+
+.gutter-face {
+  background-color: #eef1f3;
+  background-image:
+    radial-gradient(circle at 50% 3.5px, #8c99a5 0 1.3px, transparent 1.7px),
+    linear-gradient(
+      to bottom,
+      var(--navy) 0 1.5px,
+      #ffffff 1.5px 6px,
+      #b9c3cb 6px 7px,
+      #f8f9fa 7px 13px,
+      #dfe4e8 13px 17px,
+      #c5ced5 17px 20px,
+      #f1f3f5 20px 34px,
+      #e8ecef 34px 44px,
+      #d6dce1 44px 48px,
+      #b4bec7 48px 52px,
+      var(--navy) 52px 54px
+    );
+  background-size:
+    72px 54px,
+    100% 54px;
+  background-repeat: repeat-x, no-repeat;
+}
+
+/* ---------- Placeholders: hatched, the drawing convention for "to be supplied" ---------- */
+
+.ph {
+  background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgb(13 42 78 / 0.07) 5px 6px);
+  border-bottom: 1px dashed rgb(13 42 78 / 0.45);
+  padding: 0 0.15em;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.on-dark .ph {
+  background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgb(255 255 255 / 0.1) 5px 6px);
+  border-bottom-color: rgb(255 255 255 / 0.45);
+  color: rgb(255 255 255 / 0.75);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

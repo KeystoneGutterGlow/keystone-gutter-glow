@@ -1,0 +1,74 @@
+import type { PackageId } from "@/content/pricing";
+
+/** Calendar date in the business time zone, "YYYY-MM-DD". Never a JS Date, to dodge TZ drift. */
+export type ISODate = string;
+/** Start time id from bookingRules.slots, "HH:MM" */
+export type SlotId = string;
+
+export interface BookingRecord {
+  id: string;
+  /** Short reference shown to the customer, e.g. KGG-7F3K2 */
+  ref: string;
+  date: ISODate;
+  slotId: SlotId;
+  packageId: PackageId;
+  rinse: boolean;
+  /** Computed on the server from content/pricing.ts */
+  priceDollars: number;
+  priceIsEstimate: boolean;
+  customer: { name: string; email: string; phone: string };
+  address: { street: string; city: string; zip: string };
+  notes: string;
+  status: "confirmed" | "cancelled";
+  createdAt: string;
+}
+
+export type NewBooking = Omit<BookingRecord, "id" | "status" | "createdAt">;
+
+export type CreateResult =
+  | { ok: true; booking: BookingRecord }
+  | { ok: false; reason: "slot_taken" | "day_full" };
+
+export interface TakenSlot {
+  date: ISODate;
+  slotId: SlotId;
+}
+
+/**
+ * Persistence boundary. The UI and API never touch storage directly, so swapping the
+ * in-memory mock for Postgres/Supabase is a matter of choosing a different implementation.
+ */
+export interface BookingStore {
+  /** Confirmed bookings between two dates, inclusive. Only what availability needs. */
+  listTaken(from: ISODate, to: ISODate): Promise<TakenSlot[]>;
+  /**
+   * Create a booking or refuse it. MUST be atomic with respect to other creates: the
+   * implementation itself guarantees one booking per (date, slot) and at most
+   * `maxPerDay` per date, even under concurrent requests.
+   */
+  create(input: NewBooking, maxPerDay: number): Promise<CreateResult>;
+}
+
+export type SlotState = "open" | "taken" | "day_full" | "closed";
+
+export interface SlotAvailability {
+  id: SlotId;
+  label: string;
+  part: string;
+  state: SlotState;
+}
+
+export type DayStatus = "open" | "full" | "closed" | "unavailable";
+
+export interface DaySummary {
+  date: ISODate;
+  status: DayStatus;
+  /** Bookable jobs left that day (min of cap headroom and open slots) */
+  remaining: number;
+  /** Why a day can't be booked, for the calendar's accessible label */
+  reason?: "past" | "too_soon" | "closed" | "blackout" | "beyond_horizon" | "full";
+}
+
+export interface DayDetail extends DaySummary {
+  slots: SlotAvailability[];
+}

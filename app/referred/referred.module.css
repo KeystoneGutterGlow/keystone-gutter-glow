@@ -1,0 +1,320 @@
+.draftTag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px dashed currentColor;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-style: normal;
+  vertical-align: 0.15em;
+}
+.draftText {
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  position: relative;
+  background: var(--enamel);
+  padding: 0 0 56px;
+}
+.gutter {
+  height: 54px;
+  margin-top: 74px;
+  margin-bottom: 64px;
+}
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.title {
+  font-size: clamp(2.6rem, 1.4rem + 4.4vw, 5.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.015em;
+  max-width: 14ch;
+  margin-bottom: 22px;
+}
+.intro {
+  max-width: 38rem;
+  font-size: 1.1875rem;
+}
+.notice {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1.5px solid var(--navy);
+  font-size: 0.9375rem;
+}
+
+/* ---------- reward ---------- */
+
+.reward {
+  background: #fff;
+  border-block: 1px solid var(--alu-2);
+}
+.rewardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.rewardItem {
+  padding: 44px 32px 44px 0;
+}
+.rewardItem + .rewardItem {
+  padding-left: 32px;
+  border-left: 1px solid var(--alu-2);
+}
+.rewardWho {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: var(--sky-ink);
+}
+.rewardValue {
+  display: inline;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 1.2rem + 2vw, 3rem);
+  line-height: 1.15;
+}
+.rewardHint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+/* ---------- steps ---------- */
+
+.steps {
+  padding: 64px 0;
+}
+.steps h2,
+.status h2,
+.questions h2 {
+  font-size: clamp(2rem, 1.4rem + 1.8vw, 2.8rem);
+  margin-bottom: 24px;
+}
+.stepList {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  border-top: 2px solid var(--navy);
+  padding-top: 22px;
+}
+.stepList li {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 14px;
+}
+.stepList h3 {
+  font-size: 1.3rem;
+  margin-bottom: 6px;
+}
+.stepList p {
+  margin-bottom: 8px;
+}
+
+/* ---------- refer ---------- */
+
+.refer {
+  background: var(--navy);
+  color: #fff;
+  padding: 72px 0;
+}
+.referGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: clamp(32px, 5vw, 80px);
+  align-items: start;
+}
+.refer h2 {
+  font-size: clamp(2.2rem, 1.4rem + 2.4vw, 3.4rem);
+  margin-bottom: 14px;
+}
+.referIntro {
+  color: rgb(255 255 255 / 0.85);
+  max-width: 30rem;
+  margin-bottom: 30px;
+}
+
+.share {
+  padding: 20px;
+  border: 1.5px dashed rgb(255 255 255 / 0.45);
+}
+.shareLabel {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+.shareRow {
+  display: flex;
+  gap: 8px;
+}
+.shareUrl {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  min-height: 52px;
+  background: rgb(255 255 255 / 0.08);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 0.7);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.shareNote {
+  margin: 10px 0 0;
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 0.7);
+}
+
+.form {
+  background: #fff;
+  color: var(--navy);
+  padding: 26px;
+  border-top: 5px solid var(--sky);
+}
+.form fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.form fieldset:disabled {
+  opacity: 0.72;
+}
+.formTitle {
+  padding: 0;
+  margin-bottom: 16px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px 16px;
+  margin-bottom: 18px;
+}
+.formGrid label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+.formGrid input,
+.formGrid textarea {
+  width: 100%;
+  min-height: 50px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--alu-3);
+  border-radius: 2px;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  background: #fff;
+}
+.formGrid :disabled {
+  background: var(--enamel);
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.optional {
+  font-weight: 400;
+  color: var(--muted);
+}
+.formNote {
+  margin: 14px 0 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* ---------- status ---------- */
+
+.status {
+  padding: 64px 0;
+  background: #fff;
+}
+.statusIntro {
+  max-width: 40rem;
+  color: var(--muted);
+}
+.tableWrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+.table th {
+  text-align: left;
+  padding: 10px 14px 10px 0;
+  border-bottom: 2px solid var(--navy);
+  color: var(--navy);
+}
+.table td {
+  padding: 12px 14px 12px 0;
+  border-bottom: 1px dashed var(--alu-2);
+  font-style: italic;
+}
+
+/* ---------- questions ---------- */
+
+.questions {
+  padding: 56px 0 72px;
+}
+.qList {
+  max-width: 760px;
+  border-top: 2px solid var(--navy);
+}
+.qList details {
+  border-bottom: 1px solid var(--alu-2);
+}
+.qList summary {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+.qList p {
+  margin: 0;
+  padding: 0 0 16px;
+}
+
+@media (max-width: 1099px) {
+  .gutter {
+    margin-top: 0;
+    margin-bottom: 40px;
+  }
+}
+
+@media (max-width: 899px) {
+  .rewardGrid,
+  .referGrid,
+  .stepList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rewardItem,
+  .rewardItem + .rewardItem {
+    padding: 28px 0;
+    border-left: 0;
+  }
+  .rewardItem + .rewardItem {
+    border-top: 1px solid var(--alu-2);
+  }
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

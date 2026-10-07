@@ -1,0 +1,46 @@
+// FAQ answers rewritten from the current site's FAQ and its cancellation policy.
+// The FAQPage schema is built from this list, so every question here is also on the page.
+
+export interface Faq {
+  q: string;
+  a: string;
+}
+
+export const faqs: Faq[] = [
+  {
+    q: "Do I need to be home?",
+    a: "No. If we can get to the gutters, you can be at work. The before-and-after photos come to you either way.",
+  },
+  {
+    q: "Is it safe on a two-story house?",
+    a: "Yes. The vacuum poles reach up to 32 feet, which covers the gutters on a normal two-story home. Taller or awkward houses go through a quick quote first so we can plan for them.",
+  },
+  {
+    q: "What does a standard cleaning include?",
+    a: "Vacuuming every gutter run, clearing each downspout and running water down it to check that it drains, and before-and-after photos when conditions allow. The rinse is the only extra.",
+  },
+  {
+    q: "What's the rinse, and do I need it?",
+    a: "After the vacuum pass we flush the troughs with water. That lifts the fine grit and residue that sits on the bottom, the stuff a scoop never gets and a vacuum mostly gets. We'd do it at least once a year, ideally after the leaves are down. It's $25.",
+  },
+  {
+    q: "How long does it take?",
+    a: "Most one-story homes take 45 minutes to an hour. Two-story, 60 to 90.",
+  },
+  {
+    q: "When do I pay?",
+    a: "After the job. Nothing is charged when you book; we send an invoice once the cleaning is finished.",
+  },
+  {
+    q: "What happens if the weather turns?",
+    a: "Heavy rain, lightning, ice or high wind and we'll move you to the next open day at no cost. We'll tell you as early as we can.",
+  },
+  {
+    q: "Can I cancel or reschedule?",
+    a: "Yes, free with at least 24 hours' notice. Call, text or email. Inside 24 hours a cancellation fee may apply, and we'll tell you what it is before charging anything.",
+  },
+  {
+    q: "What if I'm not happy with it?",
+    a: "Tell us within 48 hours and we'll come back and sort it out at no charge. If a second visit doesn't fix it, we'll talk about a partial or full refund.",
+  },
+];
