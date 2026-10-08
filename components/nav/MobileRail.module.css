@@ -1,0 +1,343 @@
+/* Mobile downspout rail. Collapsed it's a 24px lane over the page's left gutter (content
+   starts at --gutter, which is never less than the lane), so it never covers text. */
+
+.root {
+  display: none;
+}
+
+@media (max-width: 1099px) {
+  .root {
+    display: block;
+  }
+}
+
+/* ---------- open-state backdrop ---------- */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 64;
+  background: rgb(8 27 51 / 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s var(--ease-out);
+}
+.root[data-open] .scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---------- the panel: clipped to the lane until opened ---------- */
+
+.panel {
+  --edge: env(safe-area-inset-left, 0px);
+  position: fixed;
+  z-index: 66;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(300px, calc(100vw - 56px));
+  clip-path: inset(0 calc(100% - var(--lane) - var(--edge)) 0 0);
+  background-color: transparent;
+  touch-action: pan-y;
+  transition:
+    clip-path 0.26s var(--ease-out),
+    background-color 0.2s,
+    box-shadow 0.2s;
+}
+.root[data-open] .panel {
+  clip-path: inset(0 0 0 0);
+  background-color: #fff;
+  box-shadow: 10px 0 32px rgb(8 27 51 / 0.24);
+}
+
+/* Gutter end the pipe hangs off, pinned to the hero gutter while it's on screen */
+.stub {
+  position: absolute;
+  top: var(--stub-y, -100px);
+  left: var(--edge);
+  width: calc(var(--lane) + 1px);
+  height: 54px;
+  border-left: 2px solid var(--navy);
+  display: none;
+}
+.root[data-stub]:not([data-open]) .stub {
+  display: block;
+}
+
+.pipe {
+  --level: 0px;
+  position: absolute;
+  left: calc(var(--edge) + 5px);
+  width: 10px;
+  top: var(--pipe-top, 0px);
+  bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    to right,
+    var(--navy) 0 1.5px,
+    #ffffff 1.5px 4px,
+    #e9edf0 4px 6.5px,
+    #c9d1d8 6.5px 8.5px,
+    var(--navy) 8.5px 10px
+  );
+  /* a faint halo so the pipe still reads over the navy sections and photos */
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.5);
+  overflow: hidden;
+  transition: bottom 0.22s var(--ease-out);
+}
+.root[data-dock-hidden] .pipe {
+  bottom: 0;
+}
+.root[data-open] .pipe {
+  top: 0;
+  bottom: 0;
+}
+
+.water {
+  position: absolute;
+  left: 1.5px;
+  right: 1.5px;
+  top: 0;
+  height: var(--level);
+  background: linear-gradient(to right, var(--sky) 0 3px, #8fd3f7 3px 5px, var(--sky) 5px);
+  transition: height 0.18s linear;
+}
+
+/* ---------- open-state header and footer ---------- */
+
+.head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(80px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 8px 0 calc(var(--edge) + var(--lane) + 14px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--alu-2);
+  opacity: 0;
+  transition: opacity 0.16s;
+}
+.logo img {
+  width: 118px;
+  height: auto;
+}
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--dock-h) + 64px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) calc(var(--edge) + var(--lane) + 14px);
+  display: grid;
+  align-content: end;
+  gap: 4px;
+  border-top: 1px solid var(--alu-2);
+  opacity: 0;
+  transition: opacity 0.16s;
+}
+.phone {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--navy);
+  text-decoration: none;
+}
+
+.root[data-open] .head,
+.root[data-open] .foot {
+  opacity: 1;
+  transition-delay: 0.08s;
+}
+
+/* ---------- straps and labels: same positions open or closed ---------- */
+
+.nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(80px + env(safe-area-inset-top, 0px));
+  bottom: calc(var(--dock-h) + 64px + env(safe-area-inset-bottom, 0px));
+}
+
+.track {
+  list-style: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.track li {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+}
+
+.link {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 calc(var(--edge) + var(--lane) + 14px);
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.1;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.link:active {
+  background: var(--enamel);
+}
+.link[data-passed] {
+  color: var(--navy);
+}
+.link[aria-current] {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.strap {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--edge) + 2px);
+  width: 16px;
+  height: 5px;
+  margin-top: -2.5px;
+  background: var(--navy);
+  border-radius: 1px;
+  box-shadow: 0 0 0 1.5px #fff;
+  transition:
+    background-color 0.2s,
+    opacity 0.2s,
+    height 0.2s,
+    margin-top 0.2s;
+}
+.strap::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  width: 0;
+  height: 0;
+  margin-top: -3px;
+  border: 3px solid transparent;
+  border-left-color: #fff;
+  border-right-width: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+/* the active strap doubles as the pull handle: taller, sky blue, with a small arrow */
+.link[aria-current] .strap {
+  height: 12px;
+  margin-top: -6px;
+  background: var(--sky);
+}
+.strap::after {
+  right: 2px;
+}
+.link[aria-current] .strap::after {
+  opacity: 1;
+  border-left-color: var(--navy);
+}
+.root[data-open] .link[aria-current] .strap::after {
+  opacity: 0;
+}
+.strap[data-buried] {
+  opacity: 0;
+}
+.root[data-open] .strap[data-buried] {
+  opacity: 1;
+}
+
+.label {
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    opacity 0.16s,
+    transform 0.22s var(--ease-out);
+}
+.root[data-open] .label {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.06s;
+}
+
+/* ---------- the collapsed tap target ---------- */
+
+.lane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px));
+  width: calc(var(--edge) + var(--lane));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.root[data-dock-hidden] .lane {
+  bottom: 0;
+}
+.root[data-open] .lane {
+  display: none;
+}
+.lane:focus-visible {
+  outline: 3px solid var(--sky);
+  outline-offset: -3px;
+}
+
+/* ---------- section name flash on scroll ---------- */
+
+.flash {
+  position: fixed;
+  z-index: 67;
+  left: calc(env(safe-area-inset-left, 0px) + var(--lane) + 4px);
+  padding: 4px 9px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  border-radius: 2px;
+  pointer-events: none;
+  animation: flash 1.3s ease forwards;
+}
+@keyframes flash {
+  0% {
+    opacity: 0;
+    transform: translate(-6px, -50%);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, -50%);
+  }
+}

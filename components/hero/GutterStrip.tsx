@@ -107,7 +107,7 @@ export function GutterStrip() {
         <rect width="100%" height="56" fill="url(#debris-a)" />
       </svg>
 
-      <div className={`${styles.face} gutter-face`} />
+      <div className={`${styles.face} gutter-face`} data-gutter-anchor="" />
 
       <svg className={styles.overhang} height="40">
         <defs>

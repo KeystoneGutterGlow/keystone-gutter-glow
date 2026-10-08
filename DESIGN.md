@@ -66,8 +66,15 @@ The client's existing navy and cyan are kept and refined. No gradients except th
 
 ## Mobile
 
-- The downspout becomes the full-screen menu sheet, so the same pipe and straps carry over at thumb size.
-- A sticky bottom bar ("Book a cleaning · from $169" plus a call button) appears after the hero and hides once booking is on screen.
+- **The downspout stays on phones.** It's a slim 24px rail fixed to the left edge, sitting inside the page gutter (never narrower than 26px), so it doesn't cover text.
+  - It works like the desktop rail: one strap per section, the current one turns sky blue and taller (it doubles as the pull handle), and water fills to where you are.
+  - At the top of the page the pipe hangs off the hero gutter. Once the gutter scrolls away, the pipe runs to the top of the screen.
+  - Scrolling into a new section briefly flashes its name beside the strap.
+- **Tap the rail to open it.** It widens into a white drawer over a scrim. The straps stay exactly where they were and the section names appear beside them in the slab face.
+  - Every row is at least 44px tall, even on a 320×568 screen.
+  - Tap a name to scroll there and close the drawer. Tapping outside, swiping left, Escape and the Close button also close it.
+  - Focus moves to the current section on open and back to the rail on close. It respects safe areas and closes itself if the screen grows into the desktop layout.
+- **Book stays separate.** A sticky bottom bar ("Book a cleaning · from $169" plus a call button) holds it, and the downspout's elbow empties into the Book button, as on desktop. The bar steps aside while the booking section is on screen, and the pipe then runs to the bottom.
 - The hero keeps the rig drawing. The pole moves to the right margin so the headline gets full height.
 - Vacuum vs. scoop becomes a two-state toggle, so the comparison happens in the same spot on screen.
 - Pricing becomes tap-to-book rows. Booking goes full-bleed with a sticky Continue bar and 48px+ day cells.

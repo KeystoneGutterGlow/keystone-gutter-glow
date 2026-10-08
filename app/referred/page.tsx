@@ -44,7 +44,7 @@ export default function ReferredPage() {
 
       <main id="main">
         <header id="top" className={styles.hero}>
-          <div className={`${styles.gutter} gutter-face`} aria-hidden="true" />
+          <div className={`${styles.gutter} gutter-face`} aria-hidden="true" data-gutter-anchor="" />
           <div className="wrap">
             <p className={styles.kicker}>Referrals</p>
             <h1 className={styles.title}>{referral.headline}</h1>
@@ -160,7 +160,7 @@ export default function ReferredPage() {
               If the program tracks referrals, this is where you&rsquo;d see who booked and when your thank-you is on its
               way. <Draft>preview, example rows</Draft>
             </p>
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="Referral status, example rows">
               <table className={styles.table}>
                 <thead>
                   <tr>

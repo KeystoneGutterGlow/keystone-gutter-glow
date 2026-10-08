@@ -1,16 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { NavItem } from "@/content/nav";
 import { startingPrice } from "@/content/pricing";
 import { site } from "@/content/site";
 import styles from "./MobileNav.module.css";
-import { useSectionProgress } from "./useSectionProgress";
+import { MobileRail } from "./MobileRail";
 
-// Under 1100px the downspout rail turns into two things:
-//  - a dock at the bottom of the screen (Menu, Book, Call), where thumbs already are
-//  - a full-screen menu sheet that keeps the downspout-and-straps drawing at thumb size
+// Under 1100px the desktop rail becomes:
+//  - MobileRail: the same downspout, slimmed to a 24px lane on the left edge
+//  - a dock at the bottom (Book, Call), where the downspout's elbow empties into the Book button
+//  - a plain header with the logo and phone number that scrolls away with the page
 
 interface Props {
   items: NavItem[];
@@ -21,12 +22,7 @@ interface Props {
 }
 
 export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel }: Props) {
-  const [open, setOpen] = useState(false);
   const [dockHidden, setDockHidden] = useState(false);
-  const menuBtn = useRef<HTMLButtonElement>(null);
-  const sheet = useRef<HTMLDivElement>(null);
-  const ids = useRef(items.map((i) => i.id)).current;
-  const active = useSectionProgress(ids, endId);
 
   // Booking has its own sticky action bar, so the dock steps aside while it's on screen.
   useEffect(() => {
@@ -38,49 +34,6 @@ export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel
     io.observe(target);
     return () => io.disconnect();
   }, [endId, bookHref]);
-
-  useEffect(() => {
-    if (!open) return;
-    const root = document.documentElement;
-    const prev = root.style.overflow;
-    root.style.overflow = "hidden";
-    sheet.current?.querySelector<HTMLElement>("a, button")?.focus();
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        return;
-      }
-      if (e.key !== "Tab" || !sheet.current) return;
-      const focusables = sheet.current.querySelectorAll<HTMLElement>("a[href], button");
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last?.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first?.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      root.style.overflow = prev;
-      document.removeEventListener("keydown", onKey);
-      menuBtn.current?.focus({ preventScroll: true });
-    };
-  }, [open]);
-
-  function go(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
-    e.preventDefault();
-    setOpen(false);
-    requestAnimationFrame(() => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-      history.replaceState(null, "", `#${id}`);
-    });
-  }
 
   const bookText = bookLabel ?? `Book a cleaning · from $${startingPrice}`;
   const shortText = bookLabel ?? `Book · from $${startingPrice}`;
@@ -96,20 +49,21 @@ export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel
         </a>
       </header>
 
-      <nav className={styles.dock} aria-label="Quick actions" data-hidden={dockHidden || open || undefined}>
-        <button
-          ref={menuBtn}
-          type="button"
-          className={styles.menuBtn}
-          aria-expanded={open}
-          aria-controls="mobile-menu"
-          onClick={() => setOpen(true)}
-        >
-          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-            <path d="M3 6h16M3 11h16M3 16h10" stroke="currentColor" strokeWidth="2" strokeLinecap="square" />
-          </svg>
-          Menu
-        </button>
+      <MobileRail
+        items={items}
+        endId={endId}
+        homeHref={homeHref}
+        bookHref={bookHref}
+        bookText={bookLabel ?? "Book a cleaning"}
+        dockHidden={dockHidden}
+      />
+
+      <nav className={styles.dock} aria-label="Quick actions" data-hidden={dockHidden || undefined}>
+        <svg className={styles.elbow} viewBox="0 0 24 70" aria-hidden="true">
+          {/* the downspout turning out toward the Book button */}
+          <path d="M5 0H15V22Q15 31 24 31V41Q5 41 5 24Z" fill="#e9edf0" />
+          <path d="M5 0V24Q5 41 24 41M15 0V22Q15 31 24 31" fill="none" stroke="#fff" strokeWidth="1.5" />
+        </svg>
         <a href={bookHref ?? `#${endId}`} className={`btn btn--sky ${styles.dockBook}`}>
           <span className={styles.long}>{bookText}</span>
           <span className={styles.short}>{shortText}</span>
@@ -118,64 +72,6 @@ export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel
           <PhoneIcon />
         </a>
       </nav>
-
-      <div
-        id="mobile-menu"
-        ref={sheet}
-        className={`${styles.sheet} on-dark`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Menu"
-        hidden={!open}
-      >
-        <div className={styles.sheetTop}>
-          <Image src="/images/keystone-logo-light.png" alt="" width={133} height={45} />
-          <button type="button" className={styles.close} onClick={() => setOpen(false)}>
-            Close
-            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-              <path d="M3 3l12 12M15 3L3 15" stroke="currentColor" strokeWidth="2" />
-            </svg>
-          </button>
-        </div>
-
-        <nav aria-label="Page sections" className={styles.sheetNav}>
-          <span className={styles.sheetPipe} aria-hidden="true">
-            <span
-              className={styles.sheetWater}
-              style={{ height: `${active < 0 ? 0 : Math.min(100, ((active + 0.5) / items.length) * 100)}%` }}
-            />
-          </span>
-          <ol>
-            {items.map((item, i) => (
-              <li key={item.id}>
-                <a
-                  href={`#${item.id}`}
-                  onClick={(e) => go(e, item.id)}
-                  aria-current={active === i ? "location" : undefined}
-                >
-                  <span className={styles.sheetStrap} aria-hidden="true" />
-                  {item.label}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
-
-        <div className={styles.sheetFoot}>
-          <a
-            href={bookHref ?? `#${endId}`}
-            className="btn btn--sky btn--wide"
-            onClick={bookHref ? undefined : (e) => go(e, endId)}
-          >
-            {bookText}
-          </a>
-          <p>
-            Call or text <a href={site.phone.href}>{site.phone.display}</a>
-            <br />
-            <a href={`mailto:${site.email}`}>{site.email}</a>
-          </p>
-        </div>
-      </div>
     </>
   );
 }

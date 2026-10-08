@@ -23,7 +23,8 @@
   --err-pale: #fbeceb;
 
   --rail-w: 248px;
-  --gutter: clamp(18px, 4.2vw, 64px);
+  /* never narrower than the mobile rail lane, so the rail can sit in the gutter without covering text */
+  --gutter: clamp(26px, 4.2vw, 64px);
   --content-max: 1240px;
   --top-bar: 60px;
 
@@ -66,9 +67,12 @@ body {
   :root {
     --top-bar: 0px;
   }
-  /* room for the bottom dock (applied on the footer, so nothing shows below it) */
   :root {
-    --dock-clearance: calc(68px + env(safe-area-inset-bottom));
+    /* mobile downspout rail lane, and the bottom dock's height */
+    --lane: 24px;
+    --dock-h: 70px;
+    /* room for the bottom dock (applied on the footer, so nothing shows below it) */
+    --dock-clearance: calc(var(--dock-h) + env(safe-area-inset-bottom));
   }
 }
 
