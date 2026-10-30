@@ -1,9 +1,12 @@
+import { bookingRules } from "@/content/booking";
 import { site } from "@/content/site";
 import styles from "./Process.module.css";
 
+const dayOnly = bookingRules.scheduleMode === "day-only";
+
 const steps = [
-  { when: "Now", what: "Pick your house and a start time", note: "Right here on this page. About two minutes." },
-  { when: "Then", what: "A confirmation email", note: "Your day, your start time, and the address we have." },
+  { when: "Now", what: dayOnly ? "Pick your house and a day" : "Pick your house and a start time", note: "Right here on this page. About two minutes." },
+  { when: "Then", what: "A confirmation", note: dayOnly ? "Your day and the address we have." : "Your day, your start time, and the address we have." },
   { when: "On the day", what: "We clean", note: "45 to 90 minutes depending on the house. You don't need to be home." },
   { when: "After", what: "Photos, then the invoice", note: "You pay once the job is done. Nothing up front." },
 ];

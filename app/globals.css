@@ -290,13 +290,62 @@ section[id] {
   background-repeat: repeat-x, no-repeat;
 }
 
+/* ---------- Winter mode: soft white with red, the same components underneath ---------- */
+
+[data-season="firewood"] {
+  --navy: #2b1a14;
+  --navy-deep: #1b0f0a;
+  --navy-line: #4f3a30;
+  --sky: #b3261e;
+  --sky-hover: #c73a2f;
+  --sky-ledge: #7e140c;
+  --sky-ink: #9a1f16;
+  --sky-pale: #fbeae7;
+  --enamel: #faf8f4;
+  --alu-1: #f0ebe4;
+  --alu-2: #ddd5ca;
+  --alu-3: #8f8579;
+  --muted: #5c4f46;
+  --slate: #5c4f46;
+  --err: #8c1d18;
+  --err-pale: #fbeae7;
+  /* body sets its text color from the root tokens, so this page has to set it again */
+  color: var(--navy);
+}
+body:has([data-season="firewood"]) {
+  background: #faf8f4;
+}
+[data-season="firewood"] .btn--sky,
+[data-season="firewood"] .btn--sky:hover {
+  color: #fff;
+}
+[data-season="firewood"] .ph {
+  background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgb(179 38 30 / 0.08) 5px 6px);
+  border-bottom-color: rgb(179 38 30 / 0.55);
+}
+
+/* ---------- 404 and error pages. They have no rail, so they undo the rail's offset. ---------- */
+
+.status-page {
+  min-height: 70svh;
+  padding: clamp(48px, 10vw, 120px) var(--gutter);
+}
+.status-page h1 {
+  font-size: clamp(2.2rem, 1.4rem + 3vw, 3.6rem);
+  margin-bottom: 18px;
+}
+@media (min-width: 1100px) {
+  .status-page {
+    margin-left: calc(var(--rail-w) * -1);
+  }
+}
+
 /* ---------- Placeholders: hatched, the drawing convention for "to be supplied" ---------- */
 
 .ph {
   background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgb(13 42 78 / 0.07) 5px 6px);
   border-bottom: 1px dashed rgb(13 42 78 / 0.45);
   padding: 0 0.15em;
-  font-style: italic;
   color: var(--muted);
 }
 

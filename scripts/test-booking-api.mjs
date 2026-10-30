@@ -1,6 +1,7 @@
 // End-to-end checks for the booking API against a running server.
-//   npm run dev   (or npm start)   then:   npm run test:booking
+//   npm run dev   (or BOOKING_DEMO_MODE=true npm start)   then:   npm run test:booking
 // Uses the in-memory store, so it writes test bookings that vanish on restart.
+// Assumes the rules in content/booking.ts as they ship: time slots and four jobs a day.
 // Set BASE to point somewhere else, e.g. BASE=http://localhost:3000.
 
 const BASE = process.env.BASE ?? "http://localhost:3100";

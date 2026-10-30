@@ -7,7 +7,6 @@ import "./globals.css";
 const display = Zilla_Slab({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
-  style: ["normal", "italic"],
   variable: "--font-display",
   display: "swap",
 });
@@ -17,7 +16,6 @@ const display = Zilla_Slab({
 const body = Atkinson_Hyperlegible({
   subsets: ["latin"],
   weight: ["400", "700"],
-  style: ["normal", "italic"],
   variable: "--font-body",
   display: "swap",
 });

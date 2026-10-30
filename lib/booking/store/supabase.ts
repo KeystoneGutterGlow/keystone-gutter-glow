@@ -3,14 +3,18 @@ import type { BookingRecord, BookingStore, CreateResult, ISODate, NewBooking, Ta
 
 /**
  * Supabase / Postgres store, talking to PostgREST over fetch (no client library needed).
- * Pair it with db/migrations/001_bookings.sql. The database does the real enforcing:
+ * Pair it with db/migrations/. The database does the real enforcing:
  *   - a partial unique index allows one confirmed booking per (service_date, slot_id)
- *   - a trigger takes a per-day advisory lock and refuses a fifth booking on a date
+ *   - a trigger takes a per-day advisory lock and refuses a booking over the daily cap
+ *   - a unique idempotency key makes retries return the original booking
  * so double booking is impossible even if two servers race, or someone inserts by hand.
  *
  * Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (server-side only, never NEXT_PUBLIC).
- * Written against the migration but not yet run against a live project.
+ * The tests run this adapter against the real migrations on PGlite, through a small
+ * PostgREST stand-in. It hasn't been run against a live Supabase project yet.
  */
+
+const TIMEOUT_MS = 8000;
 
 interface Row {
   id: string;
@@ -48,6 +52,7 @@ function toRow(b: NewBooking) {
     city: b.address.city,
     zip: b.address.zip,
     notes: b.notes,
+    idempotency_key: b.idempotencyKey ?? null,
   };
 }
 
@@ -87,24 +92,28 @@ export class SupabaseBookingStore implements BookingStore {
     const q = new URLSearchParams({ select: "service_date,slot_id", status: "eq.confirmed" });
     q.append("service_date", `gte.${from}`);
     q.append("service_date", `lte.${to}`);
-    const res = await fetch(`${this.url}/rest/v1/bookings?${q}`, { headers: this.headers(), cache: "no-store" });
+    const res = await fetch(`${this.url}/rest/v1/bookings?${q}`, {
+      headers: this.headers(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
     if (!res.ok) throw new Error(`Supabase listTaken failed (${res.status})`);
     const rows = (await res.json()) as Array<Pick<Row, "service_date" | "slot_id">>;
     return rows.map((r) => ({ date: r.service_date, slotId: r.slot_id }));
   }
 
-  // The cap lives in the booking_settings table, so `maxPerDay` is informational here.
-  // Keep content/booking.ts and that table in step.
-  async create(input: NewBooking, _maxPerDay: number): Promise<CreateResult> {
+  // The database applies the lower of `maxPerDay` and booking_settings.max_jobs_per_day.
+  async create(input: NewBooking, maxPerDay: number): Promise<CreateResult> {
     const res = await fetch(`${this.url}/rest/v1/rpc/create_booking`, {
       method: "POST",
       headers: this.headers(),
-      body: JSON.stringify({ p: toRow(input) }),
+      body: JSON.stringify({ p: { ...toRow(input), max_jobs_per_day: maxPerDay } }),
       cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`Supabase create_booking failed (${res.status})`);
-    const out = (await res.json()) as { ok: boolean; reason?: string; booking?: Row };
-    if (out.ok && out.booking) return { ok: true, booking: fromRow(out.booking) };
+    const out = (await res.json()) as { ok: boolean; reason?: string; booking?: Row; duplicate?: boolean };
+    if (out.ok && out.booking) return { ok: true, booking: fromRow(out.booking), duplicate: out.duplicate };
     return { ok: false, reason: out.reason === "day_full" ? "day_full" : "slot_taken" };
   }
 }

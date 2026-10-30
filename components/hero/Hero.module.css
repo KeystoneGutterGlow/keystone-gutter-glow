@@ -123,8 +123,8 @@
   display: block;
 }
 .titleVac {
-  font-style: italic;
   font-weight: 600;
+  color: var(--sky-ink);
 }
 
 .lede {

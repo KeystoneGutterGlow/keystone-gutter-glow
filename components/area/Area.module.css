@@ -36,7 +36,6 @@
 }
 .map :global(.mapNote) {
   font-family: var(--font-display);
-  font-style: italic;
   font-size: 16px;
   fill: var(--sky-ink);
 }

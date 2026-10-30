@@ -26,7 +26,7 @@ The client's existing navy and cyan are kept and refined. No gradients except th
 
 ## Type
 
-- **Zilla Slab** (600/700, plus italic) for display. It's a slab with a bit of grit, like hardware-store signage. Prices are set in it because a price on a sign should look like one.
+- **Zilla Slab** (600/700) for display. No italics anywhere on the site, per the agreement; emphasis comes from weight and color. It's a slab with a bit of grit, like hardware-store signage. Prices are set in it because a price on a sign should look like one.
 - **Atkinson Hyperlegible** for body text and UI. It was built for low-vision readers, so phone numbers, ZIPs, times and form fields can't be misread. It's distinctive without being cute.
 - No mono, and no letterspaced uppercase eyebrows over every heading.
 - Display sizes are set per section and are deliberately uneven. "We vacuum. They scoop." runs at up to 10rem. The FAQ heading is 2rem.
@@ -63,6 +63,14 @@ The client's existing navy and cyan are kept and refined. No gradients except th
 
 - Smooth anchor scrolling, the downspout fill, step transitions in booking, and a slow suction animation in the vacuum cross-section, which shows the direction of flow. That's all of it.
 - Everything turns off under `prefers-reduced-motion`.
+
+## Winter mode
+
+Firewood keeps the same bones: the left rail, a drawing at true scale, and a page that drains to the action at the bottom. `[data-season="firewood"]` swaps the tokens to soft white and red, so buttons, focus rings and placeholders follow without their own styles.
+
+- **The downspout becomes a column of split logs.** The scroll-driven level that filled the pipe with water now decides how far the fire has burned, down to the order form. Logs above the level are alight and logs below it aren't lit yet. The flames rise through a transform, so scrolling doesn't repaint them.
+- **The pricing street becomes a yard of cord stacks.** All three show the same 4 by 8 ft face at one scale, and only the depth changes, so the drawing explains what a cord is.
+- **Motion:** falling snow in the hero and the moving flames. Under `prefers-reduced-motion` the snow is gone and the flames hold still. The burn level still follows scrolling.
 
 ## Mobile
 

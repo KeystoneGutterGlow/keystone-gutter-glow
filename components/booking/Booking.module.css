@@ -898,3 +898,18 @@
     gap: 3px;
   }
 }
+
+.demoNote {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px dashed currentColor;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+.dayOnlyNotes {
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}

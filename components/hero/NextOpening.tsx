@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { BookLink } from "@/components/BookLink";
+import { bookingRules } from "@/content/booking";
 import { formatShort } from "@/lib/booking/dates";
 import styles from "./Hero.module.css";
 
 // Live "next opening" tag hanging off the vacuum pole. Fixed height while loading, so no
 // layout shift. If the API is unreachable it quietly falls back to a plain link.
+
+const dayOnly = bookingRules.scheduleMode === "day-only";
 
 interface Next {
   date: string;
@@ -40,13 +43,13 @@ export function NextOpening() {
         <>
           <p className={styles.tagWhen}>
             {formatShort(state.next.date)}
-            <span className={styles.tagTime}>{state.next.slotLabel}</span>
+            {!dayOnly && <span className={styles.tagTime}>{state.next.slotLabel}</span>}
           </p>
           <p className={styles.tagLeft}>
             {state.next.remaining === 1 ? "Last spot that day" : `${state.next.remaining} spots left that day`}
           </p>
-          <BookLink className={styles.tagLink} date={state.next.date} slotId={state.next.slotId}>
-            Book this time <span aria-hidden="true">→</span>
+          <BookLink className={styles.tagLink} date={state.next.date} slotId={dayOnly ? undefined : state.next.slotId}>
+            {dayOnly ? "Book this day" : "Book this time"} <span aria-hidden="true">→</span>
           </BookLink>
         </>
       )}
@@ -54,7 +57,7 @@ export function NextOpening() {
         <>
           <p className={styles.tagWhen}>See the calendar</p>
           <BookLink className={styles.tagLink}>
-            Open times <span aria-hidden="true">→</span>
+            {dayOnly ? "Open days" : "Open times"} <span aria-hidden="true">→</span>
           </BookLink>
         </>
       )}

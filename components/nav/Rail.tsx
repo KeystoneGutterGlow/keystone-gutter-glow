@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useRef } from "react";
 import type { NavItem } from "@/content/nav";
 import { site } from "@/content/site";
@@ -18,9 +19,10 @@ interface Props {
   homeHref?: string;
   /** On secondary pages the logo links home and the Book button leaves the page */
   bookHref?: string;
+  referLink?: boolean;
 }
 
-export function Rail({ items, endId, endLabel, homeHref = "#top", bookHref }: Props) {
+export function Rail({ items, endId, endLabel, homeHref = "#top", bookHref, referLink }: Props) {
   const pipeRef = useRef<HTMLDivElement>(null);
   const strapRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const ids = useRef(items.map((i) => i.id)).current;
@@ -105,6 +107,11 @@ export function Rail({ items, endId, endLabel, homeHref = "#top", bookHref }: Pr
           <span className="vh">Call or text </span>
           {site.phone.display}
         </a>
+        {referLink && (
+          <Link href="/referred" className={styles.refer}>
+            Refer a neighbor
+          </Link>
+        )}
       </div>
     </nav>
   );

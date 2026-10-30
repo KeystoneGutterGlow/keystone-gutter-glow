@@ -81,3 +81,8 @@
     display: none !important;
   }
 }
+
+/* Winter mode: no downspout to turn the corner into the Book button */
+:global([data-season="firewood"]) .elbow {
+  visibility: hidden;
+}

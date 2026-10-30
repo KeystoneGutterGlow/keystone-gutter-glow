@@ -19,6 +19,8 @@ export interface BookingRecord {
   customer: { name: string; email: string; phone: string };
   address: { street: string; city: string; zip: string };
   notes: string;
+  /** Sent by the browser once per booking attempt, so a retry can't book twice */
+  idempotencyKey?: string;
   status: "confirmed" | "cancelled";
   createdAt: string;
 }
@@ -26,7 +28,7 @@ export interface BookingRecord {
 export type NewBooking = Omit<BookingRecord, "id" | "status" | "createdAt">;
 
 export type CreateResult =
-  | { ok: true; booking: BookingRecord }
+  | { ok: true; booking: BookingRecord; duplicate?: boolean }
   | { ok: false; reason: "slot_taken" | "day_full" };
 
 export interface TakenSlot {

@@ -22,7 +22,6 @@
 }
 .they {
   color: var(--mud);
-  font-style: italic;
   font-weight: 500;
   text-align: right;
   margin-top: 0.06em;
@@ -216,7 +215,6 @@
 }
 .ledger thead th:last-child {
   color: var(--mud);
-  font-style: italic;
   font-weight: 500;
 }
 .ledger thead td {

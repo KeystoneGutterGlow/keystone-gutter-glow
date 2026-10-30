@@ -174,7 +174,7 @@ export function MobileRail({ items, endId, homeHref, bookHref, bookText, dockHid
     });
   }
 
-  const activeLabel = active >= 0 && active < items.length ? items[active]?.label : active >= items.length ? "Book a cleaning" : null;
+  const activeLabel = active >= 0 && active < items.length ? items[active]?.label : active >= items.length ? bookText : null;
 
   return (
     <div

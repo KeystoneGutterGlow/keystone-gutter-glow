@@ -341,3 +341,37 @@
     transform: translate(0, -50%);
   }
 }
+
+/* ---------- Winter mode: slim column of logs, burning down to where you are ---------- */
+
+:global([data-season="firewood"]) .stub {
+  display: none !important;
+}
+:global([data-season="firewood"]) .pipe {
+  left: calc(var(--edge) + 4px);
+  width: 16px;
+  overflow: hidden;
+  box-shadow: none;
+  background: url("/images/firewood/logs.svg") center top / 16px 15px repeat-y;
+}
+:global([data-season="firewood"]) .water {
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  background: url("/images/firewood/logs-burning.svg") center top / 16px 15px repeat-y;
+}
+:global([data-season="firewood"]) .water::before {
+  content: "";
+  position: absolute;
+  inset: -30px 0 0;
+  background: url("/images/firewood/flames.svg") center top / 22px 30px repeat-y;
+  animation: flames-rise 2.4s linear infinite;
+}
+@keyframes flames-rise {
+  from {
+    transform: translateY(30px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
