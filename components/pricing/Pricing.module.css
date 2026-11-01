@@ -126,6 +126,22 @@
   color: var(--muted);
 }
 
+.plan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 32px;
+  margin-top: 28px;
+  padding: 18px 20px;
+  border: 1.5px solid var(--alu-3);
+}
+.plan p {
+  flex: 1 1 320px;
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* ---------- Phone: tap-to-book rows ---------- */
 
 @media (max-width: 759px) {

@@ -107,7 +107,7 @@ BookingApp (client)  ->  /api/availability  (GET: month summary, one day's times
                          supabase.ts (Postgres via PostgREST; no client library)
 ```
 
-The flow: the customer picks a date, the browser fetches that day's times, and booked times show disabled. On submit, the server validates everything again, re-checks the date, computes the price itself, and asks the store to create the booking atomically. If someone took the slot in the meantime, the API returns `409` with fresh availability, and the UI sends the customer back to the calendar with the slot marked booked.
+The flow: the customer picks a day. On submit, the server validates everything again, re-checks the date, computes the price itself, files the job under a free internal slot, and asks the store to create the booking atomically. If the day filled up in the meantime, the API returns `409` with fresh availability, and the UI sends the customer back to the calendar.
 
 **Double booking is blocked in storage, not in the UI.**
 - A partial unique index on `(service_date, slot_id)` allows one confirmed booking per time.
@@ -117,14 +117,21 @@ The flow: the customer picks a date, the browser fetches that day's times, and b
 
 ### Scheduling rules
 
-The site ships with five start times and a cap of four jobs a day, as it has run so far. The agreement's Addendum A1 asks for three jobs a day with no customer-facing times. That's built and tested but switched off until Jimmy confirms. To turn it on, change two lines in `content/booking.ts`:
+Bookings run Monday through Saturday. Customers pick a day, not a time. The form explains that a precise arrival time isn't normally given, and anyone who needs one asks in the "Additional information we should know" box, which reaches Jimmy with the booking.
+
+The cap is still four jobs a day. The agreement's Addendum A1 asks for three, and that stays unchanged until Jimmy confirms it. To change it, edit one line in `content/booking.ts`:
 
 ```ts
-scheduleMode: "day-only" as ScheduleMode,
 maxJobsPerDay: 3,
 ```
 
-The form then asks for a day only, explains that a precise arrival time isn't normally given, and the server files each job under a free internal slot. No database change is needed: the app sends its cap with each booking, and the database enforces the lower of that and `booking_settings.max_jobs_per_day`. To go above four, raise that database value too.
+No database change is needed: the app sends its cap with each booking, and the database enforces the lower of that and `booking_settings.max_jobs_per_day`. To go above four, raise that database value too.
+
+### Recurring plans
+
+"Set up a recurring plan" (under Prices, and on the booking confirmation) opens a dialog with Jimmy's four frequencies, with every 6 months selected and recommended (`content/plans.ts`). It posts to `/api/plan-requests`, which emails Jimmy the frequency, address and contact details. Nothing is scheduled or billed, as Addendum A1 requires.
+
+The email is the only record, so this needs `RESEND_API_KEY` and `EMAIL_FROM`. Without them a real deployment answers with a call-us message instead of losing the request, and a demo deployment says plainly that nothing was sent.
 
 ## Database setup
 
@@ -152,7 +159,8 @@ OrderForm  ->  /api/firewood/status    (is payment open? test mode?)
 - **Stripe can't take negative lines,** so the $30 dumping reduction is folded into the size's line on Stripe's page. The customer's own summary keeps it itemized, and the totals match.
 - **Duplicates are harmless.** The same click maps to the same order and session. A repeated webhook finds nothing to change and sends no second email.
 - **A mismatch stops for review.** If Stripe's amount differs from the order's, the order goes to `needs_review` and the owner email says so.
-- **No tax, fees or refund rules are invented.** None are added until Jimmy decides.
+- **No tax or fees are invented.** None are added until Jimmy decides.
+- **Delivery rules are Jimmy's.** Any day of the week, at least a week ahead, always available. No refunds, and 4 days' notice to reschedule, shown before payment and after it. Rescheduling is by phone or text, so the 4 days aren't enforced by the software.
 
 ### Unconfirmed values
 
@@ -208,7 +216,8 @@ Booking and order emails go through Resend's HTTP API (`lib/notify/email.ts`). I
 
 **Gutter site**
 - [ ] Items under "Things to confirm" below answered
-- [ ] Scheduling rules decided, and `content/booking.ts` updated
+- [ ] Daily job cap confirmed (four or three), and `content/booking.ts` updated
+- [ ] Email set up, so recurring plan requests can reach Jimmy
 - [ ] Terms, privacy and cancellation pages added, with Jimmy's approval
 - [ ] `ALLOW_INDEXING=true` and `SITE_URL` set on the real domain, and `BOOKING_DEMO_MODE` removed
 
@@ -225,14 +234,18 @@ Booking and order emails go through Resend's HTTP API (`lib/notify/email.ts`). I
 
 Everything factual came from the current site or the agreement. These items were either unclear or assumed:
 
-- **Closed Sundays.** That's an assumption. The current site lets people book any day (`closedWeekdays` in `content/booking.ts`).
-- **Start times.** 8, 10, 12, 2 and 4 are a proposal, and go away with day-only scheduling.
+- **Daily cap.** The site allows four jobs a day. Addendum A1 says three.
+- **Yardley.** It's about 12 miles from the center of the 10-mile circle, so its pin sits outside the circle on the map while staying on the town list.
+- **Failed deliveries.** "No refunds" covers a customer changing their mind. Jimmy still has to approve what happens if a delivery doesn't happen. That keeps the "Cancellation and refunds" group unconfirmed.
+- **Sales tax.** Still unanswered, so none is added and live payments stay blocked.
+- **Biography.** It publishes Jimmy's age and school, as Addendum A1 asks. He's a minor, so his parent or guardian should approve it, and the age needs updating when he turns 17. "No liabilities on anyone" is his wording and is a legal-sounding claim worth a second look.
+- **Service-origin address.** Only coordinates rounded to about half a mile are in the code (`serviceRadius` in `content/area.ts`). The address itself isn't in this repo or on the site.
 - **Late-cancel fee.** Addendum A1 says $50 inside 24 hours. It isn't shown until `lateCancelFeeDollars` is set in `content/site.ts`.
 - **"Ground-based" / ladder-free.** This is in the old site's schema markup, but its 2-story description also says "insured for elevated work". The copy says the pole reaches 32 ft and doesn't promise "no ladders".
 - **"Insured".** This is on the old site's trust bar and shown in the footer. Confirm it, and add a policy or registration number if he has one.
 - **Newtown and Yardley.** These were only in the old site's hidden schema, not its visible town list.
 - **"Houses and townhomes only."** This is inferred from the site saying "residential" everywhere.
-- **Photos.** The rig photo is a stand-in from the current site that looks like a UK manufacturer shot, so swap it for Jimmy's own setup. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
+- **Photos, coming from Jimmy.** His portrait next to the equipment, before-and-after pairs from real jobs, and his actual vacuum. The rig photo is a stand-in from the current site that looks like a UK manufacturer shot. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
 - **Removed from the old site** because nothing backs them up: the "5.0" rating (the reviews list was empty), "100% debris captured", and "2× more thorough".
 
 ## Agreement, Addendum A status
@@ -242,11 +255,12 @@ Everything factual came from the current site or the agreement. These items were
 | A1 No italics, polished buttons and layout | Done |
 | A1 Referral page easier to reach | Link added to the desktop rail. The page's content is still placeholders. |
 | A1 Alt text and accessible controls | Automated accessibility checks are clean. Client photos are still to come. |
-| A1 Three jobs a day, no time slots, arrival explanation | Built, switched off until confirmed |
+| A1 No time slots, arrival explanation | Done |
+| A1 Three jobs a day | Built, still set to four until Jimmy confirms |
 | A1 Vacuum visual resembling GutterPro-style equipment | Not started |
-| A1 10-mile radius shown from the private address | Not started. Needs the address. |
-| A1 Biography with age, school and quotation | Placeholders. Needs Jimmy's text. |
-| A1 Recurring-plan request form | Not started. Needs email set up. |
+| A1 10-mile radius shown from the private address | Done. Shown on the desktop map and stated in the text on phones. |
+| A1 Biography with age, school and quotation | Done with Jimmy's text. His photo is still to come. |
+| A1 Recurring-plan request form | Built and tested. Needs email set up to reach Jimmy. |
 | A1 Terms, privacy and cancellation policy pages | Not started. Needs approved text. |
 | A2 Separate winter mode with switch, colors and igniting log visual | Done |
 | A2 Prices, options and itemized total | Done, from config, marked unconfirmed |

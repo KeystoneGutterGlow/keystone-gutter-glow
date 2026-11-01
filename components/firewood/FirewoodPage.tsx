@@ -174,10 +174,11 @@ export function FirewoodPage() {
               <Policy term="Where we deliver" value={firewood.deliveryArea.value.description} missing="Delivery area to be confirmed." />
               <Policy
                 term="Which days"
-                value={(firewood.schedule as Confirmable<unknown>).status === "confirmed" ? scheduleSummary() : null}
+                value={(firewood.schedule as Confirmable<unknown>).status === "confirmed" ? firewood.schedule.value.summary : null}
                 missing="Delivery days and notice to be confirmed."
               />
-              <Policy term="Cancelling an order" value={firewood.policies.value.cancellation} missing="Firewood cancellation policy to be confirmed." />
+              <Policy term="Availability" value={firewood.schedule.value.availability} missing="Availability to be confirmed." />
+              <Policy term="Rescheduling" value={firewood.policies.value.cancellation} missing="Firewood cancellation policy to be confirmed." />
               <Policy term="Refunds" value={firewood.policies.value.refunds} missing="Refund policy to be confirmed." />
             </dl>
           </div>
@@ -189,7 +190,7 @@ export function FirewoodPage() {
             <p className={styles.orderLede}>
               Prefer to order by phone? Call or text <a href={site.phone.href}>{site.phone.display}</a>.
             </p>
-            <OrderForm unconfirmed={unconfirmed} />
+            <OrderForm />
           </div>
         </section>
       </main>
@@ -197,11 +198,6 @@ export function FirewoodPage() {
       <FirewoodFooter links={links} />
     </div>
   );
-}
-
-function scheduleSummary() {
-  const s = firewood.schedule.value;
-  return `Order at least ${s.minLeadDays} days ahead, up to ${s.horizonDays} days out.`;
 }
 
 function Unconfirmed({ children }: { children: React.ReactNode }) {
@@ -232,7 +228,7 @@ function NotReady({ blockers }: { blockers: ReturnType<typeof configBlockers> })
           <ul>
             {blockers.map((b) => (
               <li key={b.key}>
-                <strong>{b.label}</strong> ({b.status === "contract" ? "from the agreement, not confirmed" : "placeholder"}). {b.ask}
+                <strong>{b.label}</strong> ({b.status === "contract" ? "from the agreement, not confirmed" : "still open"}). {b.ask}
               </li>
             ))}
           </ul>

@@ -1,6 +1,6 @@
-// Owner section. Jimmy's real story is still to come, so every narrative field is a
-// placeholder: `draft: true` renders it with the hatched placeholder style.
-// To go live, replace `text`, set `draft: false`, and drop his photo at the path below.
+// Owner section. The quote and story are Jimmy's own words, tidied for grammar only. `draft: true`
+// renders a field with the hatched placeholder style, if one ever needs to go back to that.
+// His photo is still to come: drop it at the path below and set `src`.
 
 export interface DraftText {
   text: string;
@@ -12,16 +12,15 @@ export const owner = {
   role: "Owner, Keystone Gutter Glow LLC",
   photo: {
     src: null as string | null, // e.g. "/images/jimmy.jpg"
-    want: "Jimmy beside the vacuum cart on a customer's lawn. Daylight, eye level, pole in hand.",
+    want: "Jimmy beside his gutter vacuum equipment. Daylight, eye level.",
     file: "public/images/jimmy.jpg",
   },
   quote: {
-    text: "A line in Jimmy's own words about why he cleans gutters this way.",
-    draft: true,
+    text: "“It’s just better.”",
+    draft: false,
   } as DraftText,
   story: [
-    { text: "Where Jimmy's from and how long he's been in Bucks County.", draft: true },
-    { text: "How he got into gutter cleaning, and why he went with a vacuum rig instead of a ladder and a scoop.", draft: true },
-    { text: "What he wants a customer to notice when they look at the photos afterward.", draft: true },
+    { text: "I’m 16 and a student at Central Bucks East High School. I started this business to pursue my dreams in business.", draft: false },
+    { text: "I use vacuums to ensure there are no liabilities on anyone, and because a vacuum does a much more thorough job than scooping.", draft: false },
   ] as DraftText[],
 };

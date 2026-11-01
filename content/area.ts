@@ -25,8 +25,18 @@ export const towns: Town[] = [
   { name: "Yardley", lat: 40.2457, lon: -74.846, zips: ["19067"], label: "left" },
 ];
 
-/** Rough course of the Delaware River for the map's east edge (New Hope down to Morrisville). */
+/**
+ * Center of the 10-mile service radius (Addendum A1). It comes from Jimmy's private service-origin
+ * address, rounded to about half a mile so his home can't be read out of the page. The address
+ * itself stays out of this repo and off the site.
+ */
+export const serviceRadius = { miles: 10, lat: 40.26, lon: -75.08 };
+
+/** Rough course of the Delaware River for the map's east edge (above New Hope down past Morrisville). */
 export const delaware: Array<[lat: number, lon: number]> = [
+  [40.42, -75.07],
+  [40.406, -75.04],
+  [40.385, -74.975],
   [40.3643, -74.9513],
   [40.336, -74.928],
   [40.2934, -74.8724],
@@ -34,6 +44,7 @@ export const delaware: Array<[lat: number, lon: number]> = [
   [40.2457, -74.8352],
   [40.2245, -74.8053],
   [40.2115, -74.7882],
+  [40.19, -74.765],
 ];
 
 export const serviceZips = new Map<string, string>(

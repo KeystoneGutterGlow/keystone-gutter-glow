@@ -111,7 +111,7 @@ describe("firewood order validation", () => {
     expect(checkDeliveryDate(min, today)).toBeNull();
     expect(checkDeliveryDate(max, today)).toBeNull();
     expect(checkDeliveryDate(today, today)).toMatch(/too soon/);
-    expect(checkDeliveryDate("2027-06-01", today)).toMatch(/too far/);
+    expect(checkDeliveryDate("2028-06-01", today)).toMatch(/too far/);
     expect(checkDeliveryDate("not-a-date", today)).toMatch(/Pick/);
 
     const config = structuredClone(firewood) as FirewoodConfig;
@@ -143,7 +143,7 @@ describe("the gate that keeps real money out", () => {
 
   it("lists everything Jimmy hasn't confirmed", () => {
     const blockers = configBlockers();
-    expect(blockers.map((b) => b.key)).toEqual(["products", "deliveryMethods", "extras", "schedule", "deliveryArea", "tax", "policies", "fulfillment"]);
+    expect(blockers.map((b) => b.key)).toEqual(["products", "deliveryMethods", "extras", "deliveryArea", "tax", "policies"]);
     expect(configBlockers(confirmedConfig())).toEqual([]);
   });
 

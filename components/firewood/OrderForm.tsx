@@ -76,7 +76,7 @@ export function ClearOrderDraft() {
   return null;
 }
 
-export function OrderForm({ unconfirmed }: { unconfirmed: boolean }) {
+export function OrderForm() {
   const uid = useId();
   const [draft, setDraft] = useState<OrderDraft>(EMPTY);
   const [company, setCompany] = useState("");
@@ -312,7 +312,7 @@ export function OrderForm({ unconfirmed }: { unconfirmed: boolean }) {
             id={`${uid}-deliveryDate`}
             label="Delivery date"
             error={errors.deliveryDate}
-            note={unconfirmed ? "Available dates are placeholders until Jimmy confirms his delivery days." : undefined}
+            note={firewood.schedule.value.summary}
           >
             <input
               type="date"
@@ -396,6 +396,7 @@ export function OrderForm({ unconfirmed }: { unconfirmed: boolean }) {
           <strong>{shown ? formatCents(shown.totalCents) : "—"}</strong>
         </p>
         {!firewood.tax.value.note && <p className={`ph ${styles.ticketTax}`}>No tax added. Treatment not confirmed.</p>}
+        {firewood.policies.value.checkoutTerms && <p className={styles.payNote}>{firewood.policies.value.checkoutTerms}</p>}
         {payState}
         {status?.demoStore && checkoutOpen && <p className={styles.payNote}>Demo storage: test orders reset when the server restarts.</p>}
         <div className={styles.payBar}>

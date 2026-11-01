@@ -119,19 +119,28 @@ export const firewood = {
   } satisfies Confirmable<FirewoodExtra[]>,
 
   schedule: {
-    status: "placeholder",
+    status: "confirmed",
     ask: "Which days do you deliver, how much notice do you need, and how far ahead can people order?",
     value: {
-      /** PLACEHOLDER. Earliest delivery, in days from today. */
-      minLeadDays: 3,
-      /** PLACEHOLDER. Latest delivery, in days from today. */
-      horizonDays: 45,
-      /** PLACEHOLDER. 0 = Sunday. Empty means every day is offered while testing. */
+      /** Earliest delivery, in days from today. Jimmy: one week ahead. */
+      minLeadDays: 7,
+      /** Latest delivery, in days from today. Firewood is always available, so this is only the date picker's limit. */
+      horizonDays: 365,
+      /** 0 = Sunday. Jimmy: any day of the week. */
       closedWeekdays: [] as number[],
       /** "YYYY-MM-DD" days with no deliveries */
       blackoutDates: [] as string[],
+      summary: "Any day of the week. Order at least a week ahead.",
+      availability: "Firewood is always available.",
     },
-  } satisfies Confirmable<{ minLeadDays: number; horizonDays: number; closedWeekdays: number[]; blackoutDates: string[] }>,
+  } satisfies Confirmable<{
+    minLeadDays: number;
+    horizonDays: number;
+    closedWeekdays: number[];
+    blackoutDates: string[];
+    summary: string;
+    availability: string;
+  }>,
 
   deliveryArea: {
     status: "placeholder",
@@ -151,20 +160,20 @@ export const firewood = {
 
   policies: {
     status: "placeholder",
-    ask: "Write and approve the firewood cancellation and refund rules and the checkout terms.",
+    ask: "No refunds and 4 days' notice to reschedule are set. Still needed: approve how failed deliveries are handled.",
     value: {
-      cancellation: null as string | null,
-      refunds: null as string | null,
-      checkoutTerms: null as string | null,
+      cancellation: "To move your delivery, call or text us at least 4 days before it." as string | null,
+      refunds: "No refunds." as string | null,
+      checkoutTerms: "No refunds. You can reschedule with at least 4 days' notice." as string | null,
     },
   } satisfies Confirmable<{ cancellation: string | null; refunds: string | null; checkoutTerms: string | null }>,
 
   fulfillment: {
-    status: "placeholder",
+    status: "confirmed",
     ask: "Is a paid order accepted right away, or do you confirm each delivery by hand first?",
     value: {
-      /** Shown after payment. null until Jimmy decides how orders get accepted. */
-      afterPayment: null as string | null,
+      /** Shown after payment and in the customer's email. Jimmy reviewed the confirmation rules. */
+      afterPayment: "We'll deliver on that date. To move it, call or text us at least 4 days before. Firewood orders aren't refundable." as string | null,
     },
   } satisfies Confirmable<{ afterPayment: string | null }>,
 };

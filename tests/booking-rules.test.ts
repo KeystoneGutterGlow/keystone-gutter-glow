@@ -108,11 +108,14 @@ describe("booking request validation", () => {
   });
 
   it("reports each bad field", () => {
-    const r = parseBookingRequest({ ...valid, email: "nope", zip: "12", phone: "123", packageId: "mansion", date: "soon", slotId: "03:00" });
+    const bad = { ...valid, email: "nope", zip: "12", phone: "123", packageId: "mansion", date: "soon", slotId: "03:00" };
+    const r = parseBookingRequest(bad);
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(Object.keys(r.errors).sort()).toEqual(["date", "email", "packageId", "phone", "slotId", "zip"]);
+      expect(Object.keys(r.errors).sort()).toEqual(["date", "email", "packageId", "phone", "zip"]);
     }
+    const withSlots = parseBookingRequest(bad, { ...rules, scheduleMode: "time-slots" });
+    expect(!withSlots.ok && withSlots.errors.slotId).toBeTruthy();
   });
 
   it("flags the honeypot as spam", () => {

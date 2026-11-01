@@ -55,14 +55,14 @@ describe("POST /api/bookings", () => {
     expect(body.booking.emailSent).toBe(false);
   });
 
-  it("lets exactly one of 10 simultaneous requests have a slot", async () => {
+  it("books up to the cap when 10 people want the same day at once, and tells the rest it's full", async () => {
     const date = firstBookable(today(), bookingRules);
-    const results = await Promise.all(Array.from({ length: 10 }, () => book({ date, slotId: slots[0] })));
+    const results = await Promise.all(Array.from({ length: 10 }, () => book({ date })));
     const statuses = results.map((r) => r.status);
-    expect(statuses.filter((s) => s === 201)).toHaveLength(1);
-    expect(statuses.filter((s) => s === 409)).toHaveLength(9);
+    expect(statuses.filter((s) => s === 201)).toHaveLength(bookingRules.maxJobsPerDay);
+    expect(statuses.filter((s) => s === 409)).toHaveLength(10 - bookingRules.maxJobsPerDay);
     const loser = await results.find((r) => r.status === 409)!.json();
-    expect(loser.code).toBe("slot_taken");
+    expect(loser.code).toBe("day_full");
     expect(Array.isArray(loser.day.slots)).toBe(true);
   });
 
@@ -97,10 +97,10 @@ describe("POST /api/bookings", () => {
 
   it("answers bad input with field errors, and bad JSON with 400", async () => {
     const date = firstBookable(today(), bookingRules);
-    const bad = await book({ date, slotId: "03:00", email: "x" });
+    const bad = await book({ date, email: "x", zip: "1" });
     expect(bad.status).toBe(400);
     const { errors } = await bad.json();
-    expect(errors.slotId).toBeTruthy();
+    expect(errors.zip).toBeTruthy();
     expect(errors.email).toBeTruthy();
 
     const notJson = await POST(new Request("http://localhost/api/bookings", { method: "POST", body: "{oops" }));
@@ -126,9 +126,9 @@ describe("POST /api/bookings", () => {
   it("rate limits one address without affecting another", async () => {
     const date = firstBookable(today(), bookingRules);
     let last: Response | undefined;
-    for (let i = 0; i < 41; i++) last = await book({ date, slotId: "03:00" }, "198.51.100.9");
+    for (let i = 0; i < 41; i++) last = await book({ date, email: "x" }, "198.51.100.9");
     expect(last!.status).toBe(429);
-    expect((await book({ date, slotId: "03:00" }, "198.51.100.10")).status).toBe(400);
+    expect((await book({ date, email: "x" }, "198.51.100.10")).status).toBe(400);
   });
 });
 
@@ -180,7 +180,7 @@ describe("production safety", () => {
   });
 });
 
-describe("day-only scheduling (Addendum A1, switched off until Jimmy confirms)", () => {
+describe("day-only scheduling at the contract's cap of three", () => {
   const dayOnly: BookingRules = { ...bookingRules, scheduleMode: "day-only", maxJobsPerDay: 3 };
   const request = (date: string, email: string) => ({
     packageId: "one-story" as const,
@@ -208,6 +208,37 @@ describe("day-only scheduling (Addendum A1, switched off until Jimmy confirms)",
   });
 });
 
+describe("time-slot scheduling, if it's ever switched back on", () => {
+  const timeSlots: BookingRules = { ...bookingRules, scheduleMode: "time-slots" };
+
+  it("lets exactly one of 10 simultaneous requests have a slot", async () => {
+    const date = firstBookable(today(), timeSlots);
+    const results = await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        createBooking(
+          {
+            packageId: "one-story",
+            rinse: false,
+            date,
+            slotId: "08:00",
+            name: "Pat Example",
+            email: `p${i}@example.com`,
+            phone: "2155550100",
+            street: "1 Test Ln",
+            city: "Jamison",
+            zip: "18929",
+            notes: "",
+          },
+          timeSlots,
+        ),
+      ),
+    );
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    const lost = results.find((r) => !r.ok);
+    expect(lost && !lost.ok && lost.code).toBe("slot_taken");
+  });
+});
+
 describe("memory store", () => {
   const base: NewBooking = {
     ref: "KGG-1",
@@ -232,6 +263,7 @@ describe("memory store", () => {
 
   it("still has the rules Jimmy has confirmed so far, until he changes them", () => {
     expect(bookingRules.maxJobsPerDay).toBe(4);
-    expect(bookingRules.scheduleMode).toBe("time-slots");
+    expect(bookingRules.scheduleMode).toBe("day-only");
+    expect(bookingRules.closedWeekdays).toEqual([0]);
   });
 });

@@ -15,15 +15,15 @@ export interface SlotDef {
  * "day-only":   the customer picks a day. The server files the job under the first free slot
  *               internally and the customer never sees a time.
  *
- * Website Agreement, Addendum A1 asks for "day-only" with maxJobsPerDay: 3, but those two
- * values stay as they are until Jimmy confirms. Change both lines below to switch; nothing
- * else needs editing. Also set site.policies.lateCancelFeeDollars when he confirms that fee.
+ * Jimmy chose "day-only": customers ask for a specific arrival time in the additional-information
+ * box. Website Agreement, Addendum A1 also asks for maxJobsPerDay: 3, but the cap stays as it is
+ * until he confirms. Also set site.policies.lateCancelFeeDollars when he confirms that fee.
  */
 export type ScheduleMode = "time-slots" | "day-only";
 
 export const bookingRules = {
   timeZone: "America/New_York",
-  scheduleMode: "time-slots" as ScheduleMode,
+  scheduleMode: "day-only" as ScheduleMode,
   /** Hard cap. The database enforces it too. */
   maxJobsPerDay: 4,
   /**
@@ -38,7 +38,7 @@ export const bookingRules = {
     { id: "14:00", label: "2:00 PM", part: "Afternoon" },
     { id: "16:00", label: "4:00 PM", part: "Afternoon" },
   ] satisfies SlotDef[],
-  /** 0 = Sunday. ASSUMPTION: closed Sundays. The current site allows any day; confirm with Jimmy. */
+  /** 0 = Sunday. Jimmy confirmed Monday through Saturday. */
   closedWeekdays: [0] as number[],
   /** "YYYY-MM-DD" days off: holidays, vacation */
   blackoutDates: [] as string[],
@@ -49,3 +49,10 @@ export const bookingRules = {
 };
 
 export type BookingRules = typeof bookingRules;
+
+/** The free-text box, and Jimmy's procedure for arrival-time requests. */
+export const additionalInfo = {
+  label: "Additional information we should know",
+  placeholder: "Please come after 2 PM, enter through the gate, watch out for mud…",
+  note: "Need a specific arrival time? Ask here.",
+};

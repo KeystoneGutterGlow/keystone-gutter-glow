@@ -28,7 +28,7 @@ export function Process() {
           ))}
         </ol>
         <p className={styles.small}>
-          Need to move it? Free with {site.policies.freeRescheduleHours} hours&rsquo; notice. Weather can move it too: heavy
+          Bookings run Monday through Saturday. Need to move it? Free with {site.policies.freeRescheduleHours} hours&rsquo; notice. Weather can move it too: heavy
           rain, lightning, ice or high wind, and we&rsquo;ll put you on the next open day.
         </p>
       </div>

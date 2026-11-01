@@ -157,7 +157,7 @@ async function sendBookingEmails(b: BookingRecord, rules: BookingRules): Promise
         `House: ${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
         `Price: ${price}`,
         `Customer: ${b.customer.name}, ${b.customer.phone}, ${b.customer.email}`,
-        b.notes ? `Notes: ${b.notes}` : "",
+        b.notes ? `Additional information: ${b.notes}` : "",
       ]
         .filter(Boolean)
         .join("\n"),

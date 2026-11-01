@@ -5,7 +5,8 @@ import { cloneElement, useCallback, useEffect, useId, useRef, useState } from "r
 import { BOOK_EVENT, type BookIntent } from "@/components/BookLink";
 import { House } from "@/components/pricing/Houses";
 import { serviceZips, towns } from "@/content/area";
-import { bookingRules } from "@/content/booking";
+import { PlanDialog } from "@/components/plan/PlanDialog";
+import { additionalInfo, bookingRules } from "@/content/booking";
 import { getPackage, packages, rinse, totalFor, type PackageId } from "@/content/pricing";
 import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
@@ -286,7 +287,7 @@ export function BookingApp() {
 
   // ---------------------------------------------------------------- render
 
-  if (done) return <Done booking={done} onAnother={reset} headingRef={headingRef} />;
+  if (done) return <Done booking={done} name={draft.name} phone={draft.phone} onAnother={reset} headingRef={headingRef} />;
 
   const minMonth = meta ? monthStart(addDays(meta.today, meta.minLeadDays)) : null;
   const maxMonth = meta ? monthStart(addDays(meta.today, meta.horizonDays)) : null;
@@ -362,8 +363,8 @@ export function BookingApp() {
                 )}
                 {pkg?.needsQuote && (
                   <p className={styles.hint}>
-                    For bigger houses we confirm the final price with you before the visit. Booking a time now just
-                    holds your spot.
+                    For bigger houses we confirm the final price with you before the visit. Booking {dayOnly ? "a day" : "a time"} now
+                    just holds your spot.
                   </p>
                 )}
 
@@ -429,7 +430,7 @@ export function BookingApp() {
                     <div className={styles.times} ref={timesRef as React.Ref<HTMLDivElement>}>
                       <p className={styles.timesTitle}>{draft.date ? formatShort(draft.date) : "What to expect"}</p>
                       <ul className={styles.dayOnlyNotes}>
-                        <li>We don&rsquo;t normally give an exact arrival time. If you need one, ask in the notes.</li>
+                        <li>We don&rsquo;t normally give an exact arrival time. If you need one, ask in the additional information box on the next step.</li>
                         <li>You don&rsquo;t need to be home.</li>
                         <li>An invoice follows once the work is done.</li>
                       </ul>
@@ -538,10 +539,10 @@ export function BookingApp() {
                       onChange={(e) => set("email", e.target.value)}
                     />
                   </Field>
-                  <Field id={`${uid}-notes`} label="Anything we should know?" optional wide>
+                  <Field id={`${uid}-notes`} label={additionalInfo.label} note={additionalInfo.note} optional wide>
                     <textarea
                       rows={3}
-                      placeholder="Gate code, a dog in the yard, the corner that always overflows…"
+                      placeholder={additionalInfo.placeholder}
                       value={draft.notes}
                       onChange={(e) => set("notes", e.target.value)}
                     />
@@ -608,7 +609,7 @@ export function BookingApp() {
                   </div>
                   {draft.notes && (
                     <div>
-                      <dt>Notes</dt>
+                      <dt>Additional info</dt>
                       <dd>{draft.notes}</dd>
                     </div>
                   )}
@@ -768,10 +769,14 @@ function Field({
 
 function Done({
   booking,
+  name,
+  phone,
   onAnother,
   headingRef,
 }: {
   booking: Confirmation;
+  name: string;
+  phone: string;
   onAnother: () => void;
   headingRef: React.RefObject<HTMLHeadingElement | null>;
 }) {
@@ -826,6 +831,9 @@ function Done({
         >
           Add to my calendar
         </button>
+        <PlanDialog className="btn" initial={{ ...booking.address, name, phone, email: booking.email }}>
+          Make it recurring
+        </PlanDialog>
         <button type="button" className={styles.back} onClick={onAnother}>
           Book another house
         </button>

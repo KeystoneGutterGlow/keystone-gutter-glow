@@ -5,8 +5,8 @@ import { owner } from "@/content/owner";
 import { site } from "@/content/site";
 import styles from "./Owner.module.css";
 
-// Built for Jimmy's real story, which is still to come. Drafts render hatched so nobody
-// mistakes them for finished copy; see content/owner.ts.
+// Jimmy's own story and quote. Anything still marked as a draft renders hatched so nobody
+// mistakes it for finished copy; see content/owner.ts.
 
 export function Owner() {
   return (

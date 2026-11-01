@@ -1,4 +1,4 @@
-import { towns } from "@/content/area";
+import { serviceRadius, towns } from "@/content/area";
 import { AreaMap } from "./AreaMap";
 import styles from "./Area.module.css";
 import { ZipCheck } from "./ZipCheck";
@@ -10,8 +10,8 @@ export function Area() {
         <div className={styles.intro}>
           <h2 id="area-title">Where we work</h2>
           <p>
-            Jamison and the towns around it, across central and lower Bucks County. The list grows, so if your town
-            isn&rsquo;t on it, ask.
+            We work within {serviceRadius.miles} miles of our base in Jamison, across central and lower Bucks County. The
+            list grows, so if your town isn&rsquo;t on it, ask.
           </p>
           <ZipCheck />
         </div>
