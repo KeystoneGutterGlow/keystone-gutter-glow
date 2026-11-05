@@ -4,9 +4,10 @@ import Link from "next/link";
 import { cloneElement, useCallback, useEffect, useId, useRef, useState } from "react";
 import { BOOK_EVENT, type BookIntent } from "@/components/BookLink";
 import { House } from "@/components/pricing/Houses";
-import { serviceZips, towns } from "@/content/area";
+import { areaPlaces, serviceZips } from "@/content/area";
 import { PlanDialog } from "@/components/plan/PlanDialog";
 import { additionalInfo, bookingRules } from "@/content/booking";
+import { getPlanFrequency, planFrequencies, recommendedPlan, recommendedWhy } from "@/content/plans";
 import { getPackage, packages, rinse, totalFor, type PackageId } from "@/content/pricing";
 import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
@@ -24,6 +25,8 @@ const STEPS = ["House", dayOnly ? "Day" : "Day & time", "Address & contact", "Ch
 interface Draft {
   packageId: PackageId | null;
   rinse: boolean;
+  /** "" means just this once */
+  plan: string;
   date: string | null;
   slotId: string | null;
   street: string;
@@ -39,6 +42,7 @@ interface Draft {
 const EMPTY: Draft = {
   packageId: null,
   rinse: false,
+  plan: "",
   date: null,
   slotId: null,
   street: "",
@@ -53,7 +57,7 @@ const EMPTY: Draft = {
 
 const slotLabel = (id: string | null) => bookingRules.slots.find((s) => s.id === id)?.label ?? "";
 
-export function BookingApp() {
+export function BookingApp({ planRequests = true }: { planRequests?: boolean }) {
   const uid = useId();
   const [step, setStep] = useState<Step>(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -78,7 +82,17 @@ export function BookingApp() {
   const timesRef = useRef<HTMLFieldSetElement>(null);
   const focusOnStep = useRef(false);
 
-  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
+  // Editing a field clears its error, so a fixed field stops showing red straight away.
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
+    setDraft((d) => ({ ...d, [key]: value }));
+    setErrors((e) => {
+      const k = key as keyof FieldErrors;
+      if (!e[k]) return e;
+      const next = { ...e };
+      delete next[k];
+      return next;
+    });
+  };
 
   const go = useCallback((next: Step) => {
     setBanner(null);
@@ -113,12 +127,12 @@ export function BookingApp() {
         slotId: intent.date ? (intent.slotId ?? null) : d.slotId,
       }));
       if (intent.date) setMonth(monthStart(intent.date));
-      const hasPkg = intent.packageId ?? draft.packageId;
-      if (intent.packageId || intent.date) go(hasPkg ? 1 : 0);
+      // A link can preselect the house or day, but booking always starts on the house step.
+      if (intent.packageId || intent.date) go(0);
     };
     window.addEventListener(BOOK_EVENT, onIntent);
     return () => window.removeEventListener(BOOK_EVENT, onIntent);
-  }, [done, draft.packageId, go]);
+  }, [done, go]);
 
   // ---- Availability: month view ----
   useEffect(() => {
@@ -228,6 +242,7 @@ export function BookingApp() {
       idempotencyKey: attemptKey.current,
       packageId: draft.packageId,
       rinse: draft.rinse,
+      planFrequencyId: draft.plan,
       date: draft.date,
       slotId: draft.slotId ?? "",
       name: draft.name,
@@ -287,7 +302,10 @@ export function BookingApp() {
 
   // ---------------------------------------------------------------- render
 
-  if (done) return <Done booking={done} name={draft.name} phone={draft.phone} onAnother={reset} headingRef={headingRef} />;
+  if (done)
+    return (
+      <Done booking={done} name={draft.name} phone={draft.phone} onAnother={reset} headingRef={headingRef} planRequests={planRequests} />
+    );
 
   const minMonth = meta ? monthStart(addDays(meta.today, meta.minLeadDays)) : null;
   const maxMonth = meta ? monthStart(addDays(meta.today, meta.horizonDays)) : null;
@@ -378,6 +396,24 @@ export function BookingApp() {
                     <span className={styles.rinseText}>{rinse.short}</span>
                   </span>
                 </label>
+
+                <fieldset className={styles.repeat} aria-describedby={`${uid}-repeat-why`}>
+                  <legend>Want this on a schedule?</legend>
+                  <div className={styles.repeatOpts}>
+                    {[{ id: "", label: "Just this once" }, ...planFrequencies].map((f) => (
+                      <label key={f.id} className={styles.repeatOpt}>
+                        <input type="radio" name={`${uid}-plan`} checked={draft.plan === f.id} onChange={() => set("plan", f.id)} />
+                        <span>
+                          {f.label}
+                          {f.id === recommendedPlan && <span className={styles.repeatTag}>Recommended</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p id={`${uid}-repeat-why`} className={styles.repeatWhy}>
+                    {recommendedWhy} Nothing bills automatically. Jimmy sets up a plan with you.
+                  </p>
+                </fieldset>
               </fieldset>
             )}
 
@@ -415,7 +451,8 @@ export function BookingApp() {
                         setDraft((d) => ({ ...d, date, slotId: d.date === date ? d.slotId : null }));
                         setErrors({});
                         setBanner(null);
-                        if (window.matchMedia("(max-width: 899px)").matches) {
+                        // With start times to pick next, phones scroll down to them. Otherwise stay put.
+                        if (!dayOnly && window.matchMedia("(max-width: 899px)").matches) {
                           requestAnimationFrame(() =>
                             timesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
                           );
@@ -499,8 +536,8 @@ export function BookingApp() {
                     />
                   </Field>
                   <datalist id={`${uid}-towns`}>
-                    {towns.map((t) => (
-                      <option key={t.name} value={t.name} />
+                    {areaPlaces.map((name) => (
+                      <option key={name} value={name} />
                     ))}
                   </datalist>
                   <Field
@@ -575,6 +612,13 @@ export function BookingApp() {
                       {pkg.name}
                       {draft.rinse && ", with a rinse"}
                     </dd>
+                    <button type="button" className={styles.linkBtn} onClick={() => go(0)}>
+                      Change
+                    </button>
+                  </div>
+                  <div>
+                    <dt>Schedule</dt>
+                    <dd>{getPlanFrequency(draft.plan)?.label ?? "Just this once"}</dd>
                     <button type="button" className={styles.linkBtn} onClick={() => go(0)}>
                       Change
                     </button>
@@ -679,6 +723,12 @@ export function BookingApp() {
                 <dd className={styles.amt}>+${rinse.price}</dd>
               </div>
             )}
+            {draft.plan && (
+              <div>
+                <dt>Schedule</dt>
+                <dd>{getPlanFrequency(draft.plan)?.label}</dd>
+              </div>
+            )}
             <div>
               <dt>Day</dt>
               <dd>{draft.date ? formatShort(draft.date) : "—"}</dd>
@@ -773,12 +823,14 @@ function Done({
   phone,
   onAnother,
   headingRef,
+  planRequests,
 }: {
   booking: Confirmation;
   name: string;
   phone: string;
   onAnother: () => void;
   headingRef: React.RefObject<HTMLHeadingElement | null>;
+  planRequests: boolean;
 }) {
   const pkg = getPackage(booking.packageId);
   const address = `${booking.address.street}, ${booking.address.city}, PA ${booking.address.zip}`;
@@ -817,6 +869,12 @@ function Done({
         )}
         <li>On the day, we clean. You don&rsquo;t need to be home if we can reach the gutters.</li>
         <li>Photos and the invoice come after.</li>
+        {booking.planLabel && (
+          <li>
+            You asked for a recurring plan: {booking.planLabel.toLowerCase()}. Jimmy will be in touch to set it up. Nothing bills
+            automatically.
+          </li>
+        )}
       </ol>
       <div className={styles.doneActions}>
         <button
@@ -831,9 +889,11 @@ function Done({
         >
           Add to my calendar
         </button>
-        <PlanDialog className="btn" initial={{ ...booking.address, name, phone, email: booking.email }}>
-          Make it recurring
-        </PlanDialog>
+        {!booking.planLabel && planRequests && (
+          <PlanDialog className="btn" initial={{ ...booking.address, name, phone, email: booking.email }}>
+            Make it recurring
+          </PlanDialog>
+        )}
         <button type="button" className={styles.back} onClick={onAnother}>
           Book another house
         </button>

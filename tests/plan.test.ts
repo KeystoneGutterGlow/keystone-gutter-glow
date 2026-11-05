@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { POST as bookingPost } from "@/app/api/bookings/route";
 import { POST } from "@/app/api/plan-requests/route";
+import { bookingRules } from "@/content/booking";
 import { planFrequencies, recommendedPlan } from "@/content/plans";
+import { today } from "@/lib/booking/service";
+import { getBookingStore, resetBookingStore } from "@/lib/booking/store";
 import { parsePlanRequest } from "@/lib/plan/validate";
+import { firstBookable } from "./helpers";
 
 const valid = {
   frequencyId: "6-months",
@@ -49,6 +54,34 @@ describe("parsePlanRequest", () => {
 
   it("flags the honeypot", () => {
     expect(parsePlanRequest({ ...valid, company: "x" })).toMatchObject({ ok: false, spam: true });
+  });
+});
+
+describe("asking for a plan while booking", () => {
+  const book = async (over: Record<string, unknown>) => {
+    vi.stubEnv("BOOKING_DEMO_SEED", "off");
+    resetBookingStore();
+    const res = await bookingPost(
+      new Request("http://localhost/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": `10.3.0.${Math.floor(Math.random() * 250)}` },
+        body: JSON.stringify({ ...valid, packageId: "one-story", rinse: false, date: firstBookable(today(), bookingRules), ...over }),
+      }),
+    );
+    return { status: res.status, booking: (await res.json()).booking };
+  };
+
+  it("confirms the plan and leaves it on the booking for Jimmy", async () => {
+    const { status, booking } = await book({ planFrequencyId: "6-months" });
+    expect(status).toBe(201);
+    expect(booking.planLabel).toBe("Every 6 months");
+    const saved = await getBookingStore().listTaken(booking.date, booking.date);
+    expect(saved).toHaveLength(1);
+  });
+
+  it("books normally with no plan, or one it doesn't recognize", async () => {
+    expect((await book({ planFrequencyId: "" })).booking.planLabel).toBeNull();
+    expect((await book({ planFrequencyId: "weekly" })).booking.planLabel).toBeNull();
   });
 });
 

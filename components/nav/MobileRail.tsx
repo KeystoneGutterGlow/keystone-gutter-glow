@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { NavItem } from "@/content/nav";
 import { site } from "@/content/site";
@@ -23,13 +24,15 @@ interface Props {
   endId: string;
   homeHref: string;
   bookHref?: string;
+  referLink?: boolean;
+  firewoodHref?: string;
   bookText: string;
   dockHidden: boolean;
 }
 
 const FLASH_MS = 1300;
 
-export function MobileRail({ items, endId, homeHref, bookHref, bookText, dockHidden }: Props) {
+export function MobileRail({ items, endId, homeHref, bookHref, bookText, dockHidden, referLink, firewoodHref }: Props) {
   const [open, setOpen] = useState(false);
   const [flash, setFlash] = useState<{ i: number; y: number; key: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -191,6 +194,7 @@ export function MobileRail({ items, endId, homeHref, bookHref, bookText, dockHid
         ref={panelRef}
         id="section-rail"
         className={styles.panel}
+        data-extras={referLink || firewoodHref ? "" : undefined}
         role={open ? "dialog" : undefined}
         aria-modal={open || undefined}
         aria-label={open ? "Page sections" : undefined}
@@ -249,6 +253,20 @@ export function MobileRail({ items, endId, homeHref, bookHref, bookText, dockHid
           <a href={site.phone.href} className={styles.phone}>
             Call or text {site.phone.display}
           </a>
+          {(referLink || firewoodHref) && (
+            <div className={styles.extras}>
+              {referLink && (
+                <Link href="/referred" className={styles.extra}>
+                  Refer a neighbor
+                </Link>
+              )}
+              {firewoodHref && (
+                <Link href={firewoodHref} className={styles.extra}>
+                  Firewood
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
         <button

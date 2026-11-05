@@ -1,4 +1,5 @@
-import { serviceRadius, towns } from "@/content/area";
+import { OakSprig } from "@/components/botanical/Botanical";
+import { areaPlaces, serviceRadius } from "@/content/area";
 import { AreaMap } from "./AreaMap";
 import styles from "./Area.module.css";
 import { ZipCheck } from "./ZipCheck";
@@ -10,23 +11,23 @@ export function Area() {
         <div className={styles.intro}>
           <h2 id="area-title">Where we work</h2>
           <p>
-            We work within {serviceRadius.miles} miles of our base in Jamison, across central and lower Bucks County. The
-            list grows, so if your town isn&rsquo;t on it, ask.
+            We work within {serviceRadius.miles} miles of our base in Jamison. That takes in central Bucks County and the
+            nearby corner of Montgomery County. Anywhere inside the circle on the map is in our area.
           </p>
           <ZipCheck />
+          <OakSprig className={styles.oak} />
         </div>
 
         <div className={styles.where}>
-          {/* The map is a wide-screen view; on phones the list below does the job at a readable size. */}
           <div className={styles.map}>
             <AreaMap />
           </div>
-          <ul className={styles.list} aria-label="Towns we serve">
-            {towns.map((t) => (
-              <li key={t.name}>
-                {t.name}
-                {t.sub && <span className={styles.sub}> ({t.sub})</span>}
-              </li>
+          <p className={styles.mapNote}>
+            The dashed circle is {serviceRadius.miles} miles from our base in Jamison.
+          </p>
+          <ul className="vh" aria-label="Towns inside the circle">
+            {areaPlaces.map((name) => (
+              <li key={name}>{name}</li>
             ))}
           </ul>
         </div>

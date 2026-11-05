@@ -40,6 +40,8 @@ export interface Confirmation {
   address: { street: string; city: string; zip: string };
   emailSent: boolean;
   demo: boolean;
+  /** The recurring plan they asked for, if any */
+  planLabel?: string | null;
 }
 
 export type SubmitResult =

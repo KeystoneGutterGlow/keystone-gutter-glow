@@ -1,7 +1,33 @@
 .owner {
+  position: relative;
   background: var(--enamel);
   padding: clamp(80px, 10vw, 140px) 0 clamp(72px, 9vw, 120px);
   overflow: hidden;
+}
+.laurel {
+  --bot-line: rgb(13 42 78 / 0.62);
+  --bot-fill: rgb(59 176 238 / 0.12);
+  position: absolute;
+  top: clamp(36px, 5vw, 76px);
+  right: 0;
+  width: clamp(190px, 25vw, 360px);
+  height: auto;
+  pointer-events: none;
+}
+/* Between the phone and wide layouts his name runs on one line and there's no room beside it */
+@media (min-width: 900px) and (max-width: 1299px) {
+  .laurel {
+    display: none;
+  }
+}
+@media (max-width: 899px) {
+  .owner {
+    padding-top: 124px;
+  }
+  .laurel {
+    top: 14px;
+    width: 124px;
+  }
 }
 
 .grid {
@@ -112,11 +138,12 @@
   .grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* The photo fills the column, so it sits evenly between the two margins */
   .photoCol {
-    max-width: 78%;
+    max-width: none;
   }
   .block {
-    right: 22%;
+    right: 40%;
   }
   .facts {
     grid-template-columns: minmax(0, 1fr);

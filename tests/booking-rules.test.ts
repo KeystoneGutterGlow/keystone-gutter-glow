@@ -3,7 +3,7 @@ import { bookingRules, type BookingRules } from "@/content/booking";
 import { checkDate, dayDetail, firstOpening, rangeSummary } from "@/lib/booking/availability";
 import { addDays, addMonths, daysInMonth, diffDays, formatLong, isISODate, todayIn, weekday } from "@/lib/booking/dates";
 import { isUsPhone, normalizePhone, parseBookingRequest } from "@/lib/booking/validate";
-import { lookupArea } from "@/content/area";
+import { areaZips, lookupArea, serviceRadius } from "@/content/area";
 
 const rules: BookingRules = bookingRules;
 // A Tuesday, so the closed-Sunday rule is easy to reason about.
@@ -166,5 +166,27 @@ describe("service area lookup", () => {
     expect(lookupArea("Doylestown, PA")).toEqual({ status: "yes", town: "Doylestown" });
     expect(lookupArea("90210")).toEqual({ status: "ask" });
     expect(lookupArea("123")).toEqual({ status: "invalid" });
+  });
+
+  it("covers everything within 10 miles and nothing past it", () => {
+    for (const zip of ["18974", "19044", "19040", "18954", "18966", "18938", "19006", "19053"]) {
+      expect(lookupArea(zip).status).toBe("yes");
+    }
+    expect(areaZips.every((z) => z.miles <= serviceRadius.miles)).toBe(true);
+    // Just outside the circle: Yardley, Washington Crossing, Langhorne
+    for (const zip of ["19067", "18977", "19047"]) expect(lookupArea(zip)).toEqual({ status: "ask" });
+    expect(lookupArea("Yardley")).toEqual({ status: "unknown" });
+  });
+
+  it("matches other names for places in the area", () => {
+    expect(lookupArea("Holland, PA")).toEqual({ status: "yes", town: "Southampton" });
+    expect(lookupArea("warwick township")).toEqual({ status: "yes", town: "Jamison" });
+    expect(lookupArea("Ivyland")).toEqual({ status: "yes", town: "Warminster" });
+    expect(lookupArea("18940-1234")).toEqual({ status: "yes", town: "Newtown" });
+  });
+
+  it("doesn't call nonsense outside the area", () => {
+    expect(lookupArea("abc")).toEqual({ status: "unknown" });
+    expect(lookupArea("   ")).toEqual({ status: "invalid" });
   });
 });

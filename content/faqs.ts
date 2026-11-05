@@ -20,6 +20,10 @@ export const faqs: Faq[] = [
     a: "Vacuuming every gutter run, clearing each downspout and running water down it to check that it drains, and before-and-after photos when conditions allow. The rinse is the only extra.",
   },
   {
+    q: "Can I put it on a schedule?",
+    a: "Yes. You can ask for a cleaning every 3, 4 or 6 months, or once a year, when you book or from the Prices section. We recommend every 6 months, to catch spring seeds and fall leaves. It's a request, so Jimmy sets it up with you and nothing bills automatically.",
+  },
+  {
     q: "What's the rinse, and do I need it?",
     a: "After the vacuum pass we flush the troughs with water. That lifts the fine grit and residue that sits on the bottom, the stuff a scoop never gets and a vacuum mostly gets. We'd do it at least once a year, ideally after the leaves are down. It's $25.",
   },

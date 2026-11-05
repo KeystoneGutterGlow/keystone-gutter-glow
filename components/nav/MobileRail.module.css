@@ -31,6 +31,8 @@
 
 .panel {
   --edge: env(safe-area-inset-left, 0px);
+  /* The footer's height. The section list ends where it starts, so they can never overlap. */
+  --foot-h: calc(var(--dock-h) + 64px + env(safe-area-inset-bottom, 0px));
   position: fixed;
   z-index: 66;
   top: 0;
@@ -44,6 +46,10 @@
     clip-path 0.26s var(--ease-out),
     background-color 0.2s,
     box-shadow 0.2s;
+}
+/* One more row for the referral and firewood links */
+.panel[data-extras] {
+  --foot-h: calc(var(--dock-h) + 108px + env(safe-area-inset-bottom, 0px));
 }
 .root[data-open] .panel {
   clip-path: inset(0 0 0 0);
@@ -142,7 +148,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(var(--dock-h) + 64px + env(safe-area-inset-bottom, 0px));
+  height: var(--foot-h);
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) calc(var(--edge) + var(--lane) + 14px);
   display: grid;
   align-content: end;
@@ -160,6 +166,24 @@
   color: var(--navy);
   text-decoration: none;
 }
+.extras {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 22px;
+}
+.extra {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: var(--sky);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
 
 .root[data-open] .head,
 .root[data-open] .foot {
@@ -174,7 +198,7 @@
   left: 0;
   right: 0;
   top: calc(80px + env(safe-area-inset-top, 0px));
-  bottom: calc(var(--dock-h) + 64px + env(safe-area-inset-bottom, 0px));
+  bottom: var(--foot-h);
 }
 
 .track {

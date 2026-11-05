@@ -14,6 +14,20 @@
   font-size: 2rem;
   margin-bottom: 10px;
 }
+/* Trails down the empty column beside the questions */
+.ivy {
+  --bot-line: rgb(13 42 78 / 0.5);
+  --bot-fill: rgb(59 176 238 / 0.11);
+  display: block;
+  width: 92px;
+  height: auto;
+  margin: 26px 0 0 14px;
+}
+@media (max-width: 899px) {
+  .ivy {
+    display: none;
+  }
+}
 .side p {
   color: var(--muted);
   font-size: 0.9875rem;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Footer } from "@/components/footer/Footer";
 import { Keystone } from "@/components/Keystone";
 import { MobileNav } from "@/components/nav/MobileNav";
@@ -35,17 +36,20 @@ function Draft({ children }: { children: React.ReactNode }) {
 export default function ReferredPage() {
   const live = referral.live;
   return (
-    <>
+    <div>
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <Rail items={sections} endId="__none" endLabel="Book a cleaning" homeHref="/" bookHref="/#book" />
+      <Rail items={sections} endId="__none" endLabel="Book a cleaning" homeHref="/" bookHref="/#book" homeLink />
       <MobileNav items={sections} endId="__none" homeHref="/" bookHref="/#book" bookLabel="Book a cleaning" />
 
       <main id="main">
         <header id="top" className={styles.hero}>
           <div className={`${styles.gutter} gutter-face`} aria-hidden="true" data-gutter-anchor="" />
           <div className="wrap">
+            <Link href="/" className={`textlink ${styles.back}`}>
+              <span aria-hidden="true">←</span> Back to the home page
+            </Link>
             <p className={styles.kicker}>Referrals</p>
             <h1 className={styles.title}>{referral.headline}</h1>
             <p className={styles.intro}>{referral.intro}</p>
@@ -214,6 +218,6 @@ export default function ReferredPage() {
         </section>
       </main>
       <Footer onHome={false} />
-    </>
+    </div>
   );
 }

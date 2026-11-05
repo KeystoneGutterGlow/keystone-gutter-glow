@@ -1,4 +1,4 @@
-// Winter firewood: every business value the firewood pages, the order form, the price
+// Firewood, sold all year: every business value the firewood pages, the order form, the price
 // calculation and Stripe read. Nothing about firewood is hard-coded anywhere else.
 //
 // Every group carries a status:
@@ -8,6 +8,8 @@
 //
 // Real payments stay refused until every group below is "confirmed" (lib/firewood/gate.ts).
 // To confirm one: correct the value, then change its status to "confirmed".
+
+import { serviceRadius, serviceZips } from "./area";
 
 export type ConfigStatus = "placeholder" | "contract" | "confirmed";
 
@@ -143,12 +145,12 @@ export const firewood = {
   }>,
 
   deliveryArea: {
-    status: "placeholder",
+    status: "confirmed",
     ask: "How far do you deliver? List the ZIP codes, and say whether any carry a fee.",
     value: {
-      /** Five-digit ZIPs. null means nothing is restricted, which only happens in test mode. */
-      zips: null as string[] | null,
-      description: null as string | null,
+      /** Jimmy: the same area as gutter cleaning. Paid up front with no refunds, so other ZIPs are told to call. */
+      zips: [...serviceZips.keys()] as string[] | null,
+      description: `The same area as our gutter cleaning: anywhere within ${serviceRadius.miles} miles of Jamison.` as string | null,
     },
   } satisfies Confirmable<{ zips: string[] | null; description: string | null }>,
 

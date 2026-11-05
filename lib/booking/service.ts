@@ -1,4 +1,5 @@
 import { bookingRules, type BookingRules } from "@/content/booking";
+import { getPlanFrequency } from "@/content/plans";
 import { getPackage, totalFor } from "@/content/pricing";
 import { site } from "@/content/site";
 import { emailConfigured, ownerEmail, sendEmail } from "@/lib/notify/email";
@@ -67,6 +68,7 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
     };
   }
 
+  const plan = req.planFrequencyId ? getPlanFrequency(req.planFrequencyId) : undefined;
   const store = getBookingStore();
   const attempt = (slotId: string) =>
     store.create(
@@ -80,7 +82,7 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
         priceIsEstimate: pkg.needsQuote,
         customer: { name: req.name, email: req.email, phone: req.phone },
         address: { street: req.street, city: req.city, zip: req.zip },
-        notes: req.notes,
+        notes: plan ? [`Recurring plan requested: ${plan.label}.`, req.notes].filter(Boolean).join(" ") : req.notes,
         idempotencyKey: req.idempotencyKey,
       },
       rules.maxJobsPerDay,
@@ -101,7 +103,7 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
   }
 
   if (result.ok) {
-    const emailSent = result.duplicate ? false : await sendBookingEmails(result.booking, rules);
+    const emailSent = result.duplicate ? false : await sendBookingEmails(result.booking, rules, plan?.label);
     return { ok: true, booking: result.booking, emailSent };
   }
 
@@ -119,7 +121,7 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
 }
 
 /** Returns whether the customer's confirmation went out. A failed email never fails a booking. */
-async function sendBookingEmails(b: BookingRecord, rules: BookingRules): Promise<boolean> {
+async function sendBookingEmails(b: BookingRecord, rules: BookingRules, planLabel?: string): Promise<boolean> {
   if (isDemoStorage() || !emailConfigured()) return false;
 
   const pkg = getPackage(b.packageId);
@@ -143,6 +145,7 @@ async function sendBookingEmails(b: BookingRecord, rules: BookingRules): Promise
         `Where: ${address}`,
         `House: ${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
         `Price: ${price}. We invoice after the cleaning.`,
+        ...(planLabel ? [`Recurring plan you asked about: ${planLabel}. Jimmy will be in touch to set it up. Nothing bills automatically.`] : []),
         "",
         `Need to change something? Call or text ${site.phone.display}.`,
       ].join("\n"),

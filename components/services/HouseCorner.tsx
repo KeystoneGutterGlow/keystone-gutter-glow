@@ -1,3 +1,4 @@
+import { LaurelShrub } from "@/components/botanical/Botanical";
 import { KeystoneMark } from "@/components/Keystone";
 
 // Elevation of one side of a house: roof edge, a gutter run, the downspout, the ground.
@@ -89,6 +90,12 @@ export function HouseCorner() {
       </g>
       {/* water running clear out of the kick-out */}
       <path d="M562 412c10 2 18 8 22 16" stroke="#3bb0ee" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+
+      {/* mountain laurel under the window */}
+      <g style={{ "--bot-line": "rgb(13 42 78 / 0.75)", "--bot-fill": "#e3eef5" } as React.CSSProperties}>
+        <LaurelShrub x={182} y={431} s={0.86} />
+        <LaurelShrub x={258} y={431} s={0.62} />
+      </g>
 
       {/* splash block + ground */}
       <path d="M548 424h60l10 6h-74z" fill="#cdd4da" stroke="#0d2a4e" strokeWidth="1.5" />

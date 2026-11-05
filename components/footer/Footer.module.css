@@ -1,8 +1,22 @@
 .footer {
+  position: relative;
+  overflow: hidden;
   background: var(--navy-deep);
   color: rgb(255 255 255 / 0.82);
-  padding: 56px 0 0;
+  padding: 76px 0 0;
   font-size: 0.9375rem;
+}
+/* Ivy grown along the top edge, fading out as it runs left */
+.ivy {
+  --bot-line: rgb(150 190 225 / 0.42);
+  --bot-fill: rgb(59 176 238 / 0.09);
+  position: absolute;
+  top: -2px;
+  right: -8px;
+  width: min(60%, 600px);
+  height: auto;
+  transform: scaleX(-1);
+  pointer-events: none;
 }
 
 .grid {

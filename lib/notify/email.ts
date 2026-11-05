@@ -4,7 +4,9 @@
 //
 //   RESEND_API_KEY      turns sending on
 //   EMAIL_FROM          e.g. "Keystone Gutter Glow <orders@keystonegutterglow.com>"
-//   NOTIFY_OWNER_EMAIL  where owner notices go. Defaults to content/site.ts email.
+//
+// Every notice for the business (new bookings, plan requests, firewood orders) goes to the address
+// published on the site, content/site.ts `email`. Customers' confirmations reply to it too.
 
 import { site } from "@/content/site";
 
@@ -22,7 +24,7 @@ export function emailConfigured(env: Record<string, string | undefined> = proces
 }
 
 export function ownerEmail(): string {
-  return process.env.NOTIFY_OWNER_EMAIL || site.email;
+  return site.email;
 }
 
 export async function sendEmail(email: Email): Promise<SendResult> {

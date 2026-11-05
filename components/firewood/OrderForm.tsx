@@ -395,19 +395,27 @@ export function OrderForm() {
           <span>Total</span>
           <strong>{shown ? formatCents(shown.totalCents) : "—"}</strong>
         </p>
-        {!firewood.tax.value.note && <p className={`ph ${styles.ticketTax}`}>No tax added. Treatment not confirmed.</p>}
+        {firewood.tax.value.note && <p className={styles.ticketTax}>{firewood.tax.value.note}</p>}
         {firewood.policies.value.checkoutTerms && <p className={styles.payNote}>{firewood.policies.value.checkoutTerms}</p>}
         {payState}
         {status?.demoStore && checkoutOpen && <p className={styles.payNote}>Demo storage: test orders reset when the server restarts.</p>}
         <div className={styles.payBar}>
-          <span className={styles.payBarTotal} aria-hidden="true">
-            {shown ? formatCents(shown.totalCents) : ""}
-          </span>
           <button type="submit" className="btn btn--sky" disabled={payDisabled}>
             {payLabel}
           </button>
         </div>
       </aside>
+
+      {/* Phones: the total and the pay button stay on screen the whole way down the form */}
+      <div className={styles.payBarPhone}>
+        <p className={styles.payBarTotal}>
+          <span>Total</span>
+          <strong>{shown ? formatCents(shown.totalCents) : "Pick a size"}</strong>
+        </p>
+        <button type="submit" className="btn btn--sky" disabled={payDisabled}>
+          {payLabel}
+        </button>
+      </div>
     </form>
   );
 }

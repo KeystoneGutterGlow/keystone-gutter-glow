@@ -1,101 +1,90 @@
-import { KeystoneMark } from "@/components/Keystone";
-import { delaware, serviceRadius, towns } from "@/content/area";
+"use client";
 
-// Towns placed by real coordinates on a simple equirectangular projection, with the
-// Delaware River for orientation and the service radius behind them. Keystone pins, like the
-// state's route markers.
+import "leaflet/dist/leaflet.css";
+import { useEffect, useRef } from "react";
+import { mapLabels, serviceRadius } from "@/content/area";
+import styles from "./Area.module.css";
 
-const LON_MIN = -75.245;
-const LAT_MAX = 40.347;
-const COS_LAT = Math.cos((40.28 * Math.PI) / 180);
-const K = 2819; // px per degree of latitude; 1000 px wide covers the area
-const MILE_PX = K / 69;
+// A real map of the service area: OpenStreetMap tiles and the 10-mile circle. The tiles name the
+// towns themselves, so the only label we add is Jamison, which they leave unnamed at this zoom.
+// Leaflet and the tiles only load once the map is nearly on screen. The center is already rounded
+// (see content/area.ts) and gets no marker. A list for screen readers sits beside it, and the ZIP
+// check still answers the question if this doesn't load.
 
-function project(lat: number, lon: number): [number, number] {
-  return [(lon - LON_MIN) * COS_LAT * K, (LAT_MAX - lat) * K];
-}
+const METERS_PER_MILE = 1609.34;
 
 export function AreaMap() {
-  const river = delaware.map(([lat, lon]) => project(lat, lon));
-  const riverPath =
-    "M" + river.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(" L");
-  const [cx, cy] = project(serviceRadius.lat, serviceRadius.lon);
-  const radius = serviceRadius.miles * MILE_PX;
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+
+    const start = async () => {
+      const L = (await import("leaflet")).default;
+      if (cancelled) return;
+      // On touch screens one finger keeps scrolling the page, so the map can't trap anyone.
+      const touch = window.matchMedia("(pointer: coarse)").matches;
+      const map = L.map(el, { scrollWheelZoom: false, dragging: !touch, zoomSnap: 0.25, attributionControl: false });
+      // The circle can't measure itself until the map has a view.
+      map.setView([serviceRadius.lat, serviceRadius.lon], 11);
+      L.control.attribution({ prefix: false }).addTo(map);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 15,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
+
+      const circle = L.circle([serviceRadius.lat, serviceRadius.lon], {
+        radius: serviceRadius.miles * METERS_PER_MILE,
+        color: "#0d2a4e",
+        weight: 2,
+        dashArray: "8 7",
+        fillColor: "#3bb0ee",
+        fillOpacity: 0.12,
+        interactive: false,
+      }).addTo(map);
+      map.fitBounds(circle.getBounds(), { padding: [14, 14] });
+      map.setMinZoom(map.getZoom() - 1);
+      map.setMaxBounds(circle.getBounds().pad(0.9));
+
+      for (const place of mapLabels) {
+        L.marker([place.lat, place.lon], {
+          keyboard: false,
+          interactive: false,
+          icon: L.divIcon({ className: styles.pin ?? "", iconSize: [10, 10], iconAnchor: [5, 5] }),
+        })
+          .bindTooltip(place.name, { permanent: true, direction: "right", offset: [2, 0], className: styles.town ?? "" })
+          .addTo(map);
+      }
+      cleanup = () => map.remove();
+    };
+
+    const watcher = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          watcher.disconnect();
+          void start();
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    watcher.observe(el);
+
+    return () => {
+      cancelled = true;
+      watcher.disconnect();
+      cleanup?.();
+    };
+  }, []);
 
   return (
-    <svg viewBox="-70 -180 1070 850" role="img" aria-labelledby="map-title" style={{ width: "100%", height: "auto" }}>
-      <title id="map-title">{`Map of the service area in Bucks County, Pennsylvania: a ${serviceRadius.miles}-mile circle around our base in Jamison, with pins for ${towns
-        .map((t) => t.name)
-        .join(", ")}, and the Delaware River to the east.`}</title>
-      <defs>
-        <pattern id="map-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M40 0H0V40" fill="none" stroke="#0d2a4e" strokeOpacity="0.07" strokeWidth="1" />
-        </pattern>
-      </defs>
-      <rect x="-70" y="-180" width="1070" height="850" fill="url(#map-grid)" />
-
-      <circle
-        cx={cx}
-        cy={cy}
-        r={radius}
-        fill="#3bb0ee"
-        fillOpacity="0.1"
-        stroke="#0d2a4e"
-        strokeWidth="2"
-        strokeDasharray="10 8"
-      />
-
-      {/* New Jersey side, past the river */}
-      <path d={`${riverPath} L1100 450 L1100 -220 L${river[0]![0].toFixed(1)} -220 Z`} fill="#0d2a4e" fillOpacity="0.05" />
-      <path d={riverPath} fill="none" stroke="#3bb0ee" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-      <text x="905" y="120" className="mapNote" transform="rotate(62 905 120)">
-        Delaware River
-      </text>
-      <text x="960" y="250" className="mapNote mapNj">
-        NJ
-      </text>
-
-      <text x="-50" y="-140" className="mapCounty">
-        Bucks County, PA
-      </text>
-      <text x={cx} y={cy + radius - 28} textAnchor="middle" className="mapTown">
-        {serviceRadius.miles} miles from our base in Jamison
-      </text>
-
-      {towns.map((t) => {
-        const [x, y] = project(t.lat, t.lon);
-        const pos = t.label ?? "right";
-        const tx = pos === "left" ? x - 18 : pos === "below" ? x : x + 18;
-        const ty = pos === "below" ? y + 38 : y + 5;
-        const anchor = pos === "left" ? "end" : pos === "below" ? "middle" : "start";
-        return (
-          <g key={t.name}>
-            <KeystoneMark x={x} y={y} scale={0.72} fill="var(--navy)" />
-            <text x={tx} y={ty} textAnchor={anchor} className="mapTown">
-              {t.name}
-            </text>
-            {t.sub && (
-              <text x={tx} y={ty + 17} textAnchor={anchor} className="mapSub">
-                {t.sub}
-              </text>
-            )}
-          </g>
-        );
-      })}
-
-      {/* scale bar + north */}
-      <g transform="translate(-50 636)">
-        <path d={`M0 0V8H${(5 * MILE_PX).toFixed(1)}V0`} fill="none" stroke="#0d2a4e" strokeWidth="1.5" />
-        <text x={5 * MILE_PX + 10} y="9" className="mapSub">
-          5 miles
-        </text>
-      </g>
-      <g transform="translate(-38 576)">
-        <path d="M0 -18L7 4L0 0L-7 4Z" fill="#0d2a4e" />
-        <text x="0" y="22" textAnchor="middle" className="mapSub">
-          N
-        </text>
-      </g>
-    </svg>
+    <div
+      ref={box}
+      className={styles.mapBox}
+      role="group"
+      aria-label={`Map of Bucks County and the edge of Montgomery County, Pennsylvania, with a ${serviceRadius.miles}-mile circle around Jamison. Everywhere inside the circle is in our area.`}
+    />
   );
 }

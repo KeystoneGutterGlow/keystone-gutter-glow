@@ -23,6 +23,11 @@
   margin-top: 74px;
   margin-bottom: 64px;
 }
+.back {
+  display: inline-block;
+  margin-bottom: 26px;
+  font-weight: 700;
+}
 .kicker {
   display: flex;
   align-items: center;

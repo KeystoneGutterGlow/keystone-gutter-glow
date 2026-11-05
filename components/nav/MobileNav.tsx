@@ -21,9 +21,12 @@ interface Props {
   bookLabel?: string;
   /** Replaces the phone number in the header row. The dock still has a call button. */
   topSlot?: React.ReactNode;
+  /** Extra links in the opened menu */
+  referLink?: boolean;
+  firewoodHref?: string;
 }
 
-export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel, topSlot }: Props) {
+export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel, topSlot, referLink, firewoodHref }: Props) {
   const [dockHidden, setDockHidden] = useState(false);
 
   // Booking has its own sticky action bar, so the dock steps aside while it's on screen.
@@ -60,6 +63,8 @@ export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel
         bookHref={bookHref}
         bookText={bookLabel ?? "Book a cleaning"}
         dockHidden={dockHidden}
+        referLink={referLink}
+        firewoodHref={firewoodHref}
       />
 
       <nav className={styles.dock} aria-label="Quick actions" data-hidden={dockHidden || undefined}>

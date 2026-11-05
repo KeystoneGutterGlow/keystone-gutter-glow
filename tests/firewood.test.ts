@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { serviceZips } from "@/content/area";
 import { firewood, firewoodProducts, type FirewoodConfig } from "@/content/firewood";
 import { getSiteMode, isFirewoodVisible, modeLinks } from "@/content/season";
 import { checkoutOrigin } from "@/lib/env";
@@ -121,12 +122,11 @@ describe("firewood order validation", () => {
     expect(checkDeliveryDate("2026-11-19", today, config)).toMatch(/aren't delivering/);
   });
 
-  it("restricts ZIPs only once a delivery area is configured", () => {
-    const config = structuredClone(firewood) as FirewoodConfig;
-    config.deliveryArea.value.zips = ["18929"];
-    expect(parseOrder(validOrder, today, config).ok).toBe(true);
-    const out = parseOrder({ ...validOrder, zip: "90210" }, today, config);
-    expect(!out.ok && out.errors.zip).toMatch(/don't deliver/);
+  it("delivers to the same ZIPs as gutter cleaning, and tells anyone else to call", () => {
+    expect(firewood.deliveryArea.value.zips).toEqual([...serviceZips.keys()]);
+    expect(parseOrder(validOrder, today).ok).toBe(true);
+    const out = parseOrder({ ...validOrder, zip: "90210" }, today);
+    expect(!out.ok && out.errors.zip).toMatch(/Call/);
   });
 });
 
@@ -143,7 +143,7 @@ describe("the gate that keeps real money out", () => {
 
   it("lists everything Jimmy hasn't confirmed", () => {
     const blockers = configBlockers();
-    expect(blockers.map((b) => b.key)).toEqual(["products", "deliveryMethods", "extras", "deliveryArea", "tax", "policies"]);
+    expect(blockers.map((b) => b.key)).toEqual(["products", "deliveryMethods", "extras", "tax", "policies"]);
     expect(configBlockers(confirmedConfig())).toEqual([]);
   });
 

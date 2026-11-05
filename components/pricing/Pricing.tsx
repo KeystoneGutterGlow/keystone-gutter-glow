@@ -2,6 +2,7 @@ import { BookLink } from "@/components/BookLink";
 import { PlanDialog } from "@/components/plan/PlanDialog";
 import { packages, priceLabel, rinse } from "@/content/pricing";
 import { site } from "@/content/site";
+import { planRequestsOpen } from "@/lib/plan/open";
 import { House } from "./Houses";
 import styles from "./Pricing.module.css";
 
@@ -63,10 +64,23 @@ export function Pricing() {
         </div>
 
         <div className={styles.plan}>
-          <p>
-            <strong>Want it on a schedule?</strong> Every 3, 4 or 6 months, or once a year. We recommend every 6 months.
-          </p>
-          <PlanDialog className="btn">Set up a recurring plan</PlanDialog>
+          {planRequestsOpen() ? (
+            <>
+              <p>
+                <strong>Want it on a schedule?</strong> Every 3, 4 or 6 months, or once a year. We recommend every 6
+                months.
+              </p>
+              <PlanDialog className="btn">Set up a recurring plan</PlanDialog>
+            </>
+          ) : (
+            <>
+              <p>
+                <strong>Want it on a schedule?</strong> Every 3, 4 or 6 months, or once a year. We recommend every 6
+                months. You choose when you book.
+              </p>
+              <BookLink className="btn">Book and pick a plan</BookLink>
+            </>
+          )}
         </div>
       </div>
     </section>

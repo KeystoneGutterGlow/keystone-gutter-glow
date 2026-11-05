@@ -38,6 +38,11 @@
   box-sizing: border-box;
 }
 
+/* The phone header sits above the hero, so going to the top should mean the very top */
+#top {
+  scroll-margin-top: 140px;
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;

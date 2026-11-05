@@ -8,6 +8,7 @@ import { Rail } from "@/components/nav/Rail";
 import { Owner } from "@/components/owner/Owner";
 import { Pricing } from "@/components/pricing/Pricing";
 import { Process } from "@/components/process/Process";
+import { ReferStrip } from "@/components/refer/ReferStrip";
 import { ModeSwitch } from "@/components/season/ModeSwitch";
 import { Services } from "@/components/services/Services";
 import { Vacuum } from "@/components/vacuum/Vacuum";
@@ -20,8 +21,10 @@ import { homeJsonLd } from "@/lib/schema";
 
 export function GutterHome() {
   const links = modeLinks();
+  // One root element on purpose: on a page change Next scrolls to each top-level element in turn,
+  // so with several of them (the footer last among those it can reach) the page lands at the bottom.
   return (
-    <>
+    <div>
       <a className="skip" href="#main">
         Skip to content
       </a>
@@ -29,7 +32,7 @@ export function GutterHome() {
         Skip to booking
       </a>
       <Rail items={homeSections} endId={BOOK_ID} endLabel="Book a cleaning" referLink />
-      <MobileNav items={homeSections} endId={BOOK_ID} topSlot={links && <ModeSwitch links={links} current="gutter" />} />
+      <MobileNav items={homeSections} endId={BOOK_ID} referLink firewoodHref={links?.firewoodHref} topSlot={links && <ModeSwitch links={links} current="gutter" />} />
       {links && <ModeSwitch links={links} current="gutter" floating />}
       <main id="main">
         <Hero />
@@ -41,6 +44,7 @@ export function GutterHome() {
         <Owner />
         <Area />
         <Faq />
+        <ReferStrip />
         <Booking />
       </main>
       <Footer />
@@ -49,6 +53,6 @@ export function GutterHome() {
         // JSON.stringify output is safe here: it's built from our own content files.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd()).replace(/</g, "\\u003c") }}
       />
-    </>
+    </div>
   );
 }

@@ -51,7 +51,6 @@ All are documented in [.env.example](.env.example). All are server-side. Static 
 | `STRIPE_WEBHOOK_SECRET` | Verifies webhooks. Checkout stays closed without it. | checkout off |
 | `STRIPE_ALLOW_LIVE_PAYMENTS` | One of four requirements for real payments. Leave unset. | off |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Turn on booking and order emails. | no email |
-| `NOTIFY_OWNER_EMAIL` | Where owner notices go. | `content/site.ts` email |
 | `SITE_URL` | Public URL for links and Stripe's return page. | Vercel domain |
 | `ALLOW_INDEXING` | `true` lets search engines in. Real domain only. | noindex |
 
@@ -129,19 +128,35 @@ No database change is needed: the app sends its cap with each booking, and the d
 
 ### Recurring plans
 
-"Set up a recurring plan" (under Prices, and on the booking confirmation) opens a dialog with Jimmy's four frequencies, with every 6 months selected and recommended (`content/plans.ts`). It posts to `/api/plan-requests`, which emails Jimmy the frequency, address and contact details. Nothing is scheduled or billed, as Addendum A1 requires.
+There are two ways in, both offering Jimmy's four frequencies with every 6 months recommended (`content/plans.ts`). Nothing is scheduled or billed either way, as Addendum A1 requires.
 
-The email is the only record, so this needs `RESEND_API_KEY` and `EMAIL_FROM`. Without them a real deployment answers with a call-us message instead of losing the request, and a demo deployment says plainly that nothing was sent.
+- **While booking.** The house step asks "Want this on a schedule?", defaulting to just this once. The choice goes in the booking's notes, so it reaches Jimmy with the booking and needs no database change.
+- **Without booking.** "Set up a recurring plan" under Prices opens a dialog that posts to `/api/plan-requests`, which emails Jimmy. That email is the only record, so this path needs `RESEND_API_KEY` and `EMAIL_FROM`. A real deployment without them doesn't show the button at all (`lib/plan/open.ts`): Prices says "You choose when you book" and links to booking instead, and the booking confirmation drops "Make it recurring". A demo deployment keeps the button and says plainly that nothing was sent.
 
 ## Database setup
 
-Run these in the Supabase SQL editor, in order. Each is safe to re-run.
+**Status (2026-11-05): done.** Supabase project `keystone-gutter-glow` (ref `rsmilcleohxlqzbgwmcl`, Free plan, US East) is connected to the Vercel project's Production environment only. All three migrations have been run. Row-level security is on for every table, and the public (anon) key can neither read the tables nor call `create_booking()`. Production has `BOOKING_STORE=supabase`. The booking rules were tested inside the database, then the test rows were deleted: a booking, a retried request returning the same booking, a taken spot and a full day all behaved correctly. Not tested yet: the site reaching the database with its server key over HTTPS, which first happens on the launch deploy. The first item under "Database" in the launch checklist covers it.
 
-1. `db/migrations/001_bookings.sql`: bookings, the cap trigger, `create_booking()`
-2. `db/migrations/002_booking_hardening.sql`: idempotency, the app-supplied cap, grants
-3. `db/migrations/003_firewood_orders.sql`: firewood orders
+To open it: Vercel, then Storage, then keystone-gutter-glow, then "Open in Supabase" (or `npx vercel integration open supabase keystone-gutter-glow`). It's reached through the Vercel login, not a separate Supabase account.
 
-Then set `BOOKING_STORE=supabase`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` on the server and redeploy. The service-role key bypasses row-level security, so it must stay server-side. To cancel a booking, set its `status` to `cancelled` in the Supabase table editor. That frees the slot.
+How it was set up, for a rebuild. The database is a free Supabase project created through Vercel's Supabase integration, so Vercel adds its keys to the project's environment variables itself and nobody copies a key by hand. Connect it to **Production only**: previews keep `BOOKING_DEMO_MODE=true`, so testing a preview never puts a fake booking in the real schedule.
+
+```
+npx vercel integration add supabase --billing-plan free --meta region=iad1 --name keystone-gutter-glow -e production --no-env-pull
+```
+
+That asks you to accept Supabase's terms, then creates the project in US East (closest to Bucks County). Run it from the project folder, or it isn't connected to the project. If that happens, `npx vercel integration resource connect keystone-gutter-glow keystone-gutter-glow -e production --yes` connects it. Then:
+
+1. In Vercel, open Storage, then the database, then "Open in Supabase". In its SQL editor, run these in order. Each is safe to re-run.
+   1. `db/migrations/001_bookings.sql`: bookings, the cap trigger, `create_booking()`
+   2. `db/migrations/002_booking_hardening.sql`: idempotency, the app-supplied cap, grants
+   3. `db/migrations/003_firewood_orders.sql`: firewood orders
+2. Add `BOOKING_STORE=supabase` to Production: `npx vercel env add BOOKING_STORE production`, value `supabase`.
+3. It takes effect on the next production deploy, which is the launch merge. The production site running now doesn't see new variables until it's redeployed.
+
+The integration's `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are the two this app reads. It also adds `NEXT_PUBLIC_SUPABASE_*` variables. They're harmless because nothing here reads them, and row-level security with anon access revoked keeps the tables closed to them anyway.
+
+**Free-plan limits.** Free projects pause after a week with no database activity. Every page view asks the database for the next opening, so normal traffic keeps it awake. If it does pause, booking shows the call-us message until someone presses Restore in Supabase. Supabase Pro ($25/month) never pauses and adds daily backups. That's Jimmy's call, not something to switch on without his approval. The service-role key bypasses row-level security, so it must stay server-side. To cancel a booking, set its `status` to `cancelled` in the Supabase table editor. That frees the slot.
 
 ## Firewood and Stripe
 
@@ -164,7 +179,7 @@ OrderForm  ->  /api/firewood/status    (is payment open? test mode?)
 
 ### Unconfirmed values
 
-Each group in `content/firewood.ts` has a status: `placeholder`, `contract` (from the agreement, not yet confirmed) or `confirmed`. While any group isn't `confirmed`, the page shows a "not taking real orders" panel and live payments are refused. To confirm one, correct the value and change its status.
+Each group in `content/firewood.ts` has a status: `placeholder`, `contract` (from the agreement, not yet confirmed) or `confirmed`. While any group isn't `confirmed`, live payments are refused. Visitors never see this list. It lives in `content/firewood.ts`, and `configBlockers()` in `lib/firewood/gate.ts` reports it. To confirm one, correct the value and change its status.
 
 ### Setting up Stripe in test mode
 
@@ -191,7 +206,15 @@ A test key is refused on the real domain (`ALLOW_INDEXING=true`), so no customer
 
 ## Email
 
-Booking and order emails go through Resend's HTTP API (`lib/notify/email.ts`). It's optional and off by default. Without `RESEND_API_KEY` and `EMAIL_FROM`, nothing is sent and the booking confirmation doesn't promise an email. Resend has a free tier, but any recurring cost needs Jimmy's approval. Its sending domain must be verified first. Swapping providers means changing that one file.
+Booking and order emails go through Resend's HTTP API (`lib/notify/email.ts`). It's optional and off by default. Every notice for the business (new bookings, plan requests, firewood orders) goes to the address on the site, `email` in `content/site.ts` (jimmyesmond@keystonegutterglow.com). Customers' confirmations reply to it too. There's no separate setting to send them elsewhere.
+
+To turn it on: create a free Resend account (3,000 emails a month), verify keystonegutterglow.com in it (a few DNS records wherever that domain is managed), then set `RESEND_API_KEY` and `EMAIL_FROM` (for example `Keystone Gutter Glow <bookings@keystonegutterglow.com>`) on Production. Until the domain is verified, Resend only delivers to the account owner's own address, so customer confirmations need the domain step. Without `RESEND_API_KEY` and `EMAIL_FROM`, nothing is sent and the booking confirmation doesn't promise an email. Resend has a free tier, but any recurring cost needs Jimmy's approval. Its sending domain must be verified first. Swapping providers means changing that one file.
+
+## Map
+
+The service-area map uses Leaflet with OpenStreetMap's public tiles (`components/area/AreaMap.tsx`). There's no key and no cost. The tiles name the towns themselves. The only label the site adds is Jamison, which the tiles leave out at that zoom.
+
+**Service area.** Anything within 10 miles of the rounded center in `content/area.ts` counts. `areaZips` lists every ZIP whose Census 2020 ZIP-area center is inside the circle (33 of them, Jamison through Dublin, including Warminster, Horsham, Hatboro, Richboro, Southampton, Willow Grove and New Hope). That one list drives the "Do we come to you?" check, the booking form's out-of-area note and firewood delivery. Yardley (11.8 mi), Washington Crossing (11.0), Langhorne and Philadelphia 19116 (10.4) and Lumberville (10.1) fall just outside, so they're told to ask rather than refused. It only loads as it nears the screen, and the required attribution stays on it. Each visitor's browser requests the tiles from OpenStreetMap, which therefore sees their IP address, so the privacy policy should mention it. OpenStreetMap's tile servers are meant for light use, which suits a local business site. If traffic ever grows a lot, point the tile URL at a paid provider.
 
 ## SEO
 
@@ -204,20 +227,21 @@ Booking and order emails go through Resend's HTTP API (`lib/notify/email.ts`). I
 
 **Accounts (Jimmy's)**
 - [ ] Vercel project transferred, with billing on his side
-- [ ] Supabase project created
+- [x] Supabase project created (see Database setup)
+- [ ] Jimmy's decision on Supabase Free or Pro
 - [ ] Stripe account created and verified, with his bank details
 - [ ] Domain pointed at Vercel
 - [ ] Email provider set up, if wanted, with the sending domain verified
 
 **Database**
-- [ ] All three migrations run
-- [ ] A test booking appears in the `bookings` table
+- [x] All three migrations run
+- [ ] After the launch deploy, a test booking made on the site appears in the `bookings` table (then delete it)
 - [ ] Two people booking the last spot at once on the deployed site gives one booking and one "just taken" message (`BASE=<url> npm run test:booking` does this, but it writes bookings, so delete them afterward)
 
 **Gutter site**
 - [ ] Items under "Things to confirm" below answered
 - [ ] Daily job cap confirmed (four or three), and `content/booking.ts` updated
-- [ ] Email set up, so recurring plan requests can reach Jimmy
+- [ ] Email set up, so booking notices and recurring plan requests reach Jimmy (the stand-alone plan button stays hidden until then)
 - [ ] Terms, privacy and cancellation pages added, with Jimmy's approval
 - [ ] `ALLOW_INDEXING=true` and `SITE_URL` set on the real domain, and `BOOKING_DEMO_MODE` removed
 
@@ -235,17 +259,17 @@ Booking and order emails go through Resend's HTTP API (`lib/notify/email.ts`). I
 Everything factual came from the current site or the agreement. These items were either unclear or assumed:
 
 - **Daily cap.** The site allows four jobs a day. Addendum A1 says three.
-- **Yardley.** It's about 12 miles from the center of the 10-mile circle, so its pin sits outside the circle on the map while staying on the town list.
+- **Firewood ZIPs.** Delivery uses the same 10-mile ZIP list as gutter cleaning, as Jimmy asked. Firewood is paid up front, so ZIPs outside it are told to call.
 - **Failed deliveries.** "No refunds" covers a customer changing their mind. Jimmy still has to approve what happens if a delivery doesn't happen. That keeps the "Cancellation and refunds" group unconfirmed.
-- **Sales tax.** Still unanswered, so none is added and live payments stay blocked.
+- **Sales tax.** Still unanswered, so none is added and live payments stay blocked. The site no longer shows this to visitors. `content/firewood.ts` is where the open items are listed.
 - **Biography.** It publishes Jimmy's age and school, as Addendum A1 asks. He's a minor, so his parent or guardian should approve it, and the age needs updating when he turns 17. "No liabilities on anyone" is his wording and is a legal-sounding claim worth a second look.
 - **Service-origin address.** Only coordinates rounded to about half a mile are in the code (`serviceRadius` in `content/area.ts`). The address itself isn't in this repo or on the site.
 - **Late-cancel fee.** Addendum A1 says $50 inside 24 hours. It isn't shown until `lateCancelFeeDollars` is set in `content/site.ts`.
 - **"Ground-based" / ladder-free.** This is in the old site's schema markup, but its 2-story description also says "insured for elevated work". The copy says the pole reaches 32 ft and doesn't promise "no ladders".
 - **"Insured".** This is on the old site's trust bar and shown in the footer. Confirm it, and add a policy or registration number if he has one.
-- **Newtown and Yardley.** These were only in the old site's hidden schema, not its visible town list.
+- **Newtown.** It was only in the old site's hidden schema, not its visible town list. It's inside the 10-mile circle, so it's served. Yardley is outside the circle and is no longer listed.
 - **"Houses and townhomes only."** This is inferred from the site saying "residential" everywhere.
-- **Photos, coming from Jimmy.** His portrait next to the equipment, before-and-after pairs from real jobs, and his actual vacuum. The rig photo is a stand-in from the current site that looks like a UK manufacturer shot. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
+- **Photos, coming from Jimmy.** His portrait next to the equipment, before-and-after pairs from real jobs, and his actual vacuum. The rig photo in "Vacuum vs. scoop" is a stand-in from the current site that looks like a UK manufacturer shot. The hero's drawing of the setup is unbranded and stays either way. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
 - **Removed from the old site** because nothing backs them up: the "5.0" rating (the reviews list was empty), "100% debris captured", and "2× more thorough".
 
 ## Agreement, Addendum A status
@@ -253,16 +277,16 @@ Everything factual came from the current site or the agreement. These items were
 | Requirement | Status |
 |---|---|
 | A1 No italics, polished buttons and layout | Done |
-| A1 Referral page easier to reach | Link added to the desktop rail. The page's content is still placeholders. |
+| A1 Referral page easier to reach | Band above booking, plus buttons or links in the rail, phone menu and footer. The page's content is still placeholders. |
 | A1 Alt text and accessible controls | Automated accessibility checks are clean. Client photos are still to come. |
 | A1 No time slots, arrival explanation | Done |
 | A1 Three jobs a day | Built, still set to four until Jimmy confirms |
-| A1 Vacuum visual resembling GutterPro-style equipment | Not started |
-| A1 10-mile radius shown from the private address | Done. Shown on the desktop map and stated in the text on phones. |
+| A1 Vacuum visual resembling GutterPro-style equipment | Done: an unbranded drawing in the hero of a worker steadying the pole up to the gutter, leaves going into the nozzle, and a hose to a three-motor stainless vacuum on a wheeled cart (`components/hero/Rig.tsx`). |
+| A1 10-mile radius shown from the private address | Done, on a real OpenStreetMap map, at every screen size. Every ZIP inside it is accepted. |
 | A1 Biography with age, school and quotation | Done with Jimmy's text. His photo is still to come. |
-| A1 Recurring-plan request form | Built and tested. Needs email set up to reach Jimmy. |
+| A1 Recurring-plan request form | Built and tested. Needs email set up to reach Jimmy; hidden on a real deployment until then. Choosing a plan while booking works without email. |
 | A1 Terms, privacy and cancellation policy pages | Not started. Needs approved text. |
-| A2 Separate winter mode with switch, colors and igniting log visual | Done |
+| A2 Separate winter mode with switch, colors and igniting log visual | Done. Firewood is sold all year, so the page has no snow or winter wording; "winter mode" is only the code's name for it. |
 | A2 Prices, options and itemized total | Done, from config, marked unconfirmed |
 | A3 Hosted checkout and order confirmation | Built and tested without a live account |
 | A3 Order notification to the owner | Built. Needs an email provider. |

@@ -1,5 +1,6 @@
 import { bookingRules } from "@/content/booking";
 import { site } from "@/content/site";
+import { planRequestsOpen } from "@/lib/plan/open";
 import styles from "./Booking.module.css";
 import { BookingApp } from "./BookingApp";
 
@@ -17,7 +18,7 @@ export function Booking() {
             Rather do it by phone? Call or text Jimmy at <a href={site.phone.href}>{site.phone.display}</a>.
           </p>
         </header>
-        <BookingApp />
+        <BookingApp planRequests={planRequestsOpen()} />
       </div>
     </section>
   );

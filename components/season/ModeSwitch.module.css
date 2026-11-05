@@ -28,14 +28,15 @@
   background: var(--sky);
 }
 
-/* Desktop: pinned to the top right. Phones get the same switch in the header row instead. */
+/* Desktop: at the top right of the page, scrolling away with it so it never sits over the
+   content further down. Phones get the same switch in the header row instead. */
 .floating {
   display: none;
 }
 @media (min-width: 1100px) {
   .floating {
     display: inline-grid;
-    position: fixed;
+    position: absolute;
     z-index: 45;
     top: 14px;
     right: 18px;

@@ -1,3 +1,4 @@
+import { getPlanFrequency } from "@/content/plans";
 import { createBooking } from "@/lib/booking/service";
 import { parseBookingRequest } from "@/lib/booking/validate";
 import { allowRequest, readJson } from "@/lib/rateLimit";
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
           email: b.customer.email,
           address: b.address,
           emailSent: outcome.emailSent,
+          planLabel: parsed.data.planFrequencyId ? (getPlanFrequency(parsed.data.planFrequencyId)?.label ?? null) : null,
           demo: isDemoStorage(),
         },
       },

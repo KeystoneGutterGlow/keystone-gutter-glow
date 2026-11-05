@@ -1,3 +1,4 @@
+import { FallingSeeds } from "@/components/botanical/Botanical";
 import { bookingRules } from "@/content/booking";
 import { site } from "@/content/site";
 import styles from "./Process.module.css";
@@ -15,9 +16,12 @@ export function Process() {
   return (
     <section id="how" className={styles.how} aria-labelledby="how-title">
       <div className={`wrap ${styles.grid}`}>
-        <h2 id="how-title" className={styles.title}>
-          How booking works
-        </h2>
+        <div className={styles.head}>
+          <h2 id="how-title" className={styles.title}>
+            How booking works
+          </h2>
+          <FallingSeeds className={styles.seeds} />
+        </div>
         <ol className={styles.steps}>
           {steps.map((s) => (
             <li key={s.when}>

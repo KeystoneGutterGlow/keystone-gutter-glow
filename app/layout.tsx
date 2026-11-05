@@ -40,7 +40,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-US" className={`${display.variable} ${body.variable}`}>
+    // data-scroll-behavior tells Next to turn off the CSS smooth scrolling during page changes.
+    <html lang="en-US" className={`${display.variable} ${body.variable}`} data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );

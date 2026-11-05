@@ -21,7 +21,7 @@ export const BOOK_ID = "book";
 export const firewoodSections: NavItem[] = [
   { id: "sizes", label: "Three sizes" },
   { id: "charges", label: "What changes the price" },
-  { id: "delivery", label: "Delivery and cancellations" },
+  { id: "delivery", label: "Delivery and rescheduling" },
 ];
 
 export const ORDER_ID = "order";

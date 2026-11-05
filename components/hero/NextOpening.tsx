@@ -6,8 +6,10 @@ import { bookingRules } from "@/content/booking";
 import { formatShort } from "@/lib/booking/dates";
 import styles from "./Hero.module.css";
 
-// Live "next opening" tag hanging off the vacuum pole. Fixed height while loading, so no
-// layout shift. If the API is unreachable it quietly falls back to a plain link.
+// Live "next opening" from the schedule. Two forms share one request:
+//  - the tag hanging off the vacuum pole (tablet and desktop), fixed height while loading
+//  - a single line under the Book button (phones), where the tag would be below the fold
+// If the API is unreachable they quietly fall back to a plain link.
 
 const dayOnly = bookingRules.scheduleMode === "day-only";
 
@@ -18,26 +20,42 @@ interface Next {
   remaining: number;
 }
 
-export function NextOpening() {
-  const [state, setState] = useState<{ status: "loading" } | { status: "ok"; next: Next | null } | { status: "error" }>({
-    status: "loading",
-  });
+type State = { status: "loading" } | { status: "ok"; next: Next | null; demo: boolean } | { status: "error" };
 
+let shared: Promise<{ next: Next | null; demo: boolean }> | null = null;
+function load() {
+  shared ??= fetch("/api/availability?next=1", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    .then((data: { next: Next | null; meta?: { demo?: boolean } }) => ({ next: data.next, demo: !!data.meta?.demo }))
+    .catch((err) => {
+      shared = null;
+      throw err;
+    });
+  return shared;
+}
+
+function useNextOpening() {
+  const [state, setState] = useState<State>({ status: "loading" });
   useEffect(() => {
-    const ctrl = new AbortController();
-    fetch("/api/availability?next=1", { signal: ctrl.signal, cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((data: { next: Next | null }) => setState({ status: "ok", next: data.next }))
-      .catch((err) => {
-        if ((err as Error).name !== "AbortError") setState({ status: "error" });
-      });
-    return () => ctrl.abort();
+    let live = true;
+    load().then(
+      (d) => live && setState({ status: "ok", ...d }),
+      () => live && setState({ status: "error" }),
+    );
+    return () => {
+      live = false;
+    };
   }, []);
+  return state;
+}
+
+export function NextOpening() {
+  const state = useNextOpening();
 
   return (
     <aside className={styles.tag} aria-live="polite" aria-busy={state.status === "loading"}>
       <span className={styles.tagHole} aria-hidden="true" />
-      <p className={styles.tagLabel}>Next opening</p>
+      <p className={styles.tagLabel}>{state.status === "ok" && state.demo ? "Next opening · demo" : "Next opening"}</p>
       {state.status === "loading" && <p className={styles.tagWhen}>Checking the schedule…</p>}
       {state.status === "ok" && state.next && (
         <>
@@ -62,5 +80,26 @@ export function NextOpening() {
         </>
       )}
     </aside>
+  );
+}
+
+/** Phones: one line under the Book button. Nothing at all if the schedule can't be read. */
+export function NextOpeningLine() {
+  const state = useNextOpening();
+  if (state.status === "error" || (state.status === "ok" && !state.next)) return null;
+  return (
+    <p className={styles.nextLine} aria-live="polite">
+      {state.status === "loading" ? (
+        <span className={styles.nextLabel}>Checking the schedule…</span>
+      ) : (
+        state.next && (
+          <BookLink className={styles.nextLink} date={state.next.date} slotId={dayOnly ? undefined : state.next.slotId}>
+            <span className={styles.nextLabel}>Next opening{state.demo ? " (demo)" : ""}</span>{" "}
+            <strong>{formatShort(state.next.date)}</strong>
+            <span aria-hidden="true"> →</span>
+          </BookLink>
+        )
+      )}
+    </p>
   );
 }

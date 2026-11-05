@@ -8,16 +8,23 @@
   isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  align-content: end;
-  gap: clamp(28px, 4vw, 44px);
-  min-height: min(92svh, 860px);
-  padding: clamp(40px, 7vw, 88px) var(--gutter) 0;
+  grid-template-rows: auto 1fr;
+  gap: clamp(20px, 3vw, 32px);
+  padding: clamp(32px, 5vw, 72px) var(--gutter) 0;
   background: var(--enamel);
   border-bottom: 3px solid var(--navy);
 }
+@media (min-width: 1100px) {
+  .hero {
+    min-height: min(92svh, 860px);
+  }
+}
 
+/* The words run the full width of the section, on top of the woods */
 .heroCopy {
-  max-width: 44rem;
+  position: relative;
+  z-index: 1;
+  max-width: 60rem;
 }
 .where {
   margin-bottom: 18px;
@@ -29,71 +36,50 @@
   font-size: clamp(2.5rem, 1rem + 5.2vw, 5.6rem);
   line-height: 0.98;
   letter-spacing: -0.012em;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
 .offer {
   max-width: 32rem;
-  margin-bottom: 26px;
+  margin-bottom: 24px;
   font-size: 1.1875rem;
   line-height: 1.45;
 }
-.offer strong {
-  display: block;
-  font-family: var(--font-display);
-  font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.3rem);
-  line-height: 1.1;
-  color: var(--sky-ink);
-  margin-bottom: 4px;
-}
-.flag {
-  display: inline-block;
-  margin-left: 8px;
-  font-size: 0.8125rem;
-}
 
-/* The stack sits on the section's bottom edge and runs off to the right */
-.heroStack {
-  justify-self: end;
-  width: min(760px, 92%);
-  margin: 0 calc(var(--gutter) * -0.5) -3px 0;
-}
-@media (min-width: 1300px) {
-  .hero {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: end;
-  }
-  .heroCopy {
-    padding-bottom: 72px;
-  }
-  .heroStack {
-    width: 118%;
-    max-width: none;
-    justify-self: start;
-  }
-}
-
-.snow {
+/* The woods fill the whole section behind everything else */
+.heroWoods {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  pointer-events: none;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
 }
-.snow span {
-  position: absolute;
-  top: -12px;
-  border-radius: 50%;
-  background: #c8ccd0;
-  animation: fall linear infinite;
-}
-@keyframes fall {
-  to {
-    transform: translate3d(30px, min(100vh, 900px), 0);
+/* Narrower screens put the tall trees behind the words, so they're paler there */
+@media (max-width: 1299px) {
+  .heroWoods {
+    opacity: 0.72;
   }
 }
-/* Motion off: no falling snow, and nothing stranded at the top edge. */
-@media (prefers-reduced-motion: reduce) {
-  .snow {
-    display: none;
+@media (max-width: 759px) {
+  .heroWoods {
+    opacity: 0.5;
+  }
+}
+
+/* The woodpile stands on the section's bottom edge and runs up to the right edge */
+.heroStack {
+  display: block;
+  align-self: end;
+  justify-self: end;
+  width: calc(100% + var(--gutter));
+  max-width: 620px;
+  margin: 0 calc(var(--gutter) * -1) -3px 0;
+}
+/* Wide screens have room for the pile to come up beside the button */
+@media (min-width: 1100px) {
+  .heroStack {
+    width: min(64%, 860px);
+    max-width: none;
+    margin-top: clamp(-150px, -9vw, -70px);
   }
 }
 
@@ -126,137 +112,298 @@
 /* ---------- Sizes: the yard of stacks, at one shared scale ---------- */
 
 .sizes {
+  position: relative;
+  overflow: clip;
   background: #fff;
-  padding: clamp(56px, 7vw, 96px) 0 clamp(40px, 5vw, 64px);
+  padding: clamp(64px, 8vw, 112px) 0 clamp(44px, 5vw, 68px);
+}
+.sizes :global(.wrap) {
+  position: relative;
+}
+.sizesBough {
+  --bot-line: #6a5a4c;
+  --bot-needle: #7c8a72;
+  --bot-fill: #efe9df;
+  position: absolute;
+  top: -8px;
+  right: -14px;
+  width: clamp(240px, 30vw, 430px);
+  height: auto;
+  pointer-events: none;
+}
+.sizesHead {
+  max-width: 44rem;
+  margin-bottom: clamp(36px, 5vw, 64px);
 }
 .sizes h2 {
-  font-size: clamp(2.2rem, 1.3rem + 3vw, 4rem);
-  margin-bottom: 14px;
+  font-size: clamp(2.6rem, 1.3rem + 4.2vw, 5.2rem);
+  line-height: 0.98;
+  letter-spacing: -0.012em;
+  margin-bottom: 18px;
 }
 .sizesLede {
   max-width: 36rem;
-  margin-bottom: clamp(30px, 4vw, 48px);
+  margin: 0;
+  font-size: 1.125rem;
 }
+
+/* The three stacks share one ground line and one scale, so their widths really compare. */
 .yard {
   list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+}
+.lot {
   display: flex;
-  flex-wrap: wrap;
   align-items: flex-end;
-  gap: clamp(28px, 3.5vw, 48px) clamp(20px, 3vw, 36px);
-}
-.yard li {
-  flex-basis: 240px;
-  min-width: 0;
-}
-.yard h3 {
-  font-size: 1.375rem;
-  margin: 14px 0 2px;
+  padding-right: 8%;
+  border-bottom: 3px solid var(--navy);
 }
 .stack {
+  display: block;
   width: 100%;
   height: auto;
 }
+.lotText {
+  padding: 18px 10% 0 0;
+}
+.yard h3 {
+  font-size: 1.375rem;
+  margin: 0 0 4px;
+}
+@media (min-width: 760px) {
+  .yard {
+    grid-template-columns: var(--lots);
+    grid-template-rows: auto auto;
+    gap: 0;
+  }
+  .yard li {
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+    min-width: 0;
+  }
+}
 .price {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(2.1rem, 1.6rem + 1.4vw, 3rem);
-  line-height: 1;
+  font-size: clamp(2.6rem, 1.8rem + 2.2vw, 4rem);
+  line-height: 0.95;
   color: var(--sky-ink);
 }
 .dims {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 0.9375rem;
   line-height: 1.4;
   color: var(--muted);
 }
 .approx {
-  margin: clamp(24px, 3vw, 36px) 0 0;
+  margin: clamp(28px, 3.5vw, 44px) 0 0;
   font-size: 0.9375rem;
   color: var(--muted);
 }
 
-/* ---------- What changes the price ---------- */
+/* ---------- The end of a long woodpile, between the sizes and the charges ---------- */
+
+.band {
+  display: block;
+  width: 100%;
+  height: clamp(72px, 8vw, 118px);
+  border-block: 3px solid #1b0f0a;
+}
+
+/* ---------- What changes the price: a dark board ---------- */
 
 .charges {
-  background: var(--enamel);
-  padding: clamp(40px, 5vw, 64px) 0;
+  position: relative;
+  overflow: clip;
+  isolation: isolate;
+  padding: clamp(56px, 7vw, 104px) 0;
+  background: #2b1a14 url("/images/firewood/grain.svg") center / 1400px 700px;
+  color: #f7f0e6;
+}
+.chargesRings {
+  position: absolute;
+  z-index: -1;
+  left: clamp(-240px, -14vw, -90px);
+  bottom: clamp(-280px, -18vw, -120px);
+  width: clamp(380px, 46vw, 660px);
+  height: auto;
+  color: rgb(230 196 150 / 0.22);
+  pointer-events: none;
+}
+.chargesGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+}
+@media (min-width: 900px) {
+  .chargesGrid {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: clamp(36px, 6vw, 96px);
+    align-items: start;
+  }
 }
 .charges h2 {
-  font-size: clamp(1.7rem, 1.3rem + 1.4vw, 2.4rem);
+  color: inherit;
+  font-size: clamp(2.2rem, 1.3rem + 3vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
   margin-bottom: 20px;
 }
 .chargeTable {
   width: 100%;
-  max-width: 44rem;
   border-collapse: collapse;
+  border-bottom: 1px solid rgb(247 240 230 / 0.28);
 }
 .chargeTable th,
 .chargeTable td {
-  padding: 13px 0;
-  border-top: 1px solid var(--alu-2);
+  padding: 18px 0;
+  border-top: 1px solid rgb(247 240 230 / 0.28);
   text-align: left;
   vertical-align: top;
 }
 .chargeTable th {
   font-weight: 700;
+  font-size: 1.0625rem;
   padding-right: 18px;
 }
 .chargeTable th span {
   display: block;
+  margin-top: 2px;
   font-weight: 400;
   font-size: 0.9375rem;
-  color: var(--muted);
+  color: #ddd0c0;
 }
 .chargeTable td {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: clamp(1.4rem, 1.2rem + 0.6vw, 1.75rem);
+  line-height: 1.1;
   white-space: nowrap;
   text-align: right;
 }
 .taxNote {
   display: inline-block;
-  margin: 16px 0 0;
+  margin: 0;
   font-size: 0.9375rem;
 }
 
 /* ---------- Delivery and cancellations ---------- */
 
 .delivery {
+  position: relative;
+  overflow: clip;
   background: #fff;
-  padding: clamp(36px, 4vw, 52px) 0;
+  padding: clamp(56px, 7vw, 96px) 0;
+}
+.delivery :global(.wrap) {
+  position: relative;
+}
+.deliveryBough {
+  --bot-line: #6a5a4c;
+  --bot-needle: #7c8a72;
+  --bot-fill: #efe9df;
+  position: absolute;
+  left: -12px;
+  bottom: -46px;
+  width: clamp(210px, 22vw, 320px);
+  height: auto;
+  transform: scaleX(-1) rotate(-10deg);
+  pointer-events: none;
+}
+.deliveryGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+}
+@media (min-width: 900px) {
+  .deliveryGrid {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: clamp(36px, 6vw, 96px);
+    align-items: start;
+  }
 }
 .delivery h2 {
-  font-size: clamp(1.4rem, 1.2rem + 0.9vw, 1.9rem);
-  margin-bottom: 16px;
+  font-size: clamp(2rem, 1.3rem + 2.2vw, 3.2rem);
+  line-height: 1.02;
+  letter-spacing: -0.008em;
 }
 .policyList {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 18px 32px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 clamp(24px, 3vw, 44px);
   margin: 0;
+  border-top: 3px solid var(--navy);
+}
+@media (min-width: 560px) {
+  .policyList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.policyList > div {
+  padding: 16px 0 20px;
+  border-bottom: 1px solid var(--alu-2);
+}
+.policyWide {
+  grid-column: 1 / -1;
 }
 .policyList dt {
+  margin-bottom: 4px;
   font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--muted);
 }
 .policyList dd {
-  margin: 2px 0 0;
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+.policyWide dd {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.2rem);
+  line-height: 1.12;
 }
 
 /* ---------- Order form ---------- */
 
 .order {
+  position: relative;
+  overflow: clip;
+  isolation: isolate;
   background: var(--enamel);
   border-top: 3px solid var(--sky);
-  padding: clamp(56px, 7vw, 96px) 0 clamp(56px, 7vw, 96px);
+  padding: clamp(56px, 7vw, 96px) 0 clamp(40px, 5vw, 64px);
+}
+.orderRings {
+  position: absolute;
+  z-index: -1;
+  top: clamp(-190px, -11vw, -90px);
+  right: clamp(-190px, -10vw, -80px);
+  width: clamp(280px, 34vw, 500px);
+  height: auto;
+  color: rgb(122 82 51 / 0.2);
+  pointer-events: none;
 }
 .order h2 {
-  font-size: clamp(2.4rem, 1.3rem + 3.6vw, 4.6rem);
-  margin-bottom: 10px;
+  font-size: clamp(2.6rem, 1.3rem + 4.2vw, 5.2rem);
+  line-height: 0.98;
+  letter-spacing: -0.012em;
+  margin-bottom: 12px;
 }
 .orderLede {
-  margin-bottom: 30px;
+  margin-bottom: clamp(30px, 4vw, 44px);
+  font-size: 1.125rem;
+}
+.treeline {
+  display: block;
+  width: 100%;
+  height: clamp(74px, 9vw, 150px);
+  background: var(--enamel);
+  margin-bottom: -1px;
 }
 
 .form {
@@ -359,11 +506,20 @@
 .optName {
   font-weight: 700;
 }
+/* Narrow cards: name, price and log count stack, so the name and price can never collide */
 .sizeOpts .opt {
-  column-gap: 6px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  row-gap: 2px;
 }
-.sizeOpts .optName {
-  white-space: nowrap;
+.sizeOpts .optPrice {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 1.375rem;
+  line-height: 1.1;
+}
+.sizeOpts .optDetail {
+  grid-column: 2;
+  grid-row: 3;
 }
 .optDetail {
   grid-column: 2 / 4;
@@ -449,7 +605,7 @@
 
 .ticket {
   position: relative;
-  padding: 20px 18px;
+  padding: 0 18px 20px;
   background: #fff;
   border: 2px solid var(--navy);
   border-radius: 2px;
@@ -460,13 +616,17 @@
     top: 20px;
   }
 }
+/* The ticket's header is a strip of the same dark board */
 .ticketHead {
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--navy);
+  position: relative;
+  margin: 0 -18px 14px;
+  padding: 14px 18px;
+  background: #2b1a14 url("/images/firewood/grain.svg") left top / 1400px 700px;
+  color: #f7f0e6;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1.375rem;
+  line-height: 1.1;
 }
 .ticketLines {
   width: 100%;
@@ -501,8 +661,8 @@
   justify-content: space-between;
   align-items: baseline;
   margin: 12px 0 8px;
-  padding-top: 10px;
-  border-top: 2px solid var(--navy);
+  padding-top: 12px;
+  border-top: 2px dashed var(--navy);
   font-weight: 700;
 }
 .ticketTotal strong {
@@ -531,33 +691,57 @@
   font-weight: 700;
   line-height: 1.4;
 }
-.payBarTotal {
-  display: none;
-}
 .payBar :global(.btn) {
   width: 100%;
   min-height: 52px;
 }
+.payBarPhone {
+  display: none;
+}
 
-/* On phones the pay button follows you down the form, with the total beside it */
+/* On phones the total and the pay button follow you down the whole form. The form is a flex
+   column here, because a sticky grid item can't leave its own row. */
 @media (max-width: 899px) {
+  .form {
+    display: flex;
+    flex-direction: column;
+  }
   .payBar {
+    display: none;
+  }
+  .payBarPhone {
     position: sticky;
+    z-index: 5;
     bottom: 0;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 12px;
-    margin: 0 -18px -20px;
-    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 14px;
+    margin: -14px calc(var(--gutter) * -1) 0;
+    padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom, 0px));
     background: #fff;
     border-top: 2px solid var(--navy);
+    box-shadow: 0 -6px 18px rgb(43 26 20 / 0.08);
+  }
+  .payBarPhone :global(.btn) {
+    min-height: 52px;
+    padding-inline: 14px;
   }
   .payBarTotal {
-    display: block;
-    font-family: var(--font-display);
+    display: grid;
+    margin: 0;
+    line-height: 1.1;
+  }
+  .payBarTotal span {
+    font-size: 0.8125rem;
     font-weight: 700;
+    color: var(--muted);
+  }
+  .payBarTotal strong {
+    font-family: var(--font-display);
     font-size: 1.375rem;
+    color: var(--sky-ink);
+    white-space: nowrap;
   }
 }
 
@@ -590,6 +774,16 @@
   font-size: 1.5rem;
   text-decoration: none;
 }
+.footBase {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid rgb(255 255 255 / 0.18);
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 0.78);
+}
 
 /* ---------- The page Stripe sends people back to ---------- */
 
@@ -606,6 +800,15 @@
 .orderCard {
   max-width: 38rem;
   margin: 0 auto;
+}
+.orderLogo {
+  display: inline-block;
+  margin-bottom: clamp(24px, 5vw, 48px);
+}
+.orderLogo img {
+  display: block;
+  width: 150px;
+  height: auto;
 }
 .orderCard h1 {
   font-size: clamp(2.2rem, 1.4rem + 3vw, 3.6rem);

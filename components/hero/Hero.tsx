@@ -1,11 +1,15 @@
+import Link from "next/link";
 import { BookLink } from "@/components/BookLink";
+import { LaurelShrub } from "@/components/botanical/Botanical";
 import { startingPrice } from "@/content/pricing";
+import { modeLinks } from "@/content/season";
 import { GutterStrip } from "./GutterStrip";
 import styles from "./Hero.module.css";
-import { NextOpening } from "./NextOpening";
+import { NextOpening, NextOpeningLine } from "./NextOpening";
 import { Rig } from "./Rig";
 
 export function Hero() {
+  const links = modeLinks();
   return (
     <section className={styles.hero} id="top" aria-labelledby="hero-title">
       <GutterStrip />
@@ -35,9 +39,17 @@ export function Hero() {
               Nothing to pay until the job&rsquo;s done.
             </p>
           </div>
-          <a href="#vacuum" className={`textlink ${styles.why}`}>
-            Why a vacuum beats a scoop
-          </a>
+          <NextOpeningLine />
+          <p className={styles.more}>
+            <a href="#vacuum" className={`textlink ${styles.why}`}>
+              Why a vacuum beats a scoop
+            </a>
+            {links && (
+              <Link href={links.firewoodHref} className={`textlink ${styles.why}`}>
+                We also deliver firewood
+              </Link>
+            )}
+          </p>
         </div>
 
         <div className={styles.side}>
@@ -46,6 +58,12 @@ export function Hero() {
       </div>
 
       <Rig />
+
+      {/* The flower bed the debris doesn't land in */}
+      <svg className={styles.bed} viewBox="-92 -100 250 102" aria-hidden="true" focusable="false">
+        <LaurelShrub />
+        <LaurelShrub x={92} s={0.72} />
+      </svg>
     </section>
   );
 }

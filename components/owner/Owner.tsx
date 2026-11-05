@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { BookLink } from "@/components/BookLink";
+import { LaurelSprig } from "@/components/botanical/Botanical";
 import { PhotoSlot } from "@/components/PhotoSlot";
 import { owner } from "@/content/owner";
 import { site } from "@/content/site";
@@ -11,6 +12,7 @@ import styles from "./Owner.module.css";
 export function Owner() {
   return (
     <section id="jimmy" className={styles.owner} aria-labelledby="jimmy-title">
+      <LaurelSprig className={styles.laurel} />
       <div className={`wrap ${styles.grid}`}>
         <div className={styles.photoCol}>
           <div className={styles.block} aria-hidden="true" />
@@ -24,7 +26,7 @@ export function Owner() {
               className={styles.photo}
             />
           ) : (
-            <PhotoSlot label="Photo of Jimmy" want={owner.photo.want} file={owner.photo.file} ratio="4 / 5" />
+            <PhotoSlot label="Photo of Jimmy" want={owner.photo.want} ratio="4 / 5" />
           )}
         </div>
 

@@ -67,7 +67,7 @@
   font-variant-numeric: lining-nums;
 }
 .price small {
-  font-size: 0.4em;
+  font-size: max(0.4em, 0.8125rem);
   font-weight: 600;
   letter-spacing: 0;
   vertical-align: 0.9em;
@@ -189,8 +189,12 @@
     margin-top: 2px;
     font-size: 0.9375rem;
   }
+  /* The last row's rule already closes the street, so no second line under it */
   .under {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
+    margin-top: 22px;
+    padding-top: 0;
+    border-top: 0;
   }
 }

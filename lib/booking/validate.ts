@@ -1,4 +1,5 @@
 import { bookingRules, type BookingRules } from "@/content/booking";
+import { getPlanFrequency } from "@/content/plans";
 import { getPackage, type PackageId } from "@/content/pricing";
 import { isISODate } from "./dates";
 
@@ -20,6 +21,8 @@ export interface BookingRequest {
   /** Honeypot. Real people never see or fill it. */
   company?: string;
   idempotencyKey?: string;
+  /** A recurring plan they'd like set up. A request for Jimmy, nothing automatic. */
+  planFrequencyId?: string;
 }
 
 export interface CleanBookingRequest extends Omit<BookingRequest, "packageId" | "company"> {
@@ -92,6 +95,8 @@ export function parseBookingRequest(
     zip: cleanText(b.zip, 10),
     notes: cleanText(b.notes, 1000, true),
     idempotencyKey: cleanIdempotencyKey(b.idempotencyKey),
+    // Anything unknown just means no plan. It's an extra, so it never stops a booking.
+    planFrequencyId: getPlanFrequency(cleanText(b.planFrequencyId, 20))?.id,
   };
 
   const errors: FieldErrors = validateContact(req);

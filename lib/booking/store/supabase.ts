@@ -11,7 +11,7 @@ import type { BookingRecord, BookingStore, CreateResult, ISODate, NewBooking, Ta
  *
  * Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (server-side only, never NEXT_PUBLIC).
  * The tests run this adapter against the real migrations on PGlite, through a small
- * PostgREST stand-in. It hasn't been run against a live Supabase project yet.
+ * PostgREST stand-in. Its SQL side has been checked on the live project (2026-11-05); its HTTPS calls first run on the launch deploy.
  */
 
 const TIMEOUT_MS = 8000;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClearOrderDraft } from "@/components/firewood/OrderForm";
@@ -43,6 +44,9 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
   return (
     <div data-season="firewood" className={styles.orderPage}>
       <main id="main" className={styles.orderCard}>
+        <Link href={backHref} className={styles.orderLogo}>
+          <Image src="/images/keystone-logo.png" alt={`${site.legalName}, back to firewood`} width={150} height={51} priority />
+        </Link>
         {order?.testMode && <p className={styles.testNote}>Stripe test mode. No real money moved.</p>}
 
         {!order && (
