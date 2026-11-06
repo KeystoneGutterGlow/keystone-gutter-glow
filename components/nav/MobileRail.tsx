@@ -261,7 +261,7 @@ export function MobileRail({ items, endId, homeHref, bookHref, bookText, dockHid
                 </Link>
               )}
               {firewoodHref && (
-                <Link href={firewoodHref} className={styles.extra}>
+                <Link href={firewoodHref} prefetch={false} className={styles.extra}>
                   Firewood
                 </Link>
               )}

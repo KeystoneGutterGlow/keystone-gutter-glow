@@ -218,7 +218,7 @@ function FirewoodFooter({ links }: { links: ModeLinks | null }) {
         </div>
         {links && (
           <p>
-            <Link href={links.gutterHref} className="textlink">
+            <Link href={links.gutterHref} prefetch={false} className="textlink">
               Looking for gutter cleaning?
             </Link>
           </p>

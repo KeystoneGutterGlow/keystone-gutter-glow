@@ -45,7 +45,7 @@ export function Hero() {
               Why a vacuum beats a scoop
             </a>
             {links && (
-              <Link href={links.firewoodHref} className={`textlink ${styles.why}`}>
+              <Link href={links.firewoodHref} prefetch={false} className={`textlink ${styles.why}`}>
                 We also deliver firewood
               </Link>
             )}
