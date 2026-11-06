@@ -1,4 +1,5 @@
-import { bookingRules } from "@/content/booking";
+import { bookingRules, type BookingRules } from "@/content/booking";
+import { getPlanFrequency } from "@/content/plans";
 import { getPackage, type PackageId } from "@/content/pricing";
 import { isISODate } from "./dates";
 
@@ -19,6 +20,9 @@ export interface BookingRequest {
   notes: string;
   /** Honeypot. Real people never see or fill it. */
   company?: string;
+  idempotencyKey?: string;
+  /** A recurring plan they'd like set up. A request for Jimmy, nothing automatic. */
+  planFrequencyId?: string;
 }
 
 export interface CleanBookingRequest extends Omit<BookingRequest, "packageId" | "company"> {
@@ -27,11 +31,17 @@ export interface CleanBookingRequest extends Omit<BookingRequest, "packageId" | 
 
 export type FieldErrors = Partial<Record<keyof BookingRequest, string>>;
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const IDEMPOTENCY_RE = /^[\w-]{8,80}$/;
 
 export function normalizePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+}
+
+/** A US number: 10 digits, and neither the area code nor the exchange starts with 0 or 1. */
+export function isUsPhone(raw: string): boolean {
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(normalizePhone(raw));
 }
 
 export function formatPhone(digits: string): string {
@@ -40,8 +50,15 @@ export function formatPhone(digits: string): string {
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
-function str(v: unknown, max: number): string {
-  return typeof v === "string" ? v.trim().slice(0, max) : "";
+/** Trims, caps the length, and strips control characters. Newlines survive only if asked for. */
+export function cleanText(v: unknown, max: number, multiline = false): string {
+  if (typeof v !== "string") return "";
+  const pattern = multiline ? /[\u0000-\u0009\u000b-\u001f\u007f]/g : /[\u0000-\u001f\u007f]/g;
+  return v.replace(pattern, " ").trim().slice(0, max);
+}
+
+export function cleanIdempotencyKey(v: unknown): string | undefined {
+  return typeof v === "string" && IDEMPOTENCY_RE.test(v) ? v : undefined;
 }
 
 /** Contact + address fields only. Used per-step in the form. */
@@ -51,37 +68,43 @@ export function validateContact(input: Pick<BookingRequest, "name" | "email" | "
   if (input.city.trim().length < 2) errors.city = "Which town is the house in?";
   if (!/^\d{5}$/.test(input.zip.trim())) errors.zip = "Five-digit ZIP, please.";
   if (input.name.trim().length < 2) errors.name = "Who should we ask for?";
-  if (normalizePhone(input.phone).length !== 10) errors.phone = "A 10-digit phone number, in case we need to reach you on the day.";
+  if (!isUsPhone(input.phone)) errors.phone = "A 10-digit phone number, in case we need to reach you on the day.";
   if (!EMAIL_RE.test(input.email.trim())) errors.email = "That email doesn't look right. The confirmation goes here.";
   return errors;
 }
 
 export function parseBookingRequest(
   body: unknown,
+  rules: BookingRules = bookingRules,
 ): { ok: true; data: CleanBookingRequest } | { ok: false; errors: FieldErrors; spam?: boolean } {
   if (!body || typeof body !== "object") return { ok: false, errors: {} };
   const b = body as Record<string, unknown>;
 
-  if (str(b.company, 200)) return { ok: false, errors: {}, spam: true };
+  if (cleanText(b.company, 200)) return { ok: false, errors: {}, spam: true };
 
   const req: BookingRequest = {
-    packageId: str(b.packageId, 40),
+    packageId: cleanText(b.packageId, 40),
     rinse: b.rinse === true,
-    date: str(b.date, 10),
-    slotId: str(b.slotId, 5),
-    name: str(b.name, 120),
-    email: str(b.email, 200).toLowerCase(),
-    phone: str(b.phone, 40),
-    street: str(b.street, 200),
-    city: str(b.city, 80),
-    zip: str(b.zip, 10),
-    notes: str(b.notes, 1000),
+    date: cleanText(b.date, 10),
+    slotId: cleanText(b.slotId, 5),
+    name: cleanText(b.name, 120),
+    email: cleanText(b.email, 200).toLowerCase(),
+    phone: cleanText(b.phone, 40),
+    street: cleanText(b.street, 200),
+    city: cleanText(b.city, 80),
+    zip: cleanText(b.zip, 10),
+    notes: cleanText(b.notes, 1000, true),
+    idempotencyKey: cleanIdempotencyKey(b.idempotencyKey),
+    // Anything unknown just means no plan. It's an extra, so it never stops a booking.
+    planFrequencyId: getPlanFrequency(cleanText(b.planFrequencyId, 20))?.id,
   };
 
   const errors: FieldErrors = validateContact(req);
   if (!getPackage(req.packageId)) errors.packageId = "Pick the house type that fits best.";
   if (!isISODate(req.date)) errors.date = "Pick a day.";
-  if (!bookingRules.slots.some((s) => s.id === req.slotId)) errors.slotId = "Pick a start time.";
+  // In day-only mode the server chooses the slot, so anything the client sends is ignored.
+  if (rules.scheduleMode === "day-only") req.slotId = "";
+  else if (!rules.slots.some((s) => s.id === req.slotId)) errors.slotId = "Pick a start time.";
 
   if (Object.keys(errors).length) return { ok: false, errors };
   return {

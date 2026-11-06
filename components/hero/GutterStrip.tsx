@@ -124,8 +124,13 @@ export function GutterStrip() {
 
       <span className={styles.glint} />
 
-      {/* Gooseneck: rises in front of the face, arcs over the lip, drops in behind it */}
-      <svg className={styles.neck} width="96" height="140" viewBox="0 0 96 140">
+      {/* Gooseneck: rises in front of the face, arcs over the lip, drops in behind it.
+          A few leaves off the top of the packed run are on their way into it. */}
+      <svg className={styles.neck} width="130" height="140" viewBox="0 0 130 140">
+        <path d="M126 16Q106 14 92 42M122 32Q106 30 93 48" fill="none" stroke="#e3d3b2" strokeWidth="1.3" strokeLinecap="round" strokeDasharray="3 4" />
+        <path d={LEAF} transform="translate(101 22) rotate(160) scale(1.1)" fill="#d99a3a" stroke="#33251a" strokeWidth="0.7" />
+        <path d={LEAF} transform="translate(118 12) rotate(205) scale(0.95)" fill="#c8923a" stroke="#33251a" strokeWidth="0.75" />
+        <path d={LEAF} transform="translate(111 34) rotate(130) scale(0.8)" fill="#b4652f" stroke="#33251a" strokeWidth="0.85" />
         <path d="M30 140V54C30 18 82 18 82 54V66" fill="none" stroke="#1b2129" strokeWidth="9" />
         <path d="M27.5 140V54C27.5 24 56 16 70 26" fill="none" stroke="#5b6672" strokeWidth="1.6" />
         <rect x="24.5" y="92" width="11" height="8" rx="1" fill="#3bb0ee" />

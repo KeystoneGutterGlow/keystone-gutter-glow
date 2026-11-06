@@ -40,7 +40,7 @@ export function ZipCheck() {
       <p className={styles.checkResult} role="status">
         {result?.status === "yes" && (
           <>
-            <strong>Yes, {result.town} is on our list.</strong>{" "}
+            <strong>Yes, {result.town} is inside our area.</strong>{" "}
             <BookLink className="textlink">Pick a day</BookLink>
           </>
         )}
@@ -53,6 +53,7 @@ export function ZipCheck() {
             .
           </>
         )}
+        {result?.status === "unknown" && <>We couldn&rsquo;t match that to a town. Try your five-digit ZIP.</>}
         {result?.status === "invalid" && <>Try a five-digit ZIP or a town name.</>}
       </p>
     </form>

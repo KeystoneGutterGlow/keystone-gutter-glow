@@ -8,7 +8,6 @@
   vertical-align: 0.15em;
 }
 .draftText {
-  font-style: italic;
   color: var(--muted);
 }
 
@@ -23,6 +22,11 @@
   height: 54px;
   margin-top: 74px;
   margin-bottom: 64px;
+}
+.back {
+  display: inline-block;
+  margin-bottom: 26px;
+  font-weight: 700;
 }
 .kicker {
   display: flex;
@@ -265,7 +269,6 @@
 .table td {
   padding: 12px 14px 12px 0;
   border-bottom: 1px dashed var(--alu-2);
-  font-style: italic;
 }
 
 /* ---------- questions ---------- */

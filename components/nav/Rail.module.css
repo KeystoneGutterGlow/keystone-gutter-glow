@@ -211,6 +211,22 @@
   text-decoration: underline;
 }
 
+/* A real button, so people can tell it's there */
+.refer {
+  display: block;
+  margin-top: -2px;
+  padding: 9px 10px;
+  border: 1.5px solid var(--navy);
+  border-radius: 2px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--navy);
+}
+.refer:hover {
+  background: var(--sky-pale);
+}
+
 @media (min-width: 1100px) and (max-height: 700px) {
   .link {
     min-height: 32px;
@@ -219,4 +235,60 @@
   .outlet {
     height: 48px;
   }
+}
+
+/* A red button needs white text, where the sky one has dark */
+:global([data-season="firewood"]) .book[aria-current] {
+  color: #fff;
+}
+
+/* ---------- Winter mode: the downspout becomes a column of split logs that catches fire ----------
+   The "water" level is the same scroll-driven height. Above it the logs are burning, below it
+   they aren't lit yet. The flames rise through a transform, so scrolling never repaints them. */
+
+:global([data-season="firewood"]) .stub,
+:global([data-season="firewood"]) .outlet {
+  display: none;
+}
+:global([data-season="firewood"]) .spout {
+  margin-top: 8px;
+  margin-bottom: 18px;
+}
+:global([data-season="firewood"]) .pipe {
+  left: 32px;
+  width: 26px;
+  top: 0;
+  overflow: visible;
+  background: url("/images/firewood/logs.svg") center top / 26px 24px repeat-y;
+}
+:global([data-season="firewood"]) .water {
+  left: -6px;
+  right: -6px;
+  overflow: hidden;
+  background: url("/images/firewood/logs-burning.svg") center top / 26px 24px repeat-y;
+}
+:global([data-season="firewood"]) .water::before {
+  content: "";
+  position: absolute;
+  inset: -48px 0 0;
+  background: url("/images/firewood/flames.svg") center top / 38px 48px repeat-y;
+  animation: flames-rise 2.4s linear infinite;
+}
+@keyframes flames-rise {
+  from {
+    transform: translateY(48px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+:global([data-season="firewood"]) .strap {
+  width: 34px;
+  height: 6px;
+  margin-left: -4px;
+  background: var(--navy);
+}
+:global([data-season="firewood"]) .strap::before,
+:global([data-season="firewood"]) .strap::after {
+  display: none;
 }

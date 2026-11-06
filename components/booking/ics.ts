@@ -11,11 +11,21 @@ function esc(s: string) {
   return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 }
 
-export function buildIcs(opts: { ref: string; date: string; slotId: string; address: string; minutes?: number }) {
-  const [h, m] = opts.slotId.split(":").map(Number) as [number, number];
-  const end = h * 60 + m + (opts.minutes ?? 90);
+/** slotId null makes it an all-day event, for day-only scheduling. */
+export function buildIcs(opts: { ref: string; date: string; slotId: string | null; address: string; minutes?: number }) {
   const day = opts.date.replace(/-/g, "");
   const pad = (n: number) => String(n).padStart(2, "0");
+  let when: string[];
+  if (opts.slotId) {
+    const [h, m] = opts.slotId.split(":").map(Number) as [number, number];
+    const end = h * 60 + m + (opts.minutes ?? 90);
+    when = [
+      `DTSTART;TZID=${bookingRules.timeZone}:${day}T${pad(h)}${pad(m)}00`,
+      `DTEND;TZID=${bookingRules.timeZone}:${day}T${pad(Math.floor(end / 60))}${pad(end % 60)}00`,
+    ];
+  } else {
+    when = [`DTSTART;VALUE=DATE:${day}`];
+  }
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -24,8 +34,7 @@ export function buildIcs(opts: { ref: string; date: string; slotId: string; addr
     "BEGIN:VEVENT",
     `UID:${opts.ref}@keystonegutterglow.com`,
     `DTSTAMP:${stamp(new Date())}`,
-    `DTSTART;TZID=${bookingRules.timeZone}:${day}T${pad(h)}${pad(m)}00`,
-    `DTEND;TZID=${bookingRules.timeZone}:${day}T${pad(Math.floor(end / 60))}${pad(end % 60)}00`,
+    ...when,
     `SUMMARY:${esc(`Gutter cleaning, ${site.name}`)}`,
     `LOCATION:${esc(opts.address)}`,
     `DESCRIPTION:${esc(`Booking ${opts.ref}. Questions or changes: ${site.phone.display}.`)}`,

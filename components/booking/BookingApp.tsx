@@ -4,8 +4,10 @@ import Link from "next/link";
 import { cloneElement, useCallback, useEffect, useId, useRef, useState } from "react";
 import { BOOK_EVENT, type BookIntent } from "@/components/BookLink";
 import { House } from "@/components/pricing/Houses";
-import { serviceZips, towns } from "@/content/area";
-import { bookingRules } from "@/content/booking";
+import { areaPlaces, serviceZips } from "@/content/area";
+import { PlanDialog } from "@/components/plan/PlanDialog";
+import { additionalInfo, bookingRules } from "@/content/booking";
+import { getPlanFrequency, planFrequencies, recommendedPlan, recommendedWhy } from "@/content/plans";
 import { getPackage, packages, rinse, totalFor, type PackageId } from "@/content/pricing";
 import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
@@ -17,11 +19,14 @@ import { Calendar } from "./Calendar";
 import { buildIcs, downloadIcs } from "./ics";
 
 type Step = 0 | 1 | 2 | 3;
-const STEPS = ["House", "Day & time", "Address & contact", "Check & book"] as const;
+const dayOnly = bookingRules.scheduleMode === "day-only";
+const STEPS = ["House", dayOnly ? "Day" : "Day & time", "Address & contact", "Check & book"] as const;
 
 interface Draft {
   packageId: PackageId | null;
   rinse: boolean;
+  /** "" means just this once */
+  plan: string;
   date: string | null;
   slotId: string | null;
   street: string;
@@ -37,6 +42,7 @@ interface Draft {
 const EMPTY: Draft = {
   packageId: null,
   rinse: false,
+  plan: "",
   date: null,
   slotId: null,
   street: "",
@@ -51,7 +57,7 @@ const EMPTY: Draft = {
 
 const slotLabel = (id: string | null) => bookingRules.slots.find((s) => s.id === id)?.label ?? "";
 
-export function BookingApp() {
+export function BookingApp({ planRequests = true }: { planRequests?: boolean }) {
   const uid = useId();
   const [step, setStep] = useState<Step>(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -67,12 +73,26 @@ export function BookingApp() {
   const [dayLoading, setDayLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [retry, setRetry] = useState(0);
+  // One key per attempt to book, so a retried request can't create a second booking.
+  const attemptKey = useRef<string | null>(null);
+  // Until the customer picks a month, skip past any with nothing open (late in the month, say).
+  const seekOpenMonth = useRef(true);
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const timesRef = useRef<HTMLFieldSetElement>(null);
   const focusOnStep = useRef(false);
 
-  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
+  // Editing a field clears its error, so a fixed field stops showing red straight away.
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
+    setDraft((d) => ({ ...d, [key]: value }));
+    setErrors((e) => {
+      const k = key as keyof FieldErrors;
+      if (!e[k]) return e;
+      const next = { ...e };
+      delete next[k];
+      return next;
+    });
+  };
 
   const go = useCallback((next: Step) => {
     setBanner(null);
@@ -107,12 +127,12 @@ export function BookingApp() {
         slotId: intent.date ? (intent.slotId ?? null) : d.slotId,
       }));
       if (intent.date) setMonth(monthStart(intent.date));
-      const hasPkg = intent.packageId ?? draft.packageId;
-      if (intent.packageId || intent.date) go(hasPkg ? 1 : 0);
+      // A link can preselect the house or day, but booking always starts on the house step.
+      if (intent.packageId || intent.date) go(0);
     };
     window.addEventListener(BOOK_EVENT, onIntent);
     return () => window.removeEventListener(BOOK_EVENT, onIntent);
-  }, [done, draft.packageId, go]);
+  }, [done, go]);
 
   // ---- Availability: month view ----
   useEffect(() => {
@@ -134,6 +154,12 @@ export function BookingApp() {
         const last = addDays(addMonths(m, 1), -1);
         const res = await fetchRange(m, last, ctrl.signal);
         setMeta(res.meta);
+        const horizonMonth = monthStart(addDays(res.meta.today, res.meta.horizonDays));
+        if (seekOpenMonth.current && !draft.date && m < horizonMonth && !res.days.some((d) => d.status === "open")) {
+          setMonth(addMonths(m, 1));
+          return;
+        }
+        seekOpenMonth.current = false;
         setMonthDays(new Map(res.days.map((d) => [d.date, d])));
       } catch (err) {
         if ((err as Error).name !== "AbortError") setLoadError(true);
@@ -149,6 +175,7 @@ export function BookingApp() {
     try {
       const res = await fetchDay(date, signal);
       setDay(res.day);
+      setLoadError(false);
       setDraft((d) => {
         if (d.date !== date || !d.slotId) return d;
         const still = res.day.slots.find((s) => s.id === d.slotId)?.state === "open";
@@ -157,7 +184,8 @@ export function BookingApp() {
     } catch (err) {
       if ((err as Error).name !== "AbortError") setLoadError(true);
     } finally {
-      setDayLoading(false);
+      // An aborted request has been replaced by a newer one, which owns the spinner now.
+      if (!signal?.aborted) setDayLoading(false);
     }
   }, []);
 
@@ -166,7 +194,7 @@ export function BookingApp() {
     const ctrl = new AbortController();
     loadDay(draft.date, ctrl.signal);
     return () => ctrl.abort();
-  }, [step, draft.date, loadDay]);
+  }, [step, draft.date, loadDay, retry]);
 
   const pkg = draft.packageId ? getPackage(draft.packageId) : undefined;
   const total = pkg ? totalFor(pkg, draft.rinse) : null;
@@ -182,8 +210,13 @@ export function BookingApp() {
       setErrors({});
       go(1);
     } else if (step === 1) {
-      if (!draft.date || !draft.slotId) {
+      if (!draft.date || (!dayOnly && !draft.slotId)) {
         setErrors({ slotId: !draft.date ? "Pick a day first." : "Pick a start time." });
+        return;
+      }
+      // In day-only mode the day also has to still be open.
+      if (dayOnly && day?.date === draft.date && day.status !== "open") {
+        setErrors({ slotId: "That day just filled up. Pick another." });
         return;
       }
       setErrors({});
@@ -201,14 +234,17 @@ export function BookingApp() {
   }
 
   async function submit() {
-    if (!draft.packageId || !draft.date || !draft.slotId) return;
+    if (submitting || !draft.packageId || !draft.date || (!dayOnly && !draft.slotId)) return;
     setSubmitting(true);
     setBanner(null);
+    attemptKey.current ??= crypto.randomUUID();
     const result = await submitBooking({
+      idempotencyKey: attemptKey.current,
       packageId: draft.packageId,
       rinse: draft.rinse,
+      planFrequencyId: draft.plan,
       date: draft.date,
-      slotId: draft.slotId,
+      slotId: draft.slotId ?? "",
       name: draft.name,
       email: draft.email,
       phone: draft.phone,
@@ -222,9 +258,13 @@ export function BookingApp() {
 
     if (result.kind === "ok") {
       focusOnStep.current = true;
+      attemptKey.current = null;
       setDone(result.booking);
       return;
     }
+    // Anything else was refused, so the next try is a new attempt. A network error is the one
+    // exception: that request may have gone through, and the same key finds it if it did.
+    if (result.kind !== "error") attemptKey.current = null;
     if (result.kind === "conflict") {
       setDay(result.day);
       setMonthDays((m) => {
@@ -253,6 +293,7 @@ export function BookingApp() {
 
   function reset() {
     setDraft(EMPTY);
+    attemptKey.current = null;
     setDone(null);
     setDay(null);
     setErrors({});
@@ -261,7 +302,10 @@ export function BookingApp() {
 
   // ---------------------------------------------------------------- render
 
-  if (done) return <Done booking={done} onAnother={reset} headingRef={headingRef} />;
+  if (done)
+    return (
+      <Done booking={done} name={draft.name} phone={draft.phone} onAnother={reset} headingRef={headingRef} planRequests={planRequests} />
+    );
 
   const minMonth = meta ? monthStart(addDays(meta.today, meta.minLeadDays)) : null;
   const maxMonth = meta ? monthStart(addDays(meta.today, meta.horizonDays)) : null;
@@ -337,8 +381,8 @@ export function BookingApp() {
                 )}
                 {pkg?.needsQuote && (
                   <p className={styles.hint}>
-                    For bigger houses we confirm the final price with you before the visit. Booking a time now just
-                    holds your spot.
+                    For bigger houses we confirm the final price with you before the visit. Booking {dayOnly ? "a day" : "a time"} now
+                    just holds your spot.
                   </p>
                 )}
 
@@ -352,6 +396,24 @@ export function BookingApp() {
                     <span className={styles.rinseText}>{rinse.short}</span>
                   </span>
                 </label>
+
+                <fieldset className={styles.repeat} aria-describedby={`${uid}-repeat-why`}>
+                  <legend>Want this on a schedule?</legend>
+                  <div className={styles.repeatOpts}>
+                    {[{ id: "", label: "Just this once" }, ...planFrequencies].map((f) => (
+                      <label key={f.id} className={styles.repeatOpt}>
+                        <input type="radio" name={`${uid}-plan`} checked={draft.plan === f.id} onChange={() => set("plan", f.id)} />
+                        <span>
+                          {f.label}
+                          {f.id === recommendedPlan && <span className={styles.repeatTag}>Recommended</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p id={`${uid}-repeat-why`} className={styles.repeatWhy}>
+                    {recommendedWhy} Nothing bills automatically. Jimmy sets up a plan with you.
+                  </p>
+                </fieldset>
               </fieldset>
             )}
 
@@ -359,8 +421,9 @@ export function BookingApp() {
             {step === 1 && (
               <div>
                 <h3 ref={headingRef} tabIndex={-1} className={styles.stepTitle}>
-                  Pick a day, then a start time
+                  {dayOnly ? "Pick a day" : "Pick a day, then a start time"}
                 </h3>
+                {meta?.demo && <DemoNote />}
                 {loadError && (
                   <p className={styles.err}>
                     We couldn&rsquo;t load the schedule.{" "}
@@ -380,12 +443,16 @@ export function BookingApp() {
                       maxPerDay={meta.maxJobsPerDay}
                       canPrev={!!minMonth && month > minMonth}
                       canNext={!!maxMonth && month < maxMonth}
-                      onMonth={(delta) => setMonth(addMonths(month, delta))}
+                      onMonth={(delta) => {
+                        seekOpenMonth.current = false;
+                        setMonth(addMonths(month, delta));
+                      }}
                       onSelect={(date) => {
                         setDraft((d) => ({ ...d, date, slotId: d.date === date ? d.slotId : null }));
                         setErrors({});
                         setBanner(null);
-                        if (window.matchMedia("(max-width: 899px)").matches) {
+                        // With start times to pick next, phones scroll down to them. Otherwise stay put.
+                        if (!dayOnly && window.matchMedia("(max-width: 899px)").matches) {
                           requestAnimationFrame(() =>
                             timesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
                           );
@@ -396,6 +463,17 @@ export function BookingApp() {
                     <div className={styles.calLoading}>Checking the schedule…</div>
                   )}
 
+                  {dayOnly ? (
+                    <div className={styles.times} ref={timesRef as React.Ref<HTMLDivElement>}>
+                      <p className={styles.timesTitle}>{draft.date ? formatShort(draft.date) : "What to expect"}</p>
+                      <ul className={styles.dayOnlyNotes}>
+                        <li>We don&rsquo;t normally give an exact arrival time. If you need one, ask in the additional information box on the next step.</li>
+                        <li>You don&rsquo;t need to be home.</li>
+                        <li>An invoice follows once the work is done.</li>
+                      </ul>
+                      {errors.slotId && <p className={styles.err} role="alert">{errors.slotId}</p>}
+                    </div>
+                  ) : (
                   <fieldset ref={timesRef} className={styles.times} aria-busy={dayLoading}>
                     <legend className={styles.timesTitle}>
                       {draft.date ? `Start times, ${formatShort(draft.date)}` : "Start times"}
@@ -421,15 +499,16 @@ export function BookingApp() {
                               />
                               <span className={styles.slotTime}>{s.label}</span>
                               <span className={styles.slotState}>
-                                {open ? s.part : s.state === "taken" ? "Booked" : "Day's full"}
+                                {open ? s.part : s.state === "taken" ? "Booked" : s.state === "closed" ? "Closed" : "Day's full"}
                               </span>
                             </label>
                           );
                         })}
                       </div>
                     )}
-                    {errors.slotId && <p className={styles.err}>{errors.slotId}</p>}
+                    {errors.slotId && <p className={styles.err} role="alert">{errors.slotId}</p>}
                   </fieldset>
+                  )}
                 </div>
               </div>
             )}
@@ -457,8 +536,8 @@ export function BookingApp() {
                     />
                   </Field>
                   <datalist id={`${uid}-towns`}>
-                    {towns.map((t) => (
-                      <option key={t.name} value={t.name} />
+                    {areaPlaces.map((name) => (
+                      <option key={name} value={name} />
                     ))}
                   </datalist>
                   <Field
@@ -497,10 +576,10 @@ export function BookingApp() {
                       onChange={(e) => set("email", e.target.value)}
                     />
                   </Field>
-                  <Field id={`${uid}-notes`} label="Anything we should know?" optional wide>
+                  <Field id={`${uid}-notes`} label={additionalInfo.label} note={additionalInfo.note} optional wide>
                     <textarea
                       rows={3}
-                      placeholder="Gate code, a dog in the yard, the corner that always overflows…"
+                      placeholder={additionalInfo.placeholder}
                       value={draft.notes}
                       onChange={(e) => set("notes", e.target.value)}
                     />
@@ -521,7 +600,7 @@ export function BookingApp() {
             )}
 
             {/* ---------------- 4. Check & book ---------------- */}
-            {step === 3 && pkg && draft.date && draft.slotId && (
+            {step === 3 && pkg && draft.date && (dayOnly || draft.slotId) && (
               <div>
                 <h3 ref={headingRef} tabIndex={-1} className={styles.stepTitle}>
                   Look it over, then book
@@ -538,9 +617,17 @@ export function BookingApp() {
                     </button>
                   </div>
                   <div>
+                    <dt>Schedule</dt>
+                    <dd>{getPlanFrequency(draft.plan)?.label ?? "Just this once"}</dd>
+                    <button type="button" className={styles.linkBtn} onClick={() => go(0)}>
+                      Change
+                    </button>
+                  </div>
+                  <div>
                     <dt>When</dt>
                     <dd>
-                      {formatLong(draft.date)}, {slotLabel(draft.slotId)}
+                      {formatLong(draft.date)}
+                      {!dayOnly && `, ${slotLabel(draft.slotId)}`}
                     </dd>
                     <button type="button" className={styles.linkBtn} onClick={() => go(1)}>
                       Change
@@ -566,7 +653,7 @@ export function BookingApp() {
                   </div>
                   {draft.notes && (
                     <div>
-                      <dt>Notes</dt>
+                      <dt>Additional info</dt>
                       <dd>{draft.notes}</dd>
                     </div>
                   )}
@@ -578,9 +665,12 @@ export function BookingApp() {
                 <ul className={styles.fine}>
                   <li>Nothing is charged now. We invoice after the cleaning.</li>
                   <li>
-                    Free to cancel or move with {site.policies.freeRescheduleHours} hours&rsquo; notice. Bad weather
-                    means we reschedule at no cost.
+                    Free to cancel or move with {site.policies.freeRescheduleHours} hours&rsquo; notice.
+                    {site.policies.lateCancelFeeDollars !== null &&
+                      ` Inside ${site.policies.freeRescheduleHours} hours, a cancellation may cost $${site.policies.lateCancelFeeDollars}.`}{" "}
+                    Bad weather means we reschedule at no cost.
                   </li>
+                  {dayOnly && <li>We don&rsquo;t normally give an exact arrival time, and you don&rsquo;t need to be home.</li>}
                   {pkg.needsQuote && <li>We&rsquo;ll confirm the final price with you before the visit.</li>}
                 </ul>
               </div>
@@ -608,10 +698,10 @@ export function BookingApp() {
                 </span>
               </button>
             ) : (
-              <button type="button" className="btn btn--sky" onClick={submit} disabled={submitting}>
+              <button type="button" className="btn btn--sky" onClick={submit} disabled={submitting} aria-busy={submitting}>
                 {submitting
                   ? "Checking the schedule…"
-                  : `Book ${draft.date ? formatShort(draft.date) : ""}, ${slotLabel(draft.slotId)}`}
+                  : `Book ${draft.date ? formatShort(draft.date) : ""}${dayOnly ? "" : `, ${slotLabel(draft.slotId)}`}`}
               </button>
             )}
           </div>
@@ -633,14 +723,22 @@ export function BookingApp() {
                 <dd className={styles.amt}>+${rinse.price}</dd>
               </div>
             )}
+            {draft.plan && (
+              <div>
+                <dt>Schedule</dt>
+                <dd>{getPlanFrequency(draft.plan)?.label}</dd>
+              </div>
+            )}
             <div>
               <dt>Day</dt>
               <dd>{draft.date ? formatShort(draft.date) : "—"}</dd>
             </div>
-            <div>
-              <dt>Start</dt>
-              <dd>{draft.slotId ? slotLabel(draft.slotId) : "—"}</dd>
-            </div>
+            {!dayOnly && (
+              <div>
+                <dt>Start</dt>
+                <dd>{draft.slotId ? slotLabel(draft.slotId) : "—"}</dd>
+              </div>
+            )}
             <div>
               <dt>Where</dt>
               <dd>{draft.street && draft.city ? `${draft.street}, ${draft.city}` : "—"}</dd>
@@ -661,6 +759,16 @@ export function BookingApp() {
 function todayGuess() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function DemoNote({ done }: { done?: boolean }) {
+  return (
+    <p className={styles.demoNote}>
+      {done
+        ? "Demo only. This isn't a real booking, and nobody was told about it."
+        : `Demo schedule. Some days are filled with sample bookings, and nothing you book here is real. To book, call or text ${site.phone.display}.`}
+    </p>
+  );
 }
 
 function Field({
@@ -711,23 +819,31 @@ function Field({
 
 function Done({
   booking,
+  name,
+  phone,
   onAnother,
   headingRef,
+  planRequests,
 }: {
   booking: Confirmation;
+  name: string;
+  phone: string;
   onAnother: () => void;
   headingRef: React.RefObject<HTMLHeadingElement | null>;
+  planRequests: boolean;
 }) {
   const pkg = getPackage(booking.packageId);
   const address = `${booking.address.street}, ${booking.address.city}, PA ${booking.address.zip}`;
   return (
     <div className={`${styles.app} ${styles.done}`}>
+      {booking.demo && <DemoNote done />}
       <p className={styles.doneRef}>Booking {booking.ref}</p>
       <h3 ref={headingRef} tabIndex={-1} className={styles.doneTitle}>
-        You&rsquo;re on the schedule.
+        {booking.demo ? "That\u2019s how booking works." : "You\u2019re on the schedule."}
       </h3>
       <p className={styles.doneWhen}>
-        {formatLong(booking.date)}, {slotLabel(booking.slotId)}
+        {formatLong(booking.date)}
+        {!dayOnly && `, ${slotLabel(booking.slotId)}`}
         <br />
         <span>{address}</span>
       </p>
@@ -746,9 +862,19 @@ function Done({
       </dl>
       <h4 className={styles.nextTitle}>What happens now</h4>
       <ol className={styles.nextList}>
-        <li>A confirmation email goes to {booking.email}.</li>
+        {booking.emailSent ? (
+          <li>A confirmation email is on its way to {booking.email}.</li>
+        ) : (
+          !booking.demo && <li>Keep this reference number. We&rsquo;ll be in touch at {booking.email} if anything changes.</li>
+        )}
         <li>On the day, we clean. You don&rsquo;t need to be home if we can reach the gutters.</li>
         <li>Photos and the invoice come after.</li>
+        {booking.planLabel && (
+          <li>
+            You asked for a recurring plan: {booking.planLabel.toLowerCase()}. Jimmy will be in touch to set it up. Nothing bills
+            automatically.
+          </li>
+        )}
       </ol>
       <div className={styles.doneActions}>
         <button
@@ -757,12 +883,17 @@ function Done({
           onClick={() =>
             downloadIcs(
               `keystone-${booking.date}.ics`,
-              buildIcs({ ref: booking.ref, date: booking.date, slotId: booking.slotId, address }),
+              buildIcs({ ref: booking.ref, date: booking.date, slotId: dayOnly ? null : booking.slotId, address }),
             )
           }
         >
           Add to my calendar
         </button>
+        {!booking.planLabel && planRequests && (
+          <PlanDialog className="btn" initial={{ ...booking.address, name, phone, email: booking.email }}>
+            Make it recurring
+          </PlanDialog>
+        )}
         <button type="button" className={styles.back} onClick={onAnother}>
           Book another house
         </button>

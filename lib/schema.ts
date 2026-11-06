@@ -1,4 +1,4 @@
-import { towns } from "@/content/area";
+import { areaPlaces } from "@/content/area";
 import { faqs } from "@/content/faqs";
 import { packages, rinse } from "@/content/pricing";
 import { site } from "@/content/site";
@@ -13,11 +13,7 @@ export function homeJsonLd() {
   const bizId = `${publicUrl}/#business`;
   const areaServed = [
     { "@type": "AdministrativeArea", name: `${site.county}, ${site.state}` },
-    ...towns.map((t) => ({
-      "@type": "City",
-      name: `${t.name}, ${site.state}`,
-      containedInPlace: { "@type": "AdministrativeArea", name: site.county },
-    })),
+    ...areaPlaces.map((name) => ({ "@type": "Place", name: `${name}, ${site.state}` })),
   ];
 
   const offers = [

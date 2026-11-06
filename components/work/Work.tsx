@@ -35,17 +35,16 @@ export function Work() {
             their gutters.
           </p>
 
+          {/* Real pairs go in public/images/work/ as job-02-before.jpg and job-02-after.jpg, and so on */}
           <div className={styles.more}>
             <PhotoSlot
               label="Next job"
               want="A before/after pair from a Bucks County job. Shoot both from exactly the same spot."
-              file="public/images/work/job-02-before.jpg + -after.jpg"
               ratio="1 / 1"
             />
             <PhotoSlot
               label="Next job"
               want="A clogged downspout outlet, then water running clear out of it."
-              file="public/images/work/job-03-before.jpg + -after.jpg"
               ratio="1 / 1"
             />
           </div>

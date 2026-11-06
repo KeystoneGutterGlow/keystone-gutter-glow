@@ -57,10 +57,3 @@
   line-height: 1.4;
   opacity: 0.85;
 }
-
-.file {
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: 0.75rem;
-  opacity: 0.6;
-  word-break: break-all;
-}

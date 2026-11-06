@@ -9,10 +9,13 @@ export interface Meta {
   minLeadDays: number;
   horizonDays: number;
   maxJobsPerDay: number;
+  /** True when this deployment runs on the demo store, so nothing booked here is real. */
+  demo: boolean;
 }
 
 async function getJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(url, { cache: "no-store", signal });
+  const timeout = AbortSignal.timeout(15_000);
+  const res = await fetch(url, { cache: "no-store", signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
   if (!res.ok) throw new Error(`Request failed (${res.status})`);
   return (await res.json()) as T;
 }
@@ -35,6 +38,10 @@ export interface Confirmation {
   priceIsEstimate: boolean;
   email: string;
   address: { street: string; city: string; zip: string };
+  emailSent: boolean;
+  demo: boolean;
+  /** The recurring plan they asked for, if any */
+  planLabel?: string | null;
 }
 
 export type SubmitResult =
@@ -50,6 +57,7 @@ export async function submitBooking(body: Record<string, unknown>): Promise<Subm
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20_000),
     });
   } catch {
     return { kind: "error", message: "We couldn't reach the server. Check your connection and try again." };

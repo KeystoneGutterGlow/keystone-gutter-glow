@@ -58,7 +58,10 @@ export function Calendar({ month, days, selected, today, maxPerDay, canPrev, can
 
   useEffect(() => {
     if (!moveFocus) return;
-    gridRef.current?.querySelector<HTMLButtonElement>(`[data-date="${focusDate}"]`)?.focus();
+    const target = gridRef.current?.querySelector<HTMLButtonElement>(`[data-date="${focusDate}"]`);
+    // After a month change the old date is gone for one render. Keep waiting for the new one.
+    if (!target) return;
+    target.focus();
     setMoveFocus(false);
   }, [focusDate, moveFocus]);
 
@@ -85,17 +88,34 @@ export function Calendar({ month, days, selected, today, maxPerDay, canPrev, can
         next = idx + (6 - weekday(date));
         break;
       case "PageUp":
-        if (canPrev) onMonth(-1);
+        if (canPrev) {
+          onMonth(-1);
+          setMoveFocus(true);
+        }
         e.preventDefault();
         return;
       case "PageDown":
-        if (canNext) onMonth(1);
+        if (canNext) {
+          onMonth(1);
+          setMoveFocus(true);
+        }
         e.preventDefault();
         return;
       default:
         return;
     }
     e.preventDefault();
+    // Arrowing off either end of the month moves to the next month, where there is one.
+    if (next < 0 && canPrev) {
+      onMonth(-1);
+      setMoveFocus(true);
+      return;
+    }
+    if (next >= count && canNext) {
+      onMonth(1);
+      setMoveFocus(true);
+      return;
+    }
     next = Math.max(0, Math.min(count - 1, next));
     setFocusDate(dates[next]!);
     setMoveFocus(true);
@@ -194,10 +214,9 @@ export function Calendar({ month, days, selected, today, maxPerDay, canPrev, can
       <p className={styles.legend}>
         <span>
           <span className={styles.ticks} aria-hidden="true">
-            <i data-on />
-            <i data-on />
-            <i />
-            <i />
+            {Array.from({ length: maxPerDay }, (_, i) => (
+              <i key={i} data-on={i < Math.ceil(maxPerDay / 2) || undefined} />
+            ))}
           </span>{" "}
           spots left
         </span>

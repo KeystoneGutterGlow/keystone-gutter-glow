@@ -1,3 +1,4 @@
+import { IvyRun } from "@/components/botanical/Botanical";
 import { faqs } from "@/content/faqs";
 import { site } from "@/content/site";
 import styles from "./Faq.module.css";
@@ -17,6 +18,7 @@ export function Faq() {
             </a>
             .
           </p>
+          <IvyRun className={styles.ivy} vertical length={420} seed={19} />
         </div>
         <div className={styles.list}>
           {faqs.map((f) => (

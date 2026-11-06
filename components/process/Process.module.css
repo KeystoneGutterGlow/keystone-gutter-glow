@@ -11,10 +11,29 @@
   row-gap: 22px;
 }
 
+.head {
+  grid-row: span 2;
+}
 .title {
   font-size: 1.75rem;
   line-height: 1.1;
   padding-top: 26px;
+}
+.seeds {
+  --bot-line: rgb(13 42 78 / 0.55);
+  --bot-fill: rgb(59 176 238 / 0.14);
+  display: block;
+  width: 150px;
+  height: auto;
+  margin-top: 22px;
+}
+@media (max-width: 899px) {
+  .head {
+    grid-row: auto;
+  }
+  .seeds {
+    display: none;
+  }
 }
 
 .steps {

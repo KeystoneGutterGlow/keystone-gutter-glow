@@ -1,6 +1,7 @@
 // End-to-end checks for the booking API against a running server.
-//   npm run dev   (or npm start)   then:   npm run test:booking
+//   npm run dev   (or BOOKING_DEMO_MODE=true npm start)   then:   npm run test:booking
 // Uses the in-memory store, so it writes test bookings that vanish on restart.
+// Assumes day-only scheduling, as the rules in content/booking.ts ship. The cap comes from the API.
 // Set BASE to point somewhere else, e.g. BASE=http://localhost:3000.
 
 const BASE = process.env.BASE ?? "http://localhost:3100";
@@ -36,67 +37,51 @@ async function book(over = {}) {
   return { status: res.status, body: await res.json().catch(() => ({})) };
 }
 
-// 1. Find a day with every start time open.
+// 1. Find a day with every spot open.
 const { body: next } = await get("/api/availability?next=1");
-const { today, horizonDays } = next.meta;
+const { today, horizonDays, maxJobsPerDay: cap } = next.meta;
 const to = new Date(Date.parse(today + "T00:00:00Z") + Math.min(horizonDays, 60) * 86400000).toISOString().slice(0, 10);
 const { body: range } = await get(`/api/availability?from=${today}&to=${to}`);
-let day = null;
-for (const d of range.days.filter((d) => d.status === "open")) {
-  const { body } = await get(`/api/availability?date=${d.date}`);
-  if (body.day.slots.every((s) => s.state === "open")) {
-    day = body.day;
-    break;
-  }
-}
-check("found an untouched day to test on", !!day, day?.date);
-if (!day) process.exit(1);
-const slots = day.slots.map((s) => s.id);
+const untouched = range.days.find((d) => d.status === "open" && d.remaining === cap)?.date;
+check("found an untouched day to test on", !!untouched, untouched);
+if (!untouched) process.exit(1);
 
-// 2. Ten people grab the same time at the same moment: exactly one wins.
-const race = await Promise.all(Array.from({ length: 10 }, () => book({ date: day.date, slotId: slots[0] })));
-const won = race.filter((r) => r.status === 201).length;
-const lost = race.filter((r) => r.status === 409 && r.body.code === "slot_taken").length;
-check("same slot, 10 concurrent requests -> 1 booked", won === 1, `201s: ${won}`);
-check("the other 9 get 409 slot_taken", lost === 9, `409s: ${lost}`);
+// 2. Ten people want the same day at the same moment: the cap holds.
+const race = await Promise.all(Array.from({ length: 10 }, () => book({ date: untouched })));
+const won = race.filter((r) => r.status === 201);
+const lost = race.filter((r) => r.status === 409 && r.body.code === "day_full").length;
+check(`same day, 10 concurrent requests -> ${cap} booked`, won.length === cap, `201s: ${won.length}`);
+check(`the other ${10 - cap} get 409 day_full`, lost === 10 - cap, `409s: ${lost}`);
+const internal = new Set(won.map((r) => r.body.booking?.slotId));
+check("each job was filed under its own internal slot", internal.size === won.length);
 
-// 3. Everyone else takes the remaining times at once: the 4-a-day cap holds.
-const rest = await Promise.all(slots.slice(1).map((slotId) => book({ date: day.date, slotId })));
-const restWon = rest.filter((r) => r.status === 201).length;
-const dayFull = rest.filter((r) => r.status === 409 && r.body.code === "day_full").length;
-check(`${slots.length - 1} other times at once -> only 3 more fit`, restWon === 3, `201s: ${restWon}`);
-check("the extra one gets 409 day_full", dayFull === slots.length - 1 - 3, `day_full: ${dayFull}`);
-
-// 4. The day now reads as full everywhere.
-const { body: after } = await get(`/api/availability?date=${day.date}`);
+// 3. The day now reads as full everywhere.
+const { body: after } = await get(`/api/availability?date=${untouched}`);
 check("day status is full", after.day.status === "full" && after.day.remaining === 0, after.day.status);
-check("no start time is still open", after.day.slots.every((s) => s.state !== "open"));
-const conflict = rest.find((r) => r.status === 409);
-check("409 response carries fresh slots for the UI", Array.isArray(conflict?.body.day?.slots));
+const conflict = race.find((r) => r.status === 409);
+check("409 response carries the fresh day for the UI", conflict?.body.day?.status === "full");
 
-// 5. Server-side rules the client can't bypass.
+// 4. Server-side rules the client can't bypass.
 const sunday = range.days.find((d) => d.status === "closed")?.date;
 if (sunday) {
-  const r = await book({ date: sunday, slotId: slots[0] });
+  const r = await book({ date: sunday });
   check("closed day is refused", r.status === 422 && r.body.code === "date_unavailable", String(r.status));
 }
-const past = await book({ date: "2020-01-02", slotId: slots[0] });
+const past = await book({ date: "2020-01-02" });
 check("past date is refused", past.status === 422, String(past.status));
-const badSlot = await book({ date: next.next.date, slotId: "03:00" });
-check("unknown start time is refused", badSlot.status === 400 && !!badSlot.body.errors?.slotId, String(badSlot.status));
-const badInput = await book({ date: next.next.date, slotId: slots[1], email: "nope", zip: "12", phone: "12" });
+const badInput = await book({ date: next.next.date, email: "nope", zip: "12", phone: "12" });
 check(
   "bad email, ZIP and phone are refused",
   badInput.status === 400 && ["email", "zip", "phone"].every((k) => badInput.body.errors?.[k]),
   JSON.stringify(Object.keys(badInput.body.errors ?? {})),
 );
-const badPkg = await book({ date: next.next.date, slotId: slots[1], packageId: "mansion" });
+const badPkg = await book({ date: next.next.date, packageId: "mansion" });
 check("unknown package is refused", badPkg.status === 400 && !!badPkg.body.errors?.packageId);
-const bot = await book({ date: next.next.date, slotId: slots[1], company: "Spam LLC" });
+const bot = await book({ date: next.next.date, company: "Spam LLC" });
 check("honeypot submission is swallowed, not booked", bot.status === 201 && bot.body.booking === null);
 
-// 6. Price comes from the server, not the client.
-const priced = race.find((r) => r.status === 201);
+// 5. Price comes from the server, not the client.
+const priced = won[0];
 check("server computed the price", priced?.body.booking?.priceDollars === 169, String(priced?.body.booking?.priceDollars));
 
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll booking checks passed");

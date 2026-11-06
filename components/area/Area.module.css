@@ -20,60 +20,76 @@
   margin-bottom: 24px;
 }
 
+.oak {
+  --bot-line: rgb(13 42 78 / 0.55);
+  --bot-fill: rgb(59 176 238 / 0.12);
+  display: block;
+  width: min(240px, 80%);
+  height: auto;
+  margin: clamp(36px, 7vw, 92px) 0 0 -6px;
+}
+@media (max-width: 899px) {
+  .oak {
+    display: none;
+  }
+}
+
 .map {
   margin: 0 calc(-1 * var(--gutter)) 0 0;
 }
-.map :global(.mapTown) {
+/* Its own stacking context, so Leaflet's high z-indexes stay under the rail and the booking bar */
+.mapBox {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  height: clamp(360px, 42vw, 620px);
+  background: var(--alu-1);
+  font-family: var(--font-body);
+}
+.mapBox :global(.leaflet-tile-pane) {
+  filter: saturate(0.55) contrast(0.96);
+}
+.mapBox :global(.leaflet-bar) {
+  border: 1.5px solid var(--navy);
+  border-radius: 2px;
+  box-shadow: none;
+}
+.mapBox :global(.leaflet-bar a) {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  color: var(--navy);
+}
+.mapBox :global(.leaflet-control-attribution) {
+  font-size: 0.75rem;
+  color: var(--navy);
+}
+.mapBox :global(.leaflet-control-attribution a) {
+  color: var(--sky-ink);
+}
+.pin {
+  background: var(--navy);
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+.town {
+  padding: 1px 6px;
+  background: rgb(255 255 255 / 0.9);
+  border: 0;
+  border-radius: 2px;
+  box-shadow: none;
+  color: var(--navy);
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 17px;
-  fill: var(--navy);
+  font-size: 0.8125rem;
 }
-.map :global(.mapSub) {
-  font-family: var(--font-body);
-  font-size: 13px;
-  fill: var(--muted);
+.town::before {
+  display: none;
 }
-.map :global(.mapNote) {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 16px;
-  fill: var(--sky-ink);
-}
-.map :global(.mapNj) {
-  font-style: normal;
-  font-weight: 700;
-  fill: var(--alu-3);
-}
-.map :global(.mapCounty) {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 22px;
-  fill: var(--alu-3);
-}
-
-.list {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 22px;
-  margin-top: 12px;
+.mapNote {
+  margin: 10px 0 0;
   font-size: 0.9375rem;
   color: var(--muted);
-}
-.list li {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.list li::before {
-  content: "";
-  width: 8px;
-  height: 2px;
-  background: var(--sky);
-}
-.sub {
-  font-size: 0.875rem;
 }
 
 /* ---------- ZIP check ---------- */
@@ -116,25 +132,17 @@
 }
 
 @media (max-width: 639px) {
-  .map {
-    display: none;
+  .mapBox {
+    height: 340px;
   }
-  .list {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0 16px;
-    margin-top: 4px;
-    border-top: 2px solid var(--navy);
-    font-size: 1.0625rem;
-    color: var(--navy);
-    font-weight: 700;
+  .town {
+    font-size: 0.75rem;
+    padding: 0 4px;
   }
-  .list li {
-    min-height: 48px;
-    border-bottom: 1px solid var(--alu-2);
-    align-items: center;
-  }
-  .sub {
-    display: none;
+}
+@media (max-width: 359px) {
+  .town {
+    font-size: 0.6875rem;
+    padding: 0 3px;
   }
 }

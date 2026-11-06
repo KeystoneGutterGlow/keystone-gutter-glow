@@ -19,9 +19,14 @@ interface Props {
   homeHref?: string;
   bookHref?: string;
   bookLabel?: string;
+  /** Replaces the phone number in the header row. The dock still has a call button. */
+  topSlot?: React.ReactNode;
+  /** Extra links in the opened menu */
+  referLink?: boolean;
+  firewoodHref?: string;
 }
 
-export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel }: Props) {
+export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel, topSlot, referLink, firewoodHref }: Props) {
   const [dockHidden, setDockHidden] = useState(false);
 
   // Booking has its own sticky action bar, so the dock steps aside while it's on screen.
@@ -44,9 +49,11 @@ export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel
         <a href={homeHref} className={styles.logo}>
           <Image src="/images/keystone-logo.png" alt={`${site.legalName}, home`} width={133} height={45} priority />
         </a>
-        <a href={site.phone.href} className={styles.topPhone}>
-          {site.phone.display}
-        </a>
+        {topSlot ?? (
+          <a href={site.phone.href} className={styles.topPhone}>
+            {site.phone.display}
+          </a>
+        )}
       </header>
 
       <MobileRail
@@ -56,6 +63,8 @@ export function MobileNav({ items, endId, homeHref = "#top", bookHref, bookLabel
         bookHref={bookHref}
         bookText={bookLabel ?? "Book a cleaning"}
         dockHidden={dockHidden}
+        referLink={referLink}
+        firewoodHref={firewoodHref}
       />
 
       <nav className={styles.dock} aria-label="Quick actions" data-hidden={dockHidden || undefined}>

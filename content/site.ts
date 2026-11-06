@@ -28,6 +28,8 @@ export const site = {
   policies: {
     payAfter: true, // "Payment is due after service is completed, via the invoice we send"
     freeRescheduleHours: 24,
+    // Addendum A1 says a cancellation inside 24 hours may incur $50. Set it to 50 once Jimmy confirms.
+    lateCancelFeeDollars: null as number | null,
     returnVisitHours: 48, // "contact us within 48 hours ... we will return ... at no additional charge"
     weather: ["heavy rain", "lightning", "ice", "high winds"],
   },

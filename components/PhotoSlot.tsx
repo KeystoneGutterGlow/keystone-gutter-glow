@@ -5,14 +5,13 @@ import styles from "./PhotoSlot.module.css";
 
 interface Props {
   want: string;
-  file: string;
   label?: string;
   ratio?: string;
   tone?: "light" | "dark";
   className?: string;
 }
 
-export function PhotoSlot({ want, file, label = "Photo to come", ratio = "4 / 5", tone = "light", className }: Props) {
+export function PhotoSlot({ want, label = "Photo to come", ratio = "4 / 5", tone = "light", className }: Props) {
   return (
     <div
       className={`${styles.slot} ${tone === "dark" ? styles.dark : ""} ${className ?? ""}`}
@@ -24,7 +23,6 @@ export function PhotoSlot({ want, file, label = "Photo to come", ratio = "4 / 5"
       <div className={styles.text}>
         <span className={styles.label}>{label}</span>
         <span className={styles.want}>{want}</span>
-        <code className={styles.file}>{file}</code>
       </div>
     </div>
   );
