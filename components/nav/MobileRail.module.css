@@ -76,7 +76,7 @@
   position: absolute;
   left: calc(var(--edge) + 5px);
   width: 10px;
-  top: var(--pipe-top, 0px);
+  top: var(--pipe-top, var(--pipe-top-guess, 0px));
   bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(
     to right,
@@ -93,6 +93,15 @@
 }
 .root[data-dock-hidden] .pipe {
   bottom: 0;
+}
+/* Before the script measures it: under the hero gutter's bottom edge at the top of the page */
+:global(body:has([data-gutter-anchor])) .pipe {
+  --pipe-top-guess: 191px;
+}
+@media (max-width: 719px) {
+  :global(body:has([data-gutter-anchor])) .pipe {
+    --pipe-top-guess: 185px;
+  }
 }
 .root[data-open] .pipe {
   top: 0;

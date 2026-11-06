@@ -46,6 +46,24 @@
   background: var(--alu-1);
   font-family: var(--font-body);
 }
+/* Until the first map tiles arrive: a skeleton of the map area */
+.mapBox[data-loading] {
+  background: linear-gradient(100deg, var(--alu-1) 0 40%, #f6f8f9 50%, var(--alu-1) 60% 100%) 0 0 / 300% 100%;
+  animation: mapSkel 1.6s linear infinite;
+}
+@keyframes mapSkel {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mapBox[data-loading] {
+    animation: none;
+  }
+}
 .mapBox :global(.leaflet-tile-pane) {
   filter: saturate(0.55) contrast(0.96);
 }

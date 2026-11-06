@@ -342,12 +342,33 @@
   align-items: start;
 }
 
+/* The booking card is white inside a navy section, so its skeletons use the light sheen */
+.app :global(.skel) {
+  background-image: linear-gradient(100deg, var(--alu-1) 0 40%, #fff 50%, var(--alu-1) 60% 100%);
+}
+
+/* Skeleton calendar: a month heading and five weeks of day cells */
 .calLoading {
-  display: grid;
-  place-items: center;
   min-height: 360px;
-  background: var(--enamel);
-  color: var(--muted);
+}
+.skHead {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 18px;
+}
+.skHead :global(.skel) {
+  width: 40%;
+  height: 1.4em;
+}
+.skGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.skGrid :global(.skel) {
+  height: auto;
+  aspect-ratio: 1 / 1;
+  min-height: 46px;
 }
 
 .cal {
@@ -428,9 +449,23 @@
   text-decoration: line-through;
 }
 .day[data-status="loading"] {
-  background: var(--enamel);
+  background: linear-gradient(100deg, var(--alu-1) 0 40%, #fff 50%, var(--alu-1) 60% 100%) 0 0 / 300% 100%;
+  animation: daySkel 1.6s linear infinite;
   border-color: transparent;
   color: transparent;
+}
+@keyframes daySkel {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .day[data-status="loading"] {
+    animation: none;
+  }
 }
 .day[aria-current="date"]::after {
   content: "";

@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible, Zilla_Slab } from "next/font/google";
+import { BotanicalDefs } from "@/components/botanical/Botanical";
 import { site } from "@/content/site";
 import { allowIndexing, publicUrl } from "@/lib/env";
 import "./globals.css";
 
 const display = Zilla_Slab({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["600", "700"],
   variable: "--font-display",
   display: "swap",
 });
@@ -42,7 +43,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // data-scroll-behavior tells Next to turn off the CSS smooth scrolling during page changes.
     <html lang="en-US" className={`${display.variable} ${body.variable}`} data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <body>
+        <BotanicalDefs />
+        {children}
+      </body>
     </html>
   );
 }

@@ -219,7 +219,11 @@ export function OrderForm() {
   const payDisabled = submitting || !checkoutOpen;
 
   const payState = !status && !statusFailed ? (
-    <p className={styles.payNote}>Checking whether online payment is open…</p>
+    <p className={styles.payNote} aria-busy="true">
+      <span className="vh">Checking whether online payment is open…</span>
+      <span className="skel" style={{ width: "85%", marginBottom: 6 }} aria-hidden="true" />
+      <span className="skel" style={{ width: "60%" }} aria-hidden="true" />
+    </p>
   ) : !checkoutOpen ? (
     <p className={styles.payNote}>
       Online payment isn&rsquo;t open yet. Call or text <a href={site.phone.href}>{site.phone.display}</a> and we&rsquo;ll take

@@ -9,7 +9,8 @@ import styles from "./Hero.module.css";
 // Live "next opening" from the schedule. Two forms share one request:
 //  - the tag hanging off the vacuum pole (tablet and desktop), fixed height while loading
 //  - a single line under the Book button (phones), where the tag would be below the fold
-// If the API is unreachable they quietly fall back to a plain link.
+// While the schedule loads they show skeleton bars laid out like the answer, so nothing moves when it
+// arrives. If the API is unreachable they fall back to a plain link of the same size.
 
 const dayOnly = bookingRules.scheduleMode === "day-only";
 
@@ -56,7 +57,20 @@ export function NextOpening() {
     <aside className={styles.tag} aria-live="polite" aria-busy={state.status === "loading"}>
       <span className={styles.tagHole} aria-hidden="true" />
       <p className={styles.tagLabel}>{state.status === "ok" && state.demo ? "Next opening · demo" : "Next opening"}</p>
-      {state.status === "loading" && <p className={styles.tagWhen}>Checking the schedule…</p>}
+      {state.status === "loading" && (
+        <>
+          <span className="vh">Checking the schedule…</span>
+          <p className={styles.tagWhen} aria-hidden="true">
+            <span className="skel-text">Sat, Nov 7</span>
+          </p>
+          <p className={styles.tagLeft} aria-hidden="true">
+            <span className="skel-text">4 spots left that day</span>
+          </p>
+          <span className={`${styles.tagLink} skel-text`} aria-hidden="true">
+            Book this day →
+          </span>
+        </>
+      )}
       {state.status === "ok" && state.next && (
         <>
           <p className={styles.tagWhen}>
@@ -74,6 +88,7 @@ export function NextOpening() {
       {((state.status === "ok" && !state.next) || state.status === "error") && (
         <>
           <p className={styles.tagWhen}>See the calendar</p>
+          <p className={styles.tagLeft}>Monday to Saturday</p>
           <BookLink className={styles.tagLink}>
             {dayOnly ? "Open days" : "Open times"} <span aria-hidden="true">→</span>
           </BookLink>
@@ -83,22 +98,31 @@ export function NextOpening() {
   );
 }
 
-/** Phones: one line under the Book button. Nothing at all if the schedule can't be read. */
+/** Phones: one line under the Book button. A link to the calendar if the schedule can't be read. */
 export function NextOpeningLine() {
   const state = useNextOpening();
-  if (state.status === "error" || (state.status === "ok" && !state.next)) return null;
   return (
     <p className={styles.nextLine} aria-live="polite">
-      {state.status === "loading" ? (
-        <span className={styles.nextLabel}>Checking the schedule…</span>
-      ) : (
-        state.next && (
-          <BookLink className={styles.nextLink} date={state.next.date} slotId={dayOnly ? undefined : state.next.slotId}>
-            <span className={styles.nextLabel}>Next opening{state.demo ? " (demo)" : ""}</span>{" "}
-            <strong>{formatShort(state.next.date)}</strong>
-            <span aria-hidden="true"> →</span>
-          </BookLink>
-        )
+      {state.status === "loading" && (
+        <>
+          <span className="vh">Checking the schedule…</span>
+          <span className="skel-text" aria-hidden="true">
+            Next opening Sat, Nov 7 →
+          </span>
+        </>
+      )}
+      {state.status === "ok" && state.next && (
+        <BookLink className={styles.nextLink} date={state.next.date} slotId={dayOnly ? undefined : state.next.slotId}>
+          <span className={styles.nextLabel}>Next opening{state.demo ? " (demo)" : ""}</span>{" "}
+          <strong>{formatShort(state.next.date)}</strong>
+          <span aria-hidden="true"> →</span>
+        </BookLink>
+      )}
+      {(state.status === "error" || (state.status === "ok" && !state.next)) && (
+        <BookLink className={styles.nextLink}>
+          <span className={styles.nextLabel}>Booking</span> <strong>See open days</strong>
+          <span aria-hidden="true"> →</span>
+        </BookLink>
       )}
     </p>
   );

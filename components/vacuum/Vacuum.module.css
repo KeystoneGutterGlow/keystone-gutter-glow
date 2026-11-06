@@ -22,7 +22,7 @@
 }
 .they {
   color: var(--mud);
-  font-weight: 500;
+  font-weight: 600;
   text-align: right;
   margin-top: 0.06em;
 }
@@ -186,7 +186,7 @@
 }
 .ledger thead th:last-child {
   color: var(--mud);
-  font-weight: 500;
+  font-weight: 600;
 }
 .ledger thead td {
   border-bottom: 2px solid #fff;

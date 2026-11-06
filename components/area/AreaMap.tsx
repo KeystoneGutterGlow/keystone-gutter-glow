@@ -31,10 +31,12 @@ export function AreaMap() {
       // The circle can't measure itself until the map has a view.
       map.setView([serviceRadius.lat, serviceRadius.lon], 11);
       L.control.attribution({ prefix: false }).addTo(map);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 15,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
+      // The skeleton shimmer stops once the first tiles are in
+      tiles.once("load", () => delete el.dataset.loading);
 
       const circle = L.circle([serviceRadius.lat, serviceRadius.lon], {
         radius: serviceRadius.miles * METERS_PER_MILE,
@@ -83,6 +85,7 @@ export function AreaMap() {
     <div
       ref={box}
       className={styles.mapBox}
+      data-loading=""
       role="group"
       aria-label={`Map of Bucks County and the edge of Montgomery County, Pennsylvania, with a ${serviceRadius.miles}-mile circle around Jamison. Everywhere inside the circle is in our area.`}
     />

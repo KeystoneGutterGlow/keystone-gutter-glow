@@ -1,5 +1,6 @@
 import { machine } from "@/content/machine";
 import styles from "./Machine.module.css";
+import { MachineScene } from "./MachineScene";
 import { MachineTour } from "./MachineTour";
 
 // Sits right under "Vacuum vs. scoop": that section makes the case, this one shows the machine
@@ -16,7 +17,7 @@ export function Machine() {
             for this job. Here&rsquo;s how it works, one leaf at a time, and what a ladder and scoop leaves behind.
           </p>
         </header>
-        <MachineTour />
+        <MachineTour scene={<MachineScene />} />
         <div className={styles.outro}>
           <p>Figures are the manufacturer&rsquo;s published specs for this machine and pole kit.</p>
           <a href="#prices" className="btn btn--sky">

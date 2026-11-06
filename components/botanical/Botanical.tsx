@@ -2,6 +2,10 @@
 // mountain laurel (the state flower), oak and maple (what ends up in the gutters), ivy, and eastern
 // hemlock (the state tree) for the firewood pages. All decoration, so every one is hidden from screen readers.
 // Colors come from --bot-line and --bot-fill, so a section can restyle them. See DESIGN.md.
+//
+// Leaves and blossoms are drawn once, in <BotanicalDefs /> (rendered by the root layout), and every
+// plant places copies with <use>. Writing each leaf's outline out in full made the home page's HTML
+// about twice the size. The colour variables still reach the copies: they inherit from the <use>.
 
 type P = [number, number];
 
@@ -59,35 +63,46 @@ const SHAPES = {
   },
 };
 
-function Leaf({ kind, x = 0, y = 0, rot = 0, s = 1 }: { kind: keyof typeof SHAPES; x?: number; y?: number; rot?: number; s?: number }) {
-  const shape = SHAPES[kind];
-  return (
-    <g transform={`translate(${f(x)} ${f(y)}) rotate(${f(rot)}) scale(${s})`}>
-      <path d={shape.d} fill="var(--bot-fill)" stroke="var(--bot-line)" strokeWidth="1.2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      <path d={shape.rib} fill="none" stroke="var(--bot-line)" strokeWidth="0.8" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-    </g>
-  );
-}
-
-/** A mountain laurel blossom: a cup with five shallow lobes and a ring of ten dots inside. */
-function Blossom({ x, y, r }: { x: number; y: number; r: number }) {
+/** The shared shapes, once per page. Every plant below draws copies of these. */
+export function BotanicalDefs() {
+  // A mountain laurel blossom at radius 10: a cup with five shallow lobes and a ring of ten dots.
+  const R = 10;
   const outline: P[] = [];
-  for (let i = 0; i <= 40; i++) {
-    const a = (i / 40) * Math.PI * 2 - Math.PI / 2;
-    const rad = r * (0.9 + 0.1 * Math.cos(a * 5 + Math.PI / 2));
+  for (let i = 0; i <= 20; i++) {
+    const a = (i / 20) * Math.PI * 2 - Math.PI / 2;
+    const rad = R * (0.9 + 0.1 * Math.cos(a * 5 + Math.PI / 2));
     outline.push([Math.cos(a) * rad, Math.sin(a) * rad]);
   }
   const dots = Array.from({ length: 10 }, (_, i) => {
     const a = (i / 10) * Math.PI * 2;
-    return `M${f(Math.cos(a) * r * 0.58)} ${f(Math.sin(a) * r * 0.58)}h.01`;
+    return `M${f(Math.cos(a) * R * 0.58)} ${f(Math.sin(a) * R * 0.58)}h.01`;
   }).join("");
   return (
-    <g transform={`translate(${f(x)} ${f(y)})`}>
-      <path d={`M${f(outline[0]![0])} ${f(outline[0]![1])}${curve(outline)}Z`} fill="var(--bot-bloom, #fff)" stroke="var(--bot-line)" strokeWidth="1.1" vectorEffect="non-scaling-stroke" />
-      <circle r={r * 0.2} fill="none" stroke="var(--bot-line)" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
-      <path d={dots} stroke="var(--bot-line)" strokeWidth={Math.max(1.4, r * 0.13)} strokeLinecap="round" />
-    </g>
+    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true" focusable="false">
+      <defs>
+        {(Object.keys(SHAPES) as Array<keyof typeof SHAPES>).map((kind) => (
+          <g key={kind} id={`bot-${kind}`}>
+            <path d={SHAPES[kind].d} fill="var(--bot-fill)" stroke="var(--bot-line)" strokeWidth="1.2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            <path d={SHAPES[kind].rib} fill="none" stroke="var(--bot-line)" strokeWidth="0.8" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          </g>
+        ))}
+        <g id="bot-blossom">
+          <path d={`M${f(outline[0]![0])} ${f(outline[0]![1])}${curve(outline)}Z`} fill="var(--bot-bloom, #fff)" stroke="var(--bot-line)" strokeWidth="1.1" vectorEffect="non-scaling-stroke" />
+          <circle r={R * 0.2} fill="none" stroke="var(--bot-line)" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+          <path d={dots} stroke="var(--bot-line)" strokeWidth="1.6" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </g>
+      </defs>
+    </svg>
   );
+}
+
+function Leaf({ kind, x = 0, y = 0, rot = 0, s = 1 }: { kind: keyof typeof SHAPES; x?: number; y?: number; rot?: number; s?: number }) {
+  return <use href={`#bot-${kind}`} transform={`translate(${f(x)} ${f(y)}) rotate(${f(rot)}) scale(${+s.toFixed(3)})`} />;
+}
+
+/** A mountain laurel blossom of radius r (see BotanicalDefs). */
+function Blossom({ x, y, r }: { x: number; y: number; r: number }) {
+  return <use href="#bot-blossom" transform={`translate(${f(x)} ${f(y)}) scale(${+(r / 10).toFixed(3)})`} />;
 }
 
 function Art({ viewBox, className, children }: { viewBox: string; className?: string; children: React.ReactNode }) {

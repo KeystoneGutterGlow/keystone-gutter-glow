@@ -460,7 +460,17 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
                       }}
                     />
                   ) : (
-                    <div className={styles.calLoading}>Checking the schedule…</div>
+                    <div className={styles.calLoading} aria-busy="true">
+                      <span className="vh">Checking the schedule…</span>
+                      <div className={styles.skHead} aria-hidden="true">
+                        <span className="skel" />
+                      </div>
+                      <div className={styles.skGrid} aria-hidden="true">
+                        {Array.from({ length: 35 }, (_, i) => (
+                          <span key={i} className="skel" />
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   {dayOnly ? (

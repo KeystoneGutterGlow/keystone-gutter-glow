@@ -25,7 +25,7 @@
 
 /* ---------- Tour layout: text on the left, the drawing sticky on the right ---------- */
 
-.tour {
+.pin {
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
   column-gap: clamp(28px, 4vw, 64px);
@@ -316,6 +316,8 @@
   }
   .label,
   .chapterInner,
+  .chapter,
+  .chapter[data-on],
   .cut {
     transition: none;
   }
@@ -339,40 +341,97 @@
   color: var(--muted);
 }
 
-/* ---------- Narrow screens: the drawing sticks to the top, the chapters scroll under it ---------- */
+/* ---------- Narrow screens: the drawing and a caption pin together; chapters swap in place ----------
+   .tour is a tall scroll track. .pin sticks to the screen (above the bottom booking bar) while the
+   track scrolls behind it, and the script turns the distance scrolled into the chapter shown. */
 
 @media (max-width: 899px) {
   .tour {
-    display: block;
+    --pin-h: calc(100svh - var(--dock-clearance, 70px));
+    --step: 58svh;
+    height: calc(var(--pin-h) + (var(--n) - 1) * var(--step));
+  }
+  .pin {
+    position: sticky;
+    top: 0;
+    height: var(--pin-h);
+    display: flex;
+    flex-direction: column;
   }
   .stage {
-    z-index: 2;
-    top: 0;
-    height: 50svh;
-    min-height: 300px;
-    max-height: 520px;
-    margin: 0 calc(var(--gutter) * -1 + var(--lane, 0px));
+    position: relative;
+    top: auto;
+    flex: none;
+    align-self: stretch;
+    height: var(--stage-h, 50%);
+    min-height: 0;
+    max-height: none;
+    /* edge to edge, stopping at the menu pipe on the left */
+    margin: 0 calc(var(--gutter) * -1) 0 calc(var(--gutter) * -1 + var(--lane, 0px));
     border-width: 2px 0;
+  }
+  .chapters {
+    position: relative;
+    flex: 1;
+    min-height: 0;
   }
   .chapter,
   .chapter:first-child,
   .chapter:last-child {
+    position: absolute;
+    inset: 0;
+    display: block;
     min-height: 0;
-    align-items: flex-start;
-    padding: 36px 0 30vh;
+    padding: 16px 0 8px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition:
+      opacity 0.28s,
+      transform 0.28s var(--ease-out, ease-out),
+      visibility 0s 0.28s;
   }
-  .chapter:first-child {
-    padding-top: 28px;
+  .chapter[data-on] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition:
+      opacity 0.28s,
+      transform 0.28s var(--ease-out, ease-out),
+      visibility 0s;
   }
-  .chapter:last-child {
-    padding-bottom: 36px;
+  .pin[data-tight] .chapter[data-on] {
+    overflow-y: auto;
   }
   .chapterInner {
     padding-left: 0;
     border-left: 0;
   }
+  .num {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 8px;
+    font-size: 0.9375rem;
+  }
+  .title {
+    font-size: clamp(1.35rem, 1.1rem + 1.2vw, 1.7rem);
+    margin-bottom: 8px;
+  }
+  .body {
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .figs {
+    gap: 8px 20px;
+    margin-bottom: 12px;
+  }
   .fig dd {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
+  }
+  .byHand {
+    padding-top: 4px;
+    font-size: 0.875rem;
   }
   .labelText {
     font-size: 0.75rem;
@@ -384,8 +443,20 @@
     bottom: auto;
     left: 10px;
     padding: 4px 8px;
+    white-space: nowrap;
   }
   .bar {
     width: 48px;
+  }
+}
+
+/* Short phones: the figures repeat numbers already in the text, and the ladder line is the extra,
+   so both make way for the drawing */
+@media (max-width: 899px) and (max-height: 640px) {
+  .figs,
+  .byHand,
+  .num,
+  .bar {
+    display: none;
   }
 }

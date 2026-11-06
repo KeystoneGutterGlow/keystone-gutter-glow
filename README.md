@@ -102,7 +102,8 @@ The section after "Vacuum vs. scoop" (`components/machine/`) is a scroll-driven 
 
 - **Chapters are plain text** in `content/machine.ts`. Every figure there (3 × 1,200 W, 342.6 CFM, 95 in water lift, 16 gal stainless tank, 16 ft × 2 in hose, ten 4 ft carbon sections, 135° bend, 38 in, 52 lb) is from the manufacturer's published spec sheet, and the page says so under the tour.
 - **The drawing** (`MachineScene.tsx`) is one picture of the whole setup at true scale (50 units = 1 ft). `MachineTour.tsx` moves a camera over it by changing the SVG's viewBox as each chapter reaches the middle of the screen. `CAMERA`, `LEAF_AT` and `LABELS` in that file hold one entry per chapter, in chapter order, so adding a chapter means adding to all three.
-- **Phones** stack it: the drawing sticks to the top half of the screen and the chapters scroll under it.
+- **Phones and tablets** pin the drawing and a caption to the screen together while you scroll a track behind them. Each chapter swaps into the caption in place, so no text slides under the drawing. The script sizes the caption to the longest chapter and gives the drawing the rest. On short phones (under 640px tall) the figure row and the ladder line are hidden, since the numbers are already in the text. With scripts off, every chapter shows in a plain column.
+- **The drawing is server-rendered** and passed into the client component, so none of its code ships to the browser.
 - **Reduced motion:** the camera cuts between chapters instead of gliding, and the fans, exhaust, spin and debris stop.
 - The hero keeps its own unbranded drawing. The stand-in rig photo in "Vacuum vs. scoop" was removed, because it showed a different machine. A real photo of Jimmy's vacuum can go in later.
 
@@ -228,6 +229,13 @@ To turn it on: create a free Resend account (3,000 emails a month), verify keyst
 The service-area map uses Leaflet with OpenStreetMap's public tiles (`components/area/AreaMap.tsx`). There's no key and no cost. The tiles name the towns themselves. The only label the site adds is Jamison, which the tiles leave out at that zoom.
 
 **Service area.** Anything within 10 miles of the rounded center in `content/area.ts` counts. `areaZips` lists every ZIP whose Census 2020 ZIP-area center is inside the circle (33 of them, Jamison through Dublin, including Warminster, Horsham, Hatboro, Richboro, Southampton, Willow Grove and New Hope). That one list drives the "Do we come to you?" check, the booking form's out-of-area note and firewood delivery. Yardley (11.8 mi), Washington Crossing (11.0), Langhorne and Philadelphia 19116 (10.4) and Lumberville (10.1) fall just outside, so they're told to ask rather than refused. It only loads as it nears the screen, and the required attribution stays on it. Each visitor's browser requests the tiles from OpenStreetMap, which therefore sees their IP address, so the privacy policy should mention it. OpenStreetMap's tile servers are meant for light use, which suits a local business site. If traffic ever grows a lot, point the tile URL at a paid provider.
+
+## Loading and speed
+
+- **Skeletons.** Anything that arrives after the page shows a skeleton the shape of what's coming: the "Next opening" card and its phone line (placeholder text in the real styles, so nothing moves when the answer lands), the booking calendar, the map until its first tiles load, the firewood payment line, and `/firewood/order` while it checks the order (`loading.tsx`). They use `.skel` and `.skel-text` in `globals.css`, and the sheen stops under reduced motion.
+- **Plant drawings are drawn once.** `BotanicalDefs` (in the root layout) holds each leaf and blossom shape, and every plant places copies with `<use>`. Writing them out in full made the home page HTML about 486 KB. It's about 310 KB now.
+- **Fonts:** Zilla Slab 600 and 700, Atkinson Hyperlegible 400 and 700, all self-hosted by `next/font`.
+- **Measured on the production build (2026-11-06), a phone with 4× CPU slowdown and slow 4G:** main content shows in about 1.4 s, layout shift 0, about 294 KB transferred.
 
 ## SEO
 
