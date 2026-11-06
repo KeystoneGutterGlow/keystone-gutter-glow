@@ -70,6 +70,7 @@ All business content lives in `content/`. The pages, the APIs and the SEO markup
 |---|---|
 | `content/site.ts` | Name, phone, email, policies (reschedule window, return visit, late-cancel fee) |
 | `content/pricing.ts` | House types, prices, rinse add-on. **The server computes totals from this.** |
+| `content/machine.ts` | "Why choose Keystone Gutter Glow": the vacuum tour's chapters and the machine's specs. |
 | `content/booking.ts` | Scheduling mode, daily cap, start times, closed weekdays, blackout dates, lead time, horizon |
 | `content/firewood.ts` | Firewood sizes, prices, charges, delivery rules, policies, each with a confirmation status |
 | `content/season.ts` | The gutter/firewood switch |
@@ -92,6 +93,18 @@ One variable decides which business the site shows:
 | `firewood` | Firewood site | Gutter site at `/gutters`, with the booking flow intact. The mode switch is shown. |
 
 To change season: set `SITE_MODE` in Vercel and redeploy. Nothing changes on its own, and no date triggers it.
+
+**Production right now (2026-11-06):** `FIREWOOD_PREVIEW=true` is set on Production at Sam's request, so `/firewood`, the hero's "We also deliver firewood" link and the mode switch are live while `/` stays the gutter site. Checkout stays closed until Stripe is set up. Remove the variable and redeploy to hide firewood again.
+
+## Why choose Keystone Gutter Glow (the vacuum tour)
+
+The section after "Vacuum vs. scoop" (`components/machine/`) is a scroll-driven tour of Jimmy's machine, a Cyclone Classic Pro with the 40 ft carbon clamping pole kit. It follows one leaf from the gutter to the tank:
+
+- **Chapters are plain text** in `content/machine.ts`. Every figure there (3 × 1,200 W, 342.6 CFM, 95 in water lift, 16 gal stainless tank, 16 ft × 2 in hose, ten 4 ft carbon sections, 135° bend, 38 in, 52 lb) is from the manufacturer's published spec sheet, and the page says so under the tour.
+- **The drawing** (`MachineScene.tsx`) is one picture of the whole setup at true scale (50 units = 1 ft). `MachineTour.tsx` moves a camera over it by changing the SVG's viewBox as each chapter reaches the middle of the screen. `CAMERA`, `LEAF_AT` and `LABELS` in that file hold one entry per chapter, in chapter order, so adding a chapter means adding to all three.
+- **Phones** stack it: the drawing sticks to the top half of the screen and the chapters scroll under it.
+- **Reduced motion:** the camera cuts between chapters instead of gliding, and the fans, exhaust, spin and debris stop.
+- The hero keeps its own unbranded drawing. The stand-in rig photo in "Vacuum vs. scoop" was removed, because it showed a different machine. A real photo of Jimmy's vacuum can go in later.
 
 ## Booking
 
@@ -265,11 +278,12 @@ Everything factual came from the current site or the agreement. These items were
 - **Biography.** It publishes Jimmy's age and school, as Addendum A1 asks. He's a minor, so his parent or guardian should approve it, and the age needs updating when he turns 17. "No liabilities on anyone" is his wording and is a legal-sounding claim worth a second look.
 - **Service-origin address.** Only coordinates rounded to about half a mile are in the code (`serviceRadius` in `content/area.ts`). The address itself isn't in this repo or on the site.
 - **Late-cancel fee.** Addendum A1 says $50 inside 24 hours. It isn't shown until `lateCancelFeeDollars` is set in `content/site.ts`.
-- **"Ground-based" / ladder-free.** This is in the old site's schema markup, but its 2-story description also says "insured for elevated work". The copy says the pole reaches 32 ft and doesn't promise "no ladders".
+- **"Ground-based" / ladder-free.** This is in the old site's schema markup, but its 2-story description also says "insured for elevated work". The copy says the pole reaches 40 ft and that the pole does the reaching, so the cleaning is done from the ground. It doesn't promise "no ladders" outright.
+- **The vacuum kit.** The tour describes the Cyclone Classic Pro 16-gallon kit with the 40 ft carbon clamping poles, the exact listing Sam sent on 2026-11-06. The listing was on preorder that day, so confirm Jimmy has this machine before the page says he cleans with it.
 - **"Insured".** This is on the old site's trust bar and shown in the footer. Confirm it, and add a policy or registration number if he has one.
 - **Newtown.** It was only in the old site's hidden schema, not its visible town list. It's inside the 10-mile circle, so it's served. Yardley is outside the circle and is no longer listed.
 - **"Houses and townhomes only."** This is inferred from the site saying "residential" everywhere.
-- **Photos, coming from Jimmy.** His portrait next to the equipment, before-and-after pairs from real jobs, and his actual vacuum. The rig photo in "Vacuum vs. scoop" is a stand-in from the current site that looks like a UK manufacturer shot. The hero's drawing of the setup is unbranded and stays either way. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
+- **Photos, coming from Jimmy.** His portrait next to the equipment, before-and-after pairs from real jobs, and his actual vacuum. The old stand-in rig photo (a UK manufacturer shot) has been removed; the vacuum tour draws Jimmy's actual machine instead. The hero's drawing of the setup is unbranded and stays either way. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
 - **Removed from the old site** because nothing backs them up: the "5.0" rating (the reviews list was empty), "100% debris captured", and "2× more thorough".
 
 ## Agreement, Addendum A status

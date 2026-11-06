@@ -8,7 +8,7 @@ export interface NavItem {
 export const homeSections: NavItem[] = [
   { id: "services", label: "What we clean" },
   { id: "vacuum", label: "Vacuum vs. scoop" },
-  { id: "how", label: "How it works" },
+  { id: "machine", label: "Why Keystone" },
   { id: "prices", label: "Prices" },
   { id: "work", label: "Before & after" },
   { id: "jimmy", label: "Meet Jimmy" },

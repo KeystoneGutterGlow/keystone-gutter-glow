@@ -50,10 +50,13 @@ function Head() {
   );
 }
 
-/** The worker, and the foot of the pole where the hose joins it. Ground is y = 224. */
-function Operator() {
+/**
+ * The worker, and the foot of the pole where the hose joins it. Drawn around the middle of the
+ * pole at x = 0, standing on the ground at y = 224. Shared with the vacuum tour further down.
+ */
+export function OperatorFigure() {
   return (
-    <svg className={styles.operator} viewBox="-12 -2 104 228" aria-hidden="true" focusable="false">
+    <>
       {/* the pole's foot: a rubber cuff where the hose joins it (the hose itself is .hose, behind) */}
       <rect x="-7" y="204" width="14" height="19" rx="2.5" fill="#2b333c" stroke={OUTLINE} strokeWidth="1.2" />
       <path d="M-7 209H7M-7 214H7" stroke="#4f5a66" strokeWidth="1" />
@@ -97,6 +100,14 @@ function Operator() {
       <path d="M-6 34.5H2M-6 37.5H2" stroke={OUTLINE} strokeWidth="0.9" opacity="0.6" />
       <path d="M-6 96C-6 92 6 92 6.5 96V105C6.5 108 -6 108 -6 105Z" fill={SKIN} stroke={OUTLINE} strokeWidth="1.4" />
       <path d="M-6 99.5H2M-6 102.5H2" stroke={OUTLINE} strokeWidth="0.9" opacity="0.6" />
+    </>
+  );
+}
+
+function Operator() {
+  return (
+    <svg className={styles.operator} viewBox="-12 -2 104 228" aria-hidden="true" focusable="false">
+      <OperatorFigure />
     </svg>
   );
 }

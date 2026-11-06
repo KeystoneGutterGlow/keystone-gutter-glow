@@ -72,8 +72,13 @@ On the gutter site they stay in navy line and pale sky, so brown still only ever
 
 ## Motion
 
-- Smooth anchor scrolling, the downspout fill, step transitions in booking, and a slow suction animation in the vacuum cross-section, which shows the direction of flow. That's all of it.
+- Smooth anchor scrolling, the downspout fill, step transitions in booking, and a slow suction animation in the vacuum cross-section, which shows the direction of flow.
+- **The vacuum tour** ("Why choose Keystone Gutter Glow") is the one big moving piece, and it's earned: it explains the machine by following one leaf from the gutter, through the nozzle, down the pole and hose, round the cyclone and into the tank. The camera only moves when you scroll, holds still while you read each chapter, and glides between them. While the machine is "running" the motors spin, exhaust drifts, the tank's air spins and debris moves through the line. Labels are HTML over the drawing, so they stay a readable size at any zoom. Nothing fades or slides in on its own. That's the generic scroll-reveal the anti-AI checklist warns about.
 - Everything turns off under `prefers-reduced-motion`.
+
+## Section order
+
+Hero, What we clean, Vacuum vs. scoop, Why choose Keystone Gutter Glow (the vacuum tour), Prices, Before & after, Meet Jimmy, Where we work, Questions, Refer a neighbor, Book. "Vacuum vs. scoop" makes the argument and the tour right after it shows the machine that wins it. The old "How booking works" section was removed at Sam's request; what it said (Monday to Saturday, rescheduling, weather, paying after) is in the FAQ and the booking form.
 
 ## Winter mode (firewood)
 

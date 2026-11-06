@@ -1,6 +1,4 @@
-import Image from "next/image";
 import { rinse } from "@/content/pricing";
-import { site } from "@/content/site";
 import { Compare } from "./Compare";
 import { ScoopSection, VacuumSection } from "./CrossSection";
 import styles from "./Vacuum.module.css";
@@ -65,20 +63,6 @@ export function Vacuum() {
         />
 
         <div className={styles.lower}>
-          <figure className={styles.photo}>
-            <Image
-              src="/images/vacuum-rig-placeholder.jpg"
-              alt="A gutter vacuum in use: a long pole raised to the gutter, connected by hose to a steel tank on wheels on the lawn."
-              width={768}
-              height={1024}
-              sizes="(max-width: 899px) 100vw, 360px"
-            />
-            <span className={styles.standIn}>Stand-in photo</span>
-            <figcaption>
-              The setup: a carbon-fiber pole that reaches up to {site.poleReachFeet} feet, a hose, and a tank on wheels.
-            </figcaption>
-          </figure>
-
           <div className={styles.ledger}>
             <h3>Where it all goes</h3>
             <table>
@@ -104,13 +88,6 @@ export function Vacuum() {
               A vacuum isn&rsquo;t magic. Fine grit sticks to the bottom of a gutter, and water is what lifts it. That&rsquo;s
               what the ${rinse.price} rinse is for.
             </p>
-
-            <a href="#prices" className={`btn btn--sky ${styles.cta}`}>
-              What it costs for your house
-              <span className="arrow" aria-hidden="true">
-                ↓
-              </span>
-            </a>
           </div>
         </div>
       </div>

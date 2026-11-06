@@ -13,7 +13,7 @@ export const faqs: Faq[] = [
   },
   {
     q: "Is it safe on a two-story house?",
-    a: "Yes. The vacuum poles reach up to 32 feet, which covers the gutters on a normal two-story home. Taller or awkward houses go through a quick quote first so we can plan for them.",
+    a: "Yes. The carbon vacuum pole goes up to 40 feet, which covers a normal two-story home with room to spare. Taller or awkward houses go through a quick quote first so we can plan for them.",
   },
   {
     q: "What does a standard cleaning include?",

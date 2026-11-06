@@ -1,0 +1,391 @@
+/* "Why choose Keystone Gutter Glow": a light section after the navy "Vacuum vs. scoop", so the
+   two read as a pair: the argument, then the machine. */
+
+.machine {
+  background: #fff;
+  padding: clamp(72px, 9vw, 120px) 0 clamp(56px, 7vw, 96px);
+  border-bottom: 1px solid var(--alu-2);
+}
+
+.head {
+  max-width: 46rem;
+  margin-bottom: clamp(28px, 4vw, 48px);
+}
+.head h2 {
+  font-size: clamp(2.4rem, 1.5rem + 3vw, 4.2rem);
+  line-height: 1;
+  margin-bottom: 18px;
+}
+.head p {
+  margin: 0;
+  font-size: 1.1875rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---------- Tour layout: text on the left, the drawing sticky on the right ---------- */
+
+.tour {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  column-gap: clamp(28px, 4vw, 64px);
+}
+
+.stage {
+  grid-column: 2;
+  grid-row: 1;
+  position: sticky;
+  top: 24px;
+  height: calc(100vh - 48px);
+  min-height: 420px;
+  max-height: 900px;
+  align-self: start;
+  overflow: hidden;
+  background: #eaf2f8;
+  border: 2px solid var(--navy);
+}
+
+.scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.chapters {
+  grid-column: 1;
+  grid-row: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chapter {
+  min-height: 88vh;
+  display: flex;
+  align-items: center;
+  padding: 32px 0;
+}
+.chapter:first-child {
+  min-height: 70vh;
+  align-items: flex-start;
+  padding-top: 12px;
+}
+.chapter:last-child {
+  min-height: 80vh;
+}
+
+/* The chapter being shown gets a sky rule down its edge. Text keeps full contrast either way. */
+.chapterInner {
+  max-width: 30rem;
+  padding-left: 22px;
+  border-left: 3px solid var(--alu-2);
+  transition: border-color 0.3s;
+}
+.chapter[data-on] .chapterInner {
+  border-left-color: var(--sky);
+}
+
+.num {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 0 0 14px;
+  border: 2px solid var(--navy);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  line-height: 1;
+}
+.chapter[data-on] .num {
+  background: var(--sky);
+}
+
+.title {
+  font-size: clamp(1.6rem, 1.15rem + 1.3vw, 2.3rem);
+  line-height: 1.08;
+  margin-bottom: 14px;
+}
+
+.body {
+  margin: 0 0 20px;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+.figs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 26px;
+  margin: 0 0 20px;
+}
+.fig {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+.fig dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--sky-ink);
+}
+.fig dt {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted);
+  max-width: 14ch;
+}
+
+.byHand {
+  margin: 0;
+  padding: 10px 0 0 14px;
+  border-left: 3px solid var(--mud, #6b4a2e);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.byHand strong {
+  color: var(--navy);
+}
+
+/* ---------- Labels over the drawing ---------- */
+
+.labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.25s;
+  will-change: transform;
+}
+.label[data-on] {
+  opacity: 1;
+}
+.dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px;
+  border-radius: 50%;
+  background: var(--navy);
+  box-shadow: 0 0 0 2px #fff;
+}
+.labelText {
+  position: absolute;
+  top: 50%;
+  white-space: nowrap;
+  padding: 3px 8px;
+  background: #fff;
+  border: 1.5px solid var(--navy);
+  border-radius: 2px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--navy);
+  transform: translate(var(--nudge, 0px), -50%);
+}
+.labelText::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 1.5px;
+  background: var(--navy);
+}
+.label[data-side="right"] .labelText {
+  left: 18px;
+}
+.label[data-side="right"] .labelText::before {
+  right: 100%;
+}
+.label[data-side="left"] .labelText {
+  right: 18px;
+}
+.label[data-side="left"] .labelText::before {
+  left: 100%;
+}
+
+/* ---------- Where you are in the tour ---------- */
+
+.counter {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1.5px solid var(--navy);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.bar {
+  position: relative;
+  width: 72px;
+  height: 4px;
+  background: var(--alu-2);
+  overflow: hidden;
+}
+.bar span {
+  position: absolute;
+  inset: 0;
+  background: var(--sky);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+/* ---------- The running machine ---------- */
+
+.cut {
+  transition: opacity 0.2s;
+}
+.flow {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+[data-running] .flow {
+  opacity: 0.95;
+  animation: flow 0.4s linear infinite;
+}
+@keyframes flow {
+  to {
+    stroke-dashoffset: calc(var(--period, 9) * -1px);
+  }
+}
+.fan {
+  animation: spin 0.35s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.swirl ellipse {
+  animation: swirl 1.2s linear infinite;
+}
+.swirl ellipse:nth-child(2) {
+  animation-duration: 1.5s;
+}
+.swirl ellipse:nth-child(3) {
+  animation-duration: 1.9s;
+}
+@keyframes swirl {
+  to {
+    stroke-dashoffset: -5.4;
+  }
+}
+.exhaust path {
+  animation: puff 1.4s ease-out infinite;
+}
+.exhaust path:nth-child(2) {
+  animation-delay: 0.45s;
+}
+.exhaust path:nth-child(3) {
+  animation-delay: 0.9s;
+}
+@keyframes puff {
+  from {
+    opacity: 0.9;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fan,
+  .swirl ellipse,
+  .exhaust path,
+  [data-running] .flow {
+    animation: none;
+  }
+  .label,
+  .chapterInner,
+  .cut {
+    transition: none;
+  }
+}
+
+/* ---------- Outro ---------- */
+
+.outro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 32px;
+  margin-top: clamp(24px, 4vw, 48px);
+  padding-top: 22px;
+  border-top: 1px solid var(--alu-3);
+}
+.outro p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* ---------- Narrow screens: the drawing sticks to the top, the chapters scroll under it ---------- */
+
+@media (max-width: 899px) {
+  .tour {
+    display: block;
+  }
+  .stage {
+    z-index: 2;
+    top: 0;
+    height: 50svh;
+    min-height: 300px;
+    max-height: 520px;
+    margin: 0 calc(var(--gutter) * -1 + var(--lane, 0px));
+    border-width: 2px 0;
+  }
+  .chapter,
+  .chapter:first-child,
+  .chapter:last-child {
+    min-height: 0;
+    align-items: flex-start;
+    padding: 36px 0 30vh;
+  }
+  .chapter:first-child {
+    padding-top: 28px;
+  }
+  .chapter:last-child {
+    padding-bottom: 36px;
+  }
+  .chapterInner {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .fig dd {
+    font-size: 1.4rem;
+  }
+  .labelText {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+  }
+  /* The bottom of the drawing is where the action is, and labels favour the right, so the counter goes top left */
+  .counter {
+    top: 10px;
+    bottom: auto;
+    left: 10px;
+    padding: 4px 8px;
+  }
+  .bar {
+    width: 48px;
+  }
+}

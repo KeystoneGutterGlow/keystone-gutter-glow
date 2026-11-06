@@ -3,11 +3,11 @@ import { Booking } from "@/components/booking/Booking";
 import { Faq } from "@/components/faq/Faq";
 import { Footer } from "@/components/footer/Footer";
 import { Hero } from "@/components/hero/Hero";
+import { Machine } from "@/components/machine/Machine";
 import { MobileNav } from "@/components/nav/MobileNav";
 import { Rail } from "@/components/nav/Rail";
 import { Owner } from "@/components/owner/Owner";
 import { Pricing } from "@/components/pricing/Pricing";
-import { Process } from "@/components/process/Process";
 import { ReferStrip } from "@/components/refer/ReferStrip";
 import { ModeSwitch } from "@/components/season/ModeSwitch";
 import { Services } from "@/components/services/Services";
@@ -38,7 +38,7 @@ export function GutterHome() {
         <Hero />
         <Services />
         <Vacuum />
-        <Process />
+        <Machine />
         <Pricing />
         <Work />
         <Owner />

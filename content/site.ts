@@ -18,7 +18,7 @@ export const site = {
   // The current site says "Serving Jamison & surrounding areas".
   centerTown: "Jamison",
   // From the current FAQ: "specialized gutter vacuums that can reach up to 32ft".
-  poleReachFeet: 32,
+  poleReachFeet: 40,
   // From the current schema: "Ground-based vacuum gutter cleaning", "carbon fiber vacuum pole".
   // CONFIRM with Jimmy that ladders are genuinely not part of a normal visit before leaning on it harder.
   groundBased: true,
