@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnchorHTMLAttributes } from "react";
+import type { PlanFrequencyId } from "@/content/plans";
 import type { PackageId } from "@/content/pricing";
 import { BOOK_ID } from "@/content/nav";
 
@@ -8,6 +9,8 @@ export interface BookIntent {
   packageId?: PackageId;
   date?: string;
   slotId?: string;
+  /** A recurring plan to preselect in the booking form */
+  plan?: PlanFrequencyId;
 }
 
 export const BOOK_EVENT = "kgg:book";
@@ -20,6 +23,7 @@ export function BookLink({
   packageId,
   date,
   slotId,
+  plan,
   onClick,
   children,
   ...rest
@@ -29,7 +33,7 @@ export function BookLink({
       href={`#${BOOK_ID}`}
       onClick={(e) => {
         onClick?.(e);
-        const detail: BookIntent = { packageId, date, slotId };
+        const detail: BookIntent = { packageId, date, slotId, plan };
         window.dispatchEvent(new CustomEvent<BookIntent>(BOOK_EVENT, { detail }));
       }}
       {...rest}

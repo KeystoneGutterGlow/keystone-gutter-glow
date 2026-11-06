@@ -143,14 +143,12 @@
   color: var(--navy);
 }
 
+/* The firewood button, the same size as "Book a cleaning" */
 .more {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 26px;
   margin: 0;
-}
-.why {
-  font-size: 0.9875rem;
 }
 
 .side {
@@ -387,7 +385,8 @@
   .actions {
     gap: 14px;
   }
-  .actions :global(.btn) {
+  .actions :global(.btn),
+  .more :global(.btn) {
     width: 100%;
     min-height: 56px;
   }

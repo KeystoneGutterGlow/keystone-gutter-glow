@@ -13,7 +13,7 @@ export function ModeSwitch({ links, current, floating }: { links: ModeLinks; cur
       <Link href={links.gutterHref} prefetch={false} aria-current={current === "gutter" ? "page" : undefined}>
         Gutters
       </Link>
-      <Link href={links.firewoodHref} prefetch={false} aria-current={current === "firewood" ? "page" : undefined}>
+      <Link href={links.firewoodHref} prefetch={false} data-fire="" aria-current={current === "firewood" ? "page" : undefined}>
         Firewood
       </Link>
     </nav>

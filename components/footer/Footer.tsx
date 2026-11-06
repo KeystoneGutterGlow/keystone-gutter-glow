@@ -35,7 +35,11 @@ export function Footer({ onHome = true }: { onHome?: boolean }) {
           <a href={h("prices")}>Prices</a>
           <a href={h("faq")}>Questions</a>
           <Link href="/referred">Refer a neighbor</Link>
-          {links && <Link href={links.firewoodHref} prefetch={false}>Firewood delivery</Link>}
+          {links && (
+            <Link href={links.firewoodHref} prefetch={false} className={styles.fire}>
+              Firewood delivery
+            </Link>
+          )}
         </nav>
 
         <p className={styles.policy}>

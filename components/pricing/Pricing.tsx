@@ -1,8 +1,7 @@
 import { BookLink } from "@/components/BookLink";
-import { PlanDialog } from "@/components/plan/PlanDialog";
+import { planFrequencies, recommendedPlan } from "@/content/plans";
 import { packages, priceLabel, rinse } from "@/content/pricing";
 import { site } from "@/content/site";
-import { planRequestsOpen } from "@/lib/plan/open";
 import { House } from "./Houses";
 import styles from "./Pricing.module.css";
 
@@ -63,24 +62,29 @@ export function Pricing() {
           </p>
         </div>
 
+        {/* Each button picks that plan in the booking form below and jumps to it. The plan travels
+            with the booking, so this works with or without email set up. */}
         <div className={styles.plan}>
-          {planRequestsOpen() ? (
-            <>
-              <p>
-                <strong>Want it on a schedule?</strong> Every 3, 4 or 6 months, or once a year. We recommend every 6
-                months.
-              </p>
-              <PlanDialog className="btn">Set up a recurring plan</PlanDialog>
-            </>
-          ) : (
-            <>
-              <p>
-                <strong>Want it on a schedule?</strong> Every 3, 4 or 6 months, or once a year. We recommend every 6
-                months. You choose when you book.
-              </p>
-              <BookLink className="btn">Book and pick a plan</BookLink>
-            </>
-          )}
+          <p>
+            <strong>Want it on a schedule?</strong> Every 3, 4 or 6 months, or once a year. We recommend every 6
+            months. Pick one and book the first cleaning.
+          </p>
+          <BookLink className="btn" plan={recommendedPlan}>
+            Set up a recurring plan
+            <span className="arrow" aria-hidden="true">
+              →
+            </span>
+          </BookLink>
+          <ul className={styles.planChoices} aria-label="Or pick how often">
+            {planFrequencies.map((f) => (
+              <li key={f.id}>
+                <BookLink className={styles.planChoice} plan={f.id}>
+                  {f.label}
+                  {f.id === recommendedPlan && <span className={styles.planRec}>· recommended</span>}
+                </BookLink>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

@@ -2,6 +2,10 @@
 
 :root {
   --navy: #0d2a4e;
+  /* Firewood's red. Anything that leads to firewood uses it, so it stands out on the gutter site. */
+  --fire: #b3261e;
+  --fire-hover: #c73a2f;
+  --fire-ledge: #7e140c;
   --navy-deep: #081b33;
   --navy-line: #24476f;
   --sky: #3bb0ee;
@@ -244,6 +248,18 @@ section[id] {
 }
 .btn--sky:active {
   box-shadow: 0 1px 0 var(--sky-ledge);
+}
+
+.btn--fire {
+  background: var(--fire);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--fire-ledge);
+}
+.btn--fire:hover {
+  background: var(--fire-hover);
+}
+.btn--fire:active {
+  box-shadow: 0 1px 0 var(--fire-ledge);
 }
 
 .btn--wide {

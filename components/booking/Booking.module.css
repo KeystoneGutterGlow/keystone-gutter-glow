@@ -238,6 +238,29 @@
   padding: 14px 16px 16px;
   border: 1.5px dashed var(--alu-3);
   min-width: 0;
+  scroll-margin-top: 24px;
+}
+/* Arrived from a plan button: the plan question is marked as already answered */
+.repeat[data-picked] {
+  border: 2px solid var(--sky);
+  background: var(--sky-pale, #e7f5fd);
+}
+
+.planPicked {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  background: var(--sky-pale, #e7f5fd);
+  border-left: 4px solid var(--sky);
+  font-size: 0.9875rem;
+  line-height: 1.45;
+}
+.planChange {
+  font-weight: 700;
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: var(--sky);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 .repeat legend {
   padding: 0 6px;

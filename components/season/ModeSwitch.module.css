@@ -27,6 +27,14 @@
 .switch[data-current="firewood"] a[aria-current] {
   background: var(--sky);
 }
+/* On the gutter site the Firewood side is red, so it catches the eye */
+.switch a[data-fire]:not([aria-current]) {
+  background: var(--fire);
+  color: #fff;
+}
+.switch a[data-fire]:not([aria-current]):hover {
+  background: var(--fire-hover);
+}
 
 /* Desktop: at the top right of the page, scrolling away with it so it never sits over the
    content further down. Phones get the same switch in the header row instead. */

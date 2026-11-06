@@ -141,6 +141,36 @@
   margin: 0;
   line-height: 1.5;
 }
+.planChoices {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.planChoice {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1.5px solid var(--navy);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+.planChoice:hover {
+  background: var(--sky-pale, #e7f5fd);
+}
+.planRec {
+  margin-left: 0.35em;
+  font-weight: 400;
+  color: var(--muted);
+}
 
 /* ---------- Phone: tap-to-book rows ---------- */
 

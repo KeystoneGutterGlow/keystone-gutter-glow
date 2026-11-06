@@ -75,6 +75,18 @@
   text-decoration-color: var(--sky);
   text-underline-offset: 4px;
 }
+.links a.fire {
+  justify-self: start;
+  margin-top: 6px;
+  padding: 8px 14px;
+  background: var(--fire);
+  border-radius: 2px;
+  box-shadow: 0 2px 0 var(--fire-ledge);
+}
+.links a.fire:hover {
+  background: var(--fire-hover);
+  text-decoration: none;
+}
 
 .policy {
   margin: 0;

@@ -145,7 +145,8 @@ No database change is needed: the app sends its cap with each booking, and the d
 There are two ways in, both offering Jimmy's four frequencies with every 6 months recommended (`content/plans.ts`). Nothing is scheduled or billed either way, as Addendum A1 requires.
 
 - **While booking.** The house step asks "Want this on a schedule?", defaulting to just this once. The choice goes in the booking's notes, so it reaches Jimmy with the booking and needs no database change.
-- **Without booking.** "Set up a recurring plan" under Prices opens a dialog that posts to `/api/plan-requests`, which emails Jimmy. That email is the only record, so this path needs `RESEND_API_KEY` and `EMAIL_FROM`. A real deployment without them doesn't show the button at all (`lib/plan/open.ts`): Prices says "You choose when you book" and links to booking instead, and the booking confirmation drops "Make it recurring". A demo deployment keeps the button and says plainly that nothing was sent.
+- **From Prices.** "Set up a recurring plan" and the four frequency buttons under Prices pick that plan in the booking form, jump to it, and say so at the top ("Every 3 months plan selected…"). The plan then travels with the booking, so these work on every deployment, with or without email (`BookLink`'s `plan` intent).
+- **After booking without a plan.** "Make it recurring" on the confirmation opens a dialog that posts to `/api/plan-requests`, which emails Jimmy. That email is the only record, so this path needs `RESEND_API_KEY` and `EMAIL_FROM`. A real deployment without them doesn't show the button at all (`lib/plan/open.ts`): Prices says "You choose when you book" and links to booking instead, and the booking confirmation drops "Make it recurring". A demo deployment keeps the button and says plainly that nothing was sent.
 
 ## Database setup
 

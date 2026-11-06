@@ -77,6 +77,10 @@ On the gutter site they stay in navy line and pale sky, so brown still only ever
 - Loading states are skeletons in the site's own pale aluminium, the shape of what's coming, with a slow sheen. No spinners.
 - Everything turns off under `prefers-reduced-motion`.
 
+## Firewood links are red
+
+Everything on the gutter site that leads to firewood uses firewood's red (`--fire`): the Firewood side of the Gutters/Firewood switch, the hero's "We also deliver firewood" button (the same size as "Book a cleaning"), the footer's "Firewood delivery" button, and the firewood link in the phone menu. Red never appears elsewhere on the gutter site, so it reads as "the other business" at a glance.
+
 ## Section order
 
 Hero, What we clean, Vacuum vs. scoop, Why choose Keystone Gutter Glow (the vacuum tour), Prices, Before & after, Meet Jimmy, Where we work, Questions, Refer a neighbor, Book. "Vacuum vs. scoop" makes the argument and the tour right after it shows the machine that wins it. The old "How booking works" section was removed at Sam's request; what it said (Monday to Saturday, rescheduling, weather, paying after) is in the FAQ and the booking form.

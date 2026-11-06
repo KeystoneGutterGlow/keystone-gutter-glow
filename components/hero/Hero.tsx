@@ -40,16 +40,16 @@ export function Hero() {
             </p>
           </div>
           <NextOpeningLine />
-          <p className={styles.more}>
-            <a href="#vacuum" className={`textlink ${styles.why}`}>
-              Why a vacuum beats a scoop
-            </a>
-            {links && (
-              <Link href={links.firewoodHref} prefetch={false} className={`textlink ${styles.why}`}>
+          {links && (
+            <p className={styles.more}>
+              <Link href={links.firewoodHref} prefetch={false} className="btn btn--fire">
                 We also deliver firewood
+                <span className="arrow" aria-hidden="true">
+                  →
+                </span>
               </Link>
-            )}
-          </p>
+            </p>
+          )}
         </div>
 
         <div className={styles.side}>

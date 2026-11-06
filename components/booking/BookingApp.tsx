@@ -62,6 +62,8 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
   const [step, setStep] = useState<Step>(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [errors, setErrors] = useState<FieldErrors>({});
+  /** Set when a recurring-plan button sent the visitor here */
+  const [planPicked, setPlanPicked] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<Confirmation | null>(null);
@@ -125,10 +127,13 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
         packageId: intent.packageId ?? d.packageId,
         date: intent.date ?? d.date,
         slotId: intent.date ? (intent.slotId ?? null) : d.slotId,
+        plan: intent.plan ?? d.plan,
       }));
       if (intent.date) setMonth(monthStart(intent.date));
-      // A link can preselect the house or day, but booking always starts on the house step.
-      if (intent.packageId || intent.date) go(0);
+      // A plan button says so at the top of the form, where the page lands.
+      if (intent.plan) setPlanPicked(true);
+      // A link can preselect the house, day or plan, but booking always starts on the house step.
+      if (intent.packageId || intent.date || intent.plan) go(0);
     };
     window.addEventListener(BOOK_EVENT, onIntent);
     return () => window.removeEventListener(BOOK_EVENT, onIntent);
@@ -343,6 +348,15 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
 
           <div key={step} className={styles.stepPane}>
             {/* ---------------- 1. House ---------------- */}
+            {step === 0 && planPicked && draft.plan && (
+              <p className={styles.planPicked} role="status">
+                <strong>{getPlanFrequency(draft.plan)?.label} plan selected.</strong> Pick your house and a day for the first
+                cleaning, and Jimmy will set up the rest with you.{" "}
+                <a href={`#${uid}-plan`} className={styles.planChange}>
+                  Change it
+                </a>
+              </p>
+            )}
             {step === 0 && (
               <fieldset className={styles.fieldset} aria-describedby={errors.packageId ? `${uid}-pkg-err` : undefined}>
                 <legend>
@@ -397,7 +411,12 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
                   </span>
                 </label>
 
-                <fieldset className={styles.repeat} aria-describedby={`${uid}-repeat-why`}>
+                <fieldset
+                  id={`${uid}-plan`}
+                  className={styles.repeat}
+                  data-picked={(planPicked && draft.plan) || undefined}
+                  aria-describedby={`${uid}-repeat-why`}
+                >
                   <legend>Want this on a schedule?</legend>
                   <div className={styles.repeatOpts}>
                     {[{ id: "", label: "Just this once" }, ...planFrequencies].map((f) => (
