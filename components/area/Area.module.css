@@ -110,6 +110,28 @@
   color: var(--muted);
 }
 
+/* Every place inside the circle, from content/area.ts, as one wrapped line of names */
+.townsTitle {
+  margin: 22px 0 6px;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.towns {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.towns li {
+  display: inline;
+}
+.towns li:not(:last-child)::after {
+  content: ", ";
+}
+
 /* ---------- ZIP check ---------- */
 
 .check label {

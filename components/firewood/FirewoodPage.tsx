@@ -6,8 +6,9 @@ import { Rail } from "@/components/nav/Rail";
 import { ModeSwitch } from "@/components/season/ModeSwitch";
 import { firewood, firewoodExtras, firewoodMethods, firewoodProducts, firewoodStartingPrice, type Confirmable } from "@/content/firewood";
 import { firewoodSections, ORDER_ID } from "@/content/nav";
-import { modeLinks, type ModeLinks } from "@/content/season";
+import { getSiteMode, modeLinks, type ModeLinks } from "@/content/season";
 import { site } from "@/content/site";
+import { firewoodJsonLd } from "@/lib/schema";
 import { HemlockBough } from "@/components/botanical/Botanical";
 import { CordBand, CordDefs, cordDrawingWidth, CordStack } from "./CordStacks";
 import styles from "./Firewood.module.css";
@@ -20,7 +21,7 @@ import { HeroScene, HeroWoods, TreeRings, Treeline } from "./Scene";
 // was. The logs catch fire as you scroll, down to the order form. A woodpile band and a dark board
 // of charges give the page its weight, and it ends at the edge of the hemlocks.
 
-const description = `Firewood delivered and stacked in Bucks County. A quarter cord starts at $${firewoodStartingPrice}. Pick a delivery date and tell us where you want it.`;
+const description = `Year-round firewood delivered and stacked near Jamison, PA, in central Bucks County. Quarter, half and full cords; a quarter cord is $${firewoodStartingPrice}. Order online.`;
 
 export function firewoodMetadata(canonical: string): Metadata {
   return {
@@ -34,6 +35,11 @@ export function firewoodMetadata(canonical: string): Metadata {
       title: "Firewood delivered and stacked in Bucks County",
       description,
       locale: "en_US",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Firewood delivered and stacked in Bucks County",
+      description,
     },
   };
 }
@@ -191,6 +197,13 @@ export function FirewoodPage() {
 
       <Treeline className={styles.treeline} />
       <FirewoodFooter links={links} />
+      <script
+        type="application/ld+json"
+        // Built from our own content files, so this is safe to inline.
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(firewoodJsonLd(getSiteMode() === "firewood" ? "/" : "/firewood")).replace(/</g, "\\u003c"),
+        }}
+      />
     </div>
   );
 }

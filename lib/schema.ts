@@ -1,20 +1,48 @@
-import { areaPlaces } from "@/content/area";
+import { areaPlaces, serviceRadius } from "@/content/area";
 import { faqs } from "@/content/faqs";
 import { packages, rinse } from "@/content/pricing";
 import { site } from "@/content/site";
 import { publicUrl } from "./env";
 
-// JSON-LD for the home page. Everything is built from content/, so prices, towns and FAQs
-// in the markup can't drift from what's on the page.
-// No street address is published: Keystone works as a service-area business. If a public
-// business address exists, add it under `address` on the business node.
+// JSON-LD for the gutter and firewood pages. Everything is built from content/, so prices, towns
+// and FAQs in the markup can't drift from what's on the page, and every URL comes from publicUrl.
+// No street address, opening hours, coordinates, ratings or reviews are published: Keystone is a
+// service-area business and none of those are confirmed. If a public business address or real
+// reviews exist later, add them to the business node.
+
+const bizId = () => `${publicUrl}/#business`;
+
+/** Every place inside the 10-mile circle (content/area.ts), plus the two counties it covers. */
+function areaServed() {
+  return [
+    { "@type": "AdministrativeArea", name: `${site.county}, ${site.state}` },
+    { "@type": "AdministrativeArea", name: `Montgomery County, ${site.state}` },
+    ...areaPlaces.map((name) => ({ "@type": "Place", name: `${name}, ${site.state}` })),
+  ];
+}
+
+function businessNode() {
+  return {
+    "@type": "HomeAndConstructionBusiness",
+    "@id": bizId(),
+    name: site.legalName,
+    alternateName: site.name,
+    url: `${publicUrl}/`,
+    logo: `${publicUrl}/images/keystone-logo.png`,
+    image: `${publicUrl}/opengraph-image`,
+    telephone: site.phone.schema,
+    email: site.email,
+    priceRange: `$${Math.min(...packages.map((p) => p.price))}+`,
+    description: `Residential gutter cleaning by vacuum within ${serviceRadius.miles} miles of Jamison, PA: central Bucks County and the nearby corner of Montgomery County. Every gutter run vacuumed, downspouts cleared and flow-tested, before-and-after photos, and online booking. Firewood delivery too.`,
+    areaServed: areaServed(),
+    founder: { "@type": "Person", name: site.owner },
+    knowsAbout: ["Gutter cleaning", "Gutter vacuuming", "Downspout clearing", "Gutter rinsing", "Firewood delivery"],
+  };
+}
 
 export function homeJsonLd() {
   const bizId = `${publicUrl}/#business`;
-  const areaServed = [
-    { "@type": "AdministrativeArea", name: `${site.county}, ${site.state}` },
-    ...areaPlaces.map((name) => ({ "@type": "Place", name: `${name}, ${site.state}` })),
-  ];
+  const areaServed_ = areaServed();
 
   const offers = [
     ...packages.map((p) => ({
@@ -46,21 +74,7 @@ export function homeJsonLd() {
         publisher: { "@id": bizId },
       },
       {
-        "@type": "HomeAndConstructionBusiness",
-        "@id": bizId,
-        name: site.legalName,
-        alternateName: site.name,
-        url: `${publicUrl}/`,
-        logo: `${publicUrl}/images/keystone-logo.png`,
-        image: `${publicUrl}/opengraph-image`,
-        telephone: site.phone.schema,
-        email: site.email,
-        priceRange: `$${Math.min(...packages.map((p) => p.price))}+`,
-        description:
-          "Residential gutter cleaning by vacuum in Jamison, Doylestown, Warwick and nearby Bucks County towns. Downspouts cleared and tested, before-and-after photos, online booking.",
-        areaServed,
-        founder: { "@type": "Person", name: site.owner },
-        knowsAbout: ["Gutter cleaning", "Gutter vacuuming", "Downspout clearing", "Gutter rinsing"],
+        ...businessNode(),
         potentialAction: {
           "@type": "ReserveAction",
           target: { "@type": "EntryPoint", urlTemplate: `${publicUrl}/#book` },
@@ -71,11 +85,11 @@ export function homeJsonLd() {
         "@type": "Service",
         "@id": `${publicUrl}/#gutter-cleaning`,
         serviceType: "Gutter cleaning",
-        name: "Vacuum gutter cleaning",
+        name: "Residential gutter cleaning by vacuum",
         description:
-          "Every gutter run vacuumed out, downspouts cleared and flow-tested, and before-and-after photos. Optional rinse.",
+          "Every gutter run vacuumed out from the ground with a carbon pole, downspouts cleared and flow-tested, and before-and-after photos. Optional rinse.",
         provider: { "@id": bizId },
-        areaServed,
+        areaServed: areaServed_,
         offers,
       },
       {
@@ -89,4 +103,33 @@ export function homeJsonLd() {
       },
     ],
   };
+}
+
+/** JSON-LD for the firewood page. `path` is where it's served: /firewood, or / in firewood mode. */
+export function firewoodJsonLd(path: string) {
+  const pageUrl = path === "/" ? `${publicUrl}/` : `${publicUrl}${path}`;
+  const graph: Record<string, unknown>[] = [
+    businessNode(),
+    {
+      "@type": "Service",
+      "@id": `${pageUrl}#firewood-delivery`,
+      serviceType: "Firewood delivery",
+      name: "Firewood delivered and stacked",
+      description:
+        "Split firewood delivered and stacked where you want it, all year, in quarter, half and full cords. Order online with a delivery date at least a week out.",
+      provider: { "@id": bizId() },
+      areaServed: areaServed(),
+      url: pageUrl,
+    },
+  ];
+  if (path !== "/") {
+    graph.push({
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Gutter cleaning", item: `${publicUrl}/` },
+        { "@type": "ListItem", position: 2, name: "Firewood delivery", item: pageUrl },
+      ],
+    });
+  }
+  return { "@context": "https://schema.org", "@graph": graph };
 }

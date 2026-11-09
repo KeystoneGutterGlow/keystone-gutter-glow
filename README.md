@@ -51,8 +51,9 @@ All are documented in [.env.example](.env.example). All are server-side. Static 
 | `STRIPE_WEBHOOK_SECRET` | Verifies webhooks. Checkout stays closed without it. | checkout off |
 | `STRIPE_ALLOW_LIVE_PAYMENTS` | One of four requirements for real payments. Leave unset. | off |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Turn on booking and order emails. | no email |
-| `SITE_URL` | Public URL for links and Stripe's return page. | Vercel domain |
-| `ALLOW_INDEXING` | `true` lets search engines in. Real domain only. | noindex |
+| `SITE_URL` | The canonical address: canonical tags, sitemap, robots.txt, social cards, JSON-LD and Stripe's return page all use it. Once set on Production, the old `*.vercel.app` production address redirects to it. | Vercel production domain |
+| `ALLOW_INDEXING` | `true` lets search engines index the site. Unset means `noindex` everywhere. | noindex |
+| `GOOGLE_SITE_VERIFICATION` | The token from Search Console's "HTML tag" method, added as a meta tag on every page. | none |
 
 ## Deploying
 
@@ -60,7 +61,7 @@ The site is set up for Vercel: import the repo, no build settings needed (`verce
 
 - **Set `BOOKING_DEMO_MODE=true` on the mockup project before merging this branch.** Production builds no longer fall back to demo data on their own. Without Supabase or that variable, the booking section shows a call-us message and takes no bookings. That's deliberate: a real customer's booking should never land in memory and vanish.
 - **Indexing is off by default.** Every page is `noindex`, responses carry `X-Robots-Tag`, and `robots.txt` disallows everything, so previews can't compete with the live site in Google. When the real domain points here, set `ALLOW_INDEXING=true` and redeploy.
-- **Links follow the deployment.** Canonical, Open Graph and schema URLs use Vercel's production domain, which becomes keystonegutterglow.com once that domain is attached. `SITE_URL` forces a value.
+- **Links follow the deployment.** Canonical, Open Graph, sitemap and schema URLs all come from one value, `publicUrl` in `lib/env.ts`: `SITE_URL` if set, otherwise Vercel's production domain. Previews use the production address too, so a preview is never treated as the canonical site. No page hard-codes an address.
 
 ## Where to edit business content
 
@@ -240,10 +241,55 @@ The service-area map uses Leaflet with OpenStreetMap's public tiles (`components
 
 ## SEO
 
-- One H1, H2 per section, and a `HomeAndConstructionBusiness` + `Service` (with real prices) + `FAQPage` + `WebSite` JSON-LD graph built from `content/`.
-- Canonical URLs, Open Graph and Twitter cards, and a generated share image at `/opengraph-image`.
-- `robots.txt` and `sitemap.xml` are generated. `/referred` is `noindex` and left out of the sitemap until `referral.indexable` is true.
-- No street address is published (service-area business). Add one under `address` in `lib/schema.ts` if Keystone has a public one.
+**What's in place**
+
+- **Pages.** `/` is the gutter-cleaning page (title "Gutter Cleaning in Bucks County, PA", one H1, H2 per section). `/firewood` is the firewood page with its own title, description and share card. There's deliberately no separate `/gutter-cleaning` page: the home page already is that page, and a second one would repeat it and split Google's signals between two URLs.
+- **Metadata.** Every page has a unique title and description, a canonical URL, Open Graph and Twitter cards with generated share images (`/opengraph-image`, `/firewood/opengraph-image`), and `lang="en-US"`. Shared defaults live in `app/layout.tsx`.
+- **JSON-LD** (`lib/schema.ts`), built from `content/` so it can't drift from the page:
+  - Home: `WebSite`, `HomeAndConstructionBusiness`, a gutter-cleaning `Service` with real prices, and `FAQPage`.
+  - Firewood: the business, a firewood-delivery `Service`, and a `BreadcrumbList`.
+  - `areaServed` lists Bucks and Montgomery Counties and every place inside the 10-mile circle.
+  - Not included, because none of them are confirmed: street address, coordinates, opening hours, ratings and reviews. `tests/seo.test.ts` fails if any of them appear.
+  - The FAQ markup is valid, but Google currently shows FAQ rich results only for government and health sites, so don't expect them.
+- **Crawling.** `robots.txt` and `sitemap.xml` are generated. When indexing is on, robots.txt allows everything except `/api/` and `/firewood/order`, and points at the sitemap. The sitemap lists `/`, plus `/firewood` whenever firewood is public (or `/gutters` in firewood mode). `/referred` stays `noindex` and out of the sitemap until `referral.indexable` is true, because its content is still placeholder. `/firewood/order` is `noindex`.
+- **Local content.** The "Where we work" section lists every town inside the circle, from the same ZIP data the ZIP check uses. The FAQ answers cost, how often and which towns, built from `content/` so the answers can't drift.
+
+**Indexing is currently OFF on production (2026-11-09).** `ALLOW_INDEXING` isn't set, so every page is `noindex` and robots.txt blocks crawling. It stays off until these are sorted, because indexing brings real customers:
+1. Email isn't set up, so a booking made on the site reaches the database but nobody is told.
+2. There are no privacy, terms or cancellation pages yet, though the site takes names, addresses and phone numbers.
+3. The final domain isn't connected. Indexing the `.vercel.app` address now builds Google's history on an address that will later redirect.
+
+To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. robots.txt, the meta robots tag and the `X-Robots-Tag` header all follow that one variable.
+
+**Connecting the custom domain** (nothing in the code changes):
+1. In Vercel, open the project, then Settings, then Domains. Add the domain, and add the DNS records Vercel shows at the domain's registrar.
+2. Once Vercel says the domain is valid, set `SITE_URL=https://<the domain>` on Production. Use the exact form you want as canonical, with or without `www`. Set it only after the domain works, because from the next deploy the `.vercel.app` production address redirects to it.
+3. Set `ALLOW_INDEXING=true` on Production, if the list above is done.
+4. Redeploy production.
+5. Check:
+   - `https://keystone-gutter-glow.vercel.app/` answers 308 and points to the domain. API routes deliberately don't redirect.
+   - `https://<domain>/robots.txt` shows `Allow: /` and the sitemap line.
+   - `https://<domain>/sitemap.xml` lists the domain's URLs.
+   - A page's canonical tag shows the domain.
+6. Elsewhere:
+   - Point Stripe's webhook at `https://<domain>/api/stripe/webhook`.
+   - Verify the domain in Resend and set `EMAIL_FROM` to an address on it.
+   - Add the domain to Search Console (below).
+
+**Google Search Console** (Jimmy's Google account; can't be done from here):
+1. In Search Console, add a **Domain** property for the custom domain, and verify it with the DNS TXT record Google shows.
+   - Or add a URL-prefix property, choose the "HTML tag" method, and put the token in `GOOGLE_SITE_VERIFICATION` on Production, then redeploy.
+2. Submit `https://<domain>/sitemap.xml` under Sitemaps.
+3. Use URL Inspection on the home page and press "Request indexing".
+4. Run the home page through Google's Rich Results Test, which needs the site to be crawlable.
+
+**Google Business Profile** (Jimmy has to do this himself, from his Google account; it needs verification by Google):
+- Create the profile as a **service-area business**, so the home address stays hidden. Pick the category "Gutter cleaning service".
+- Add the service area: the towns and ZIPs in `content/area.ts`, or "within 10 miles of Jamison".
+- Add the phone number (214) 642-5081, the website address, and the hours he actually works (bookings run Monday to Saturday).
+- Add real photos of his work and his vacuum.
+- Ask real customers for Google reviews after each job. Don't add reviews or ratings to the site's markup unless they're real and shown on the page.
+- Add "Firewood delivery" as a second service, and keep the business name exactly as it appears on the site.
 
 ## Production launch checklist
 
@@ -265,7 +311,8 @@ The service-area map uses Leaflet with OpenStreetMap's public tiles (`components
 - [ ] Daily job cap confirmed (four or three), and `content/booking.ts` updated
 - [ ] Email set up, so booking notices and recurring plan requests reach Jimmy (the stand-alone plan button stays hidden until then)
 - [ ] Terms, privacy and cancellation pages added, with Jimmy's approval
-- [ ] `ALLOW_INDEXING=true` and `SITE_URL` set on the real domain, and `BOOKING_DEMO_MODE` removed
+- [ ] Custom domain connected and `SITE_URL` set, then `ALLOW_INDEXING=true` (see SEO, "Connecting the custom domain"), and `BOOKING_DEMO_MODE` removed
+- [ ] Search Console verified, sitemap submitted; Google Business Profile created as a service-area business
 
 **Firewood, before the season**
 - [ ] Every group in `content/firewood.ts` answered and marked `confirmed`

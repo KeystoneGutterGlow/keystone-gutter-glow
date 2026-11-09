@@ -6,7 +6,7 @@ import { getSiteMode } from "@/content/season";
 
 // "/" shows whichever business content/season.ts says is in season. Gutters unless SITE_MODE says otherwise.
 
-const description = `Gutter cleaning by vacuum for homes in Jamison, Doylestown, Warwick and nearby Bucks County towns. From $${startingPrice}, pay after the job, book a day online.`;
+const description = `Residential gutter cleaning by vacuum within 10 miles of Jamison, PA: Doylestown, Warminster, Warrington and nearby. From $${startingPrice}, pay after the job. Book online.`;
 
 const gutterMetadata: Metadata = {
   title: { absolute: "Gutter Cleaning in Bucks County, PA | Keystone Gutter Glow" },

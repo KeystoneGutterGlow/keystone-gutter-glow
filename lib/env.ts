@@ -2,16 +2,25 @@ import { site } from "@/content/site";
 
 // Deployment-dependent settings. Server-side only (read at build time for static pages).
 //
-// SITE_URL        Override the public URL. Otherwise Vercel's production domain is used, and
-//                 once keystonegutterglow.com is attached to the project, that becomes it.
-// ALLOW_INDEXING  "true" lets search engines index the site. Leave it unset on the
-//                 .vercel.app mockup so it can't compete with the live site in Google.
+// The site's public address lives here and nowhere else. Canonical URLs, the sitemap, robots.txt,
+// Open Graph and Twitter cards, and the JSON-LD all build their links from `publicUrl`.
+//
+// SITE_URL        The canonical address, e.g. https://www.example.com. Set it once the custom
+//                 domain is attached in Vercel. With it set, the old *.vercel.app production
+//                 address also redirects to it (next.config.ts). Unset, Vercel's production
+//                 domain is used, so previews never claim to be the canonical site.
+// ALLOW_INDEXING  "true" lets search engines index the site (robots.txt, meta robots and the
+//                 X-Robots-Tag header all follow it). Unset means noindex everywhere.
+// GOOGLE_SITE_VERIFICATION
+//                 The token from Google Search Console's "HTML tag" method, if that method is used.
 
 const vercelProd = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 
 export const publicUrl = (process.env.SITE_URL ?? (vercelProd ? `https://${vercelProd}` : site.url)).replace(/\/$/, "");
 
 export const allowIndexing = process.env.ALLOW_INDEXING === "true";
+
+export const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION || undefined;
 
 /**
  * Where Stripe sends the customer back to. Never the request's Host header on a deployed site,

@@ -1,12 +1,35 @@
 // FAQ answers rewritten from the current site's FAQ and its cancellation policy.
 // The FAQPage schema is built from this list, so every question here is also on the page.
+// The cost, schedule and towns answers are built from content/, so they can't drift from the page.
+
+import { areaZips, serviceRadius } from "./area";
+import { recommendedWhy } from "./plans";
+import { getPackage, rinse } from "./pricing";
 
 export interface Faq {
   q: string;
   a: string;
 }
 
+const price = (id: Parameters<typeof getPackage>[0]) => getPackage(id)?.price;
+/** Better-known places inside the circle, named in the towns answer. Any that leave the list drop out. */
+const namedTowns = ["Doylestown", "Warminster", "Warrington", "Horsham", "Hatboro", "Richboro", "Southampton", "Newtown", "Chalfont", "New Hope", "Willow Grove"].filter(
+  (t) => areaZips.some((z) => z.name === t),
+);
+
 export const faqs: Faq[] = [
+  {
+    q: "How much does gutter cleaning cost?",
+    a: `One-story homes are $${price("one-story")}, townhomes $${price("townhome")} and two-story homes $${price("two-story")}. Three floors, a big footprint or a complicated roofline start at $${price("large")}, and we confirm that price before we come out. The rinse is $${rinse.price} extra. Nothing is due until the job is done.`,
+  },
+  {
+    q: "How often should gutters be cleaned?",
+    a: `${recommendedWhy} That's why we recommend every 6 months. Plans every 3 or 4 months, or once a year, are available too.`,
+  },
+  {
+    q: "Which towns do you cover?",
+    a: `Anywhere within ${serviceRadius.miles} miles of our base in Jamison. That includes ${namedTowns.slice(0, -1).join(", ")} and ${namedTowns.at(-1)}, among others. Not sure about your street? Check your ZIP in the Where we work section, or call or text.`,
+  },
   {
     q: "Do I need to be home?",
     a: "No. If we can get to the gutters, you can be at work. The before-and-after photos come to you either way.",

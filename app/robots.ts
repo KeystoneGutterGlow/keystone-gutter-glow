@@ -6,9 +6,9 @@ export default function robots(): MetadataRoute.Robots {
     // Mockup / preview deployments stay out of search results entirely.
     return { rules: [{ userAgent: "*", disallow: "/" }] };
   }
+  // Scripts, styles and images (/_next/) stay crawlable so Google can render the pages.
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: "/api/" }],
+    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/firewood/order"] }],
     sitemap: `${publicUrl}/sitemap.xml`,
-    host: publicUrl,
   };
 }

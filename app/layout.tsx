@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible, Zilla_Slab } from "next/font/google";
 import { BotanicalDefs } from "@/components/botanical/Botanical";
 import { site } from "@/content/site";
-import { allowIndexing, publicUrl } from "@/lib/env";
+import { allowIndexing, googleSiteVerification, publicUrl } from "@/lib/env";
 import "./globals.css";
 
 const display = Zilla_Slab({
@@ -29,7 +29,10 @@ export const metadata: Metadata = {
   },
   applicationName: site.name,
   formatDetection: { telephone: false },
-  robots: allowIndexing ? undefined : { index: false, follow: false },
+  robots: allowIndexing ? { index: true, follow: true } : { index: false, follow: false },
+  openGraph: { siteName: site.name, locale: "en_US", type: "website" },
+  twitter: { card: "summary_large_image" },
+  verification: googleSiteVerification ? { google: googleSiteVerification } : undefined,
 };
 
 export const viewport: Viewport = {

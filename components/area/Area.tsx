@@ -25,7 +25,8 @@ export function Area() {
           <p className={styles.mapNote}>
             The dashed circle is {serviceRadius.miles} miles from our base in Jamison.
           </p>
-          <ul className="vh" aria-label="Towns inside the circle">
+          <h3 className={styles.townsTitle}>Towns inside the circle</h3>
+          <ul className={styles.towns}>
             {areaPlaces.map((name) => (
               <li key={name}>{name}</li>
             ))}
