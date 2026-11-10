@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { serviceZips } from "@/content/area";
 import { firewood, firewoodProducts, type FirewoodConfig } from "@/content/firewood";
-import { getSiteMode, isFirewoodVisible, modeLinks } from "@/content/season";
+import { firewoodSwitch, getSiteMode, isFirewoodVisible, modeLinks } from "@/content/season";
 import { checkoutOrigin } from "@/lib/env";
 import { checkoutGate, configBlockers, paymentMode } from "@/lib/firewood/gate";
 import { formatCents, priceOrder, stripeLines } from "@/lib/firewood/pricing";
@@ -9,6 +9,15 @@ import { checkDeliveryDate, deliveryWindow, parseOrder } from "@/lib/firewood/va
 import { resolveStorage } from "@/lib/storage";
 
 const today = "2026-11-03";
+
+// Firewood is switched off on the site for now, but its logic is tested switched on, so it still
+// works the day it comes back. The off switch has its own tests at the end.
+beforeEach(() => {
+  firewoodSwitch.off = false;
+});
+afterEach(() => {
+  firewoodSwitch.off = true;
+});
 
 const validOrder = {
   productId: "quarter-cord",
@@ -203,6 +212,37 @@ describe("the seasonal switch", () => {
   it("points the switch at the right pages in each mode", () => {
     expect(modeLinks({ NODE_ENV: "development" })).toEqual({ mode: "gutter", gutterHref: "/", firewoodHref: "/firewood" });
     expect(modeLinks({ SITE_MODE: "firewood" })).toEqual({ mode: "firewood", gutterHref: "/gutters", firewoodHref: "/" });
+  });
+});
+
+describe("while firewood is switched off", () => {
+  beforeEach(() => {
+    firewoodSwitch.off = true;
+  });
+
+  it("is off in the code right now", async () => {
+    vi.resetModules();
+    expect((await import("@/content/season")).firewoodSwitch.off).toBe(true);
+  });
+
+  it("hides it everywhere, whatever the environment says", () => {
+    for (const env of [
+      { NODE_ENV: "development" },
+      { NODE_ENV: "production", VERCEL_ENV: "preview" },
+      { NODE_ENV: "production", VERCEL_ENV: "production", FIREWOOD_PREVIEW: "true" },
+      { SITE_MODE: "firewood", FIREWOOD_PREVIEW: "true" },
+    ]) {
+      expect(isFirewoodVisible(env)).toBe(false);
+      expect(modeLinks(env)).toBeNull();
+      expect(getSiteMode(env)).toBe("gutter");
+    }
+  });
+
+  it("keeps checkout shut even with Stripe set up", () => {
+    expect(checkoutGate({ STRIPE_SECRET_KEY: "sk_test_1", STRIPE_WEBHOOK_SECRET: "whsec_test", NODE_ENV: "development" })).toMatchObject({
+      open: false,
+      reason: "firewood_hidden",
+    });
   });
 });
 

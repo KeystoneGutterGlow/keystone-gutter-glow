@@ -56,7 +56,7 @@
   color: #fff;
   font-weight: 700;
   font-size: 0.875rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .links {

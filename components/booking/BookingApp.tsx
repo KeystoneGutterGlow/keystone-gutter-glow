@@ -13,6 +13,7 @@ import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
 import type { DayDetail, DaySummary } from "@/lib/booking/types";
 import { formatPhone, validateContact, type FieldErrors } from "@/lib/booking/validate";
+import { sendNotice, type Notice } from "@/lib/notify/notice";
 import { fetchDay, fetchRange, submitBooking, type Confirmation, type Meta } from "./api";
 import styles from "./Booking.module.css";
 import { Calendar } from "./Calendar";
@@ -57,6 +58,16 @@ const EMPTY: Draft = {
 
 const slotLabel = (id: string | null) => bookingRules.slots.find((s) => s.id === id)?.label ?? "";
 
+/**
+ * Whether Jimmy has been told about the booking. The booking is saved before anything is sent,
+ * so a failed send never loses it: the customer can send again, or call with the reference.
+ *   off       notifications aren't on for this deployment, so there's nothing to send
+ *   sent      FormSubmit confirmed it
+ *   failed    FormSubmit didn't confirm it (down, refused, not activated, offline)
+ *   retrying  sending again after a failure
+ */
+type Delivery = { status: "off" } | { status: "sent" } | { status: "failed" | "retrying"; notice: Notice };
+
 export function BookingApp({ planRequests = true }: { planRequests?: boolean }) {
   const uid = useId();
   const [step, setStep] = useState<Step>(0);
@@ -66,7 +77,10 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
   const [planPicked, setPlanPicked] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  /** What the button says while it works: saving the booking, then telling Jimmy. */
+  const [submitStage, setSubmitStage] = useState<"saving" | "notifying">("saving");
   const [done, setDone] = useState<Confirmation | null>(null);
+  const [delivery, setDelivery] = useState<Delivery>({ status: "off" });
 
   const [meta, setMeta] = useState<Meta | null>(null);
   const [month, setMonth] = useState<string | null>(null);
@@ -241,6 +255,7 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
   async function submit() {
     if (submitting || !draft.packageId || !draft.date || (!dayOnly && !draft.slotId)) return;
     setSubmitting(true);
+    setSubmitStage("saving");
     setBanner(null);
     attemptKey.current ??= crypto.randomUUID();
     const result = await submitBooking({
@@ -259,14 +274,23 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
       notes: draft.notes,
       company: draft.company,
     });
-    setSubmitting(false);
 
     if (result.kind === "ok") {
-      focusOnStep.current = true;
       attemptKey.current = null;
+      // The booking is saved. Now tell Jimmy, and only call it done once FormSubmit confirms.
+      let next: Delivery = { status: "off" };
+      if (result.notice) {
+        setSubmitStage("notifying");
+        const sent = await sendNotice(result.notice);
+        next = sent.ok ? { status: "sent" } : { status: "failed", notice: result.notice };
+      }
+      setSubmitting(false);
+      focusOnStep.current = true;
+      setDelivery(next);
       setDone(result.booking);
       return;
     }
+    setSubmitting(false);
     // Anything else was refused, so the next try is a new attempt. A network error is the one
     // exception: that request may have gone through, and the same key finds it if it did.
     if (result.kind !== "error") attemptKey.current = null;
@@ -300,6 +324,7 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
     setDraft(EMPTY);
     attemptKey.current = null;
     setDone(null);
+    setDelivery({ status: "off" });
     setDay(null);
     setErrors({});
     go(0);
@@ -307,9 +332,27 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
 
   // ---------------------------------------------------------------- render
 
+  async function resend() {
+    if (delivery.status !== "failed") return;
+    const { notice } = delivery;
+    setDelivery({ status: "retrying", notice });
+    const sent = await sendNotice(notice);
+    setDelivery(sent.ok ? { status: "sent" } : { status: "failed", notice });
+    requestAnimationFrame(() => headingRef.current?.focus());
+  }
+
   if (done)
     return (
-      <Done booking={done} name={draft.name} phone={draft.phone} onAnother={reset} headingRef={headingRef} planRequests={planRequests} />
+      <Done
+        booking={done}
+        delivery={delivery}
+        onResend={resend}
+        name={draft.name}
+        phone={draft.phone}
+        onAnother={reset}
+        headingRef={headingRef}
+        planRequests={planRequests}
+      />
     );
 
   const minMonth = meta ? monthStart(addDays(meta.today, meta.minLeadDays)) : null;
@@ -729,7 +772,9 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
             ) : (
               <button type="button" className="btn btn--sky" onClick={submit} disabled={submitting} aria-busy={submitting}>
                 {submitting
-                  ? "Checking the schedule…"
+                  ? submitStage === "notifying"
+                    ? "Sending it to Jimmy…"
+                    : "Checking the schedule…"
                   : `Book ${draft.date ? formatShort(draft.date) : ""}${dayOnly ? "" : `, ${slotLabel(draft.slotId)}`}`}
               </button>
             )}
@@ -848,6 +893,8 @@ function Field({
 
 function Done({
   booking,
+  delivery,
+  onResend,
   name,
   phone,
   onAnother,
@@ -855,6 +902,8 @@ function Done({
   planRequests,
 }: {
   booking: Confirmation;
+  delivery: Delivery;
+  onResend: () => void;
   name: string;
   phone: string;
   onAnother: () => void;
@@ -863,13 +912,37 @@ function Done({
 }) {
   const pkg = getPackage(booking.packageId);
   const address = `${booking.address.street}, ${booking.address.city}, PA ${booking.address.zip}`;
+  const unsent = delivery.status === "failed" || delivery.status === "retrying";
   return (
     <div className={`${styles.app} ${styles.done}`}>
       {booking.demo && <DemoNote done />}
       <p className={styles.doneRef}>Booking {booking.ref}</p>
       <h3 ref={headingRef} tabIndex={-1} className={styles.doneTitle}>
-        {booking.demo ? "That\u2019s how booking works." : "You\u2019re on the schedule."}
+        {booking.demo
+          ? "That\u2019s how booking works."
+          : unsent
+            ? "Your day is held, but Jimmy hasn\u2019t been told yet."
+            : "You\u2019re on the schedule."}
       </h3>
+      {unsent && (
+        <div className={styles.unsent} role="alert">
+          <p>
+            Your booking is saved, so nobody else can take your spot. Sending the details to Jimmy didn&rsquo;t go through.
+          </p>
+          <button
+            type="button"
+            className="btn btn--sky"
+            onClick={onResend}
+            disabled={delivery.status === "retrying"}
+            aria-busy={delivery.status === "retrying"}
+          >
+            {delivery.status === "retrying" ? "Sending it to Jimmy…" : "Try sending again"}
+          </button>
+          <p className={styles.unsentCall}>
+            Or call or text <a href={site.phone.href}>{site.phone.display}</a> and give him booking {booking.ref}.
+          </p>
+        </div>
+      )}
       <p className={styles.doneWhen}>
         {formatLong(booking.date)}
         {!dayOnly && `, ${slotLabel(booking.slotId)}`}
@@ -891,8 +964,8 @@ function Done({
       </dl>
       <h4 className={styles.nextTitle}>What happens now</h4>
       <ol className={styles.nextList}>
-        {booking.emailSent ? (
-          <li>A confirmation email is on its way to {booking.email}.</li>
+        {delivery.status === "sent" ? (
+          <li>Jimmy has your booking details. Keep this reference number; he&rsquo;ll be in touch at {booking.email} if anything changes.</li>
         ) : (
           !booking.demo && <li>Keep this reference number. We&rsquo;ll be in touch at {booking.email} if anything changes.</li>
         )}

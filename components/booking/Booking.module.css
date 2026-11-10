@@ -858,6 +858,26 @@
   margin-bottom: 12px;
   outline: none;
 }
+/* Booking saved, but FormSubmit didn't confirm Jimmy got it. Same look as the form's error banner. */
+.unsent {
+  margin: 4px 0 20px;
+  padding: 14px 16px 16px;
+  background: var(--err-pale);
+  border-left: 4px solid var(--err);
+  color: #5c1410;
+}
+.unsent p {
+  margin: 0 0 12px;
+  font-weight: 700;
+}
+.unsent .unsentCall {
+  margin: 12px 0 0;
+  font-weight: 400;
+}
+.unsentCall a {
+  color: inherit;
+  font-weight: 700;
+}
 .doneWhen {
   font-family: var(--font-display);
   font-weight: 700;

@@ -26,7 +26,9 @@ export function Footer({ onHome = true }: { onHome?: boolean }) {
           </a>
           <p>Calls and texts</p>
           <a href={`mailto:${site.email}`} className={styles.email}>
-            {site.email}
+            {/* Break after the @ when it doesn't fit, not inside the domain */}
+            {site.email.split("@")[0]}@<wbr />
+            {site.email.split("@")[1]}
           </a>
         </div>
 

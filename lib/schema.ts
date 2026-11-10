@@ -1,6 +1,7 @@
 import { areaPlaces, serviceRadius } from "@/content/area";
 import { faqs } from "@/content/faqs";
 import { packages, rinse } from "@/content/pricing";
+import { isFirewoodVisible } from "@/content/season";
 import { site } from "@/content/site";
 import { publicUrl } from "./env";
 
@@ -22,6 +23,7 @@ function areaServed() {
 }
 
 function businessNode() {
+  const firewood = isFirewoodVisible();
   return {
     "@type": "HomeAndConstructionBusiness",
     "@id": bizId(),
@@ -33,10 +35,10 @@ function businessNode() {
     telephone: site.phone.schema,
     email: site.email,
     priceRange: `$${Math.min(...packages.map((p) => p.price))}+`,
-    description: `Residential gutter cleaning by vacuum within ${serviceRadius.miles} miles of Jamison, PA: central Bucks County and the nearby corner of Montgomery County. Every gutter run vacuumed, downspouts cleared and flow-tested, before-and-after photos, and online booking. Firewood delivery too.`,
+    description: `Residential gutter cleaning by vacuum within ${serviceRadius.miles} miles of Jamison, PA: central Bucks County and the nearby corner of Montgomery County. Every gutter run vacuumed, downspouts cleared and flow-tested, before-and-after photos, and online booking.${firewood ? " Firewood delivery too." : ""}`,
     areaServed: areaServed(),
     founder: { "@type": "Person", name: site.owner },
-    knowsAbout: ["Gutter cleaning", "Gutter vacuuming", "Downspout clearing", "Gutter rinsing", "Firewood delivery"],
+    knowsAbout: ["Gutter cleaning", "Gutter vacuuming", "Downspout clearing", "Gutter rinsing", ...(firewood ? ["Firewood delivery"] : [])],
   };
 }
 

@@ -7,7 +7,9 @@ import { isDemoStorage, StorageUnavailableError } from "@/lib/storage";
 // POST /api/bookings
 // Re-validates everything the form already checked, re-checks the date, then asks the
 // store to create the booking atomically. The client's idea of availability is never trusted.
-//   201 { booking }                    created (or already created by this same request)
+//   201 { booking, notice }            created (or already created by this same request). `notice`
+//                                      is Jimmy's FormSubmit notification for the browser to send,
+//                                      or null when notifications are off (lib/notify/formsubmit.ts).
 //   400 { errors }                     bad input
 //   409 { code, message, day }         slot or day was taken in the meantime (fresh slots included)
 //   422 { code, message, day }         the date itself isn't bookable
@@ -54,10 +56,10 @@ export async function POST(request: Request) {
           priceIsEstimate: b.priceIsEstimate,
           email: b.customer.email,
           address: b.address,
-          emailSent: outcome.emailSent,
           planLabel: parsed.data.planFrequencyId ? (getPlanFrequency(parsed.data.planFrequencyId)?.label ?? null) : null,
           demo: isDemoStorage(),
         },
+        notice: outcome.notice,
       },
       { status: 201, headers: noStore },
     );

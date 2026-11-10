@@ -1,6 +1,6 @@
 # Keystone Gutter Glow: website
 
-The website for keystonegutterglow.com: a scrolling gutter-cleaning site with online booking, and a seasonal firewood site with Stripe checkout. Only the gutter site shows on production until someone turns firewood on.
+The website for keystonegutterglow.com: a scrolling gutter-cleaning site with online booking, and a firewood site with Stripe checkout. **Firewood is switched off for now** (Jimmy, 2026-11-09): no deployment shows any way to it. See "Firewood switched off" below.
 
 - Next.js 16 (App Router) + TypeScript. Plain CSS Modules, no UI library, no Tailwind.
 - Postgres through Supabase for bookings and orders. Stripe's hosted page for payments.
@@ -15,7 +15,7 @@ npm install
 npm run dev            # http://localhost:3000
 ```
 
-Nothing else is required. In development, bookings and orders go to an in-memory demo store seeded with sample bookings, and `/firewood` is visible. Copy `.env.example` to `.env.local` to change any of that.
+Nothing else is required. In development, bookings and orders go to an in-memory demo store seeded with sample bookings. (`/firewood` is visible in development too, except while firewood is switched off, as it is now.) Copy `.env.example` to `.env.local` to change any of that.
 
 ## Tests
 
@@ -28,7 +28,8 @@ npm run build
 - `tests/booking-rules.test.ts`: dates, availability, validation
 - `tests/booking-api.test.ts`: the real API routes: simultaneous requests, the daily cap, retries, production safety
 - `tests/sql.test.ts`: every migration on PGlite (real Postgres in WASM), plus the Supabase adapters run against those tables
-- `tests/firewood.test.ts`: prices, order validation, the payment gate, the seasonal switch
+- `tests/firewood.test.ts`: prices, order validation, the payment gate, the seasonal switch, and the off switch
+- `tests/notify.test.ts`: FormSubmit notices. A booking through the real migrations hands back a notice with every detail, addressed to Jimmy's email. The fifth booking of a day is refused with no notice. Notices are off unless switched on, and never on previews or the demo store. The server never contacts FormSubmit. The browser only reports success when FormSubmit confirms.
 - `tests/stripe.test.ts`: checkout, webhook signatures, duplicate events. Signature checks use Stripe's real code. Session creation is a stand-in, so no network or key is needed.
 
 `npm run test:booking` runs another 15 checks over HTTP against a running dev server (`BASE=http://localhost:3000 npm run test:booking`).
@@ -46,11 +47,12 @@ All are documented in [.env.example](.env.example). All are server-side. Static 
 | `BOOKING_DEMO_SEED` | `off` starts the demo store empty. | seeded |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Database connection. Never prefix with `NEXT_PUBLIC_`. | none |
 | `SITE_MODE` | `gutter` or `firewood`. What `/` shows. | `gutter` |
-| `FIREWOOD_PREVIEW` | `true` shows `/firewood` and the mode switch without changing `/`. | off |
+| `FIREWOOD_PREVIEW` | `true` shows `/firewood` and the mode switch without changing `/`. Ignored, like `SITE_MODE=firewood`, while firewood is switched off in `content/season.ts`. | off |
 | `STRIPE_SECRET_KEY` | Stripe key. Test key until launch. | checkout off |
 | `STRIPE_WEBHOOK_SECRET` | Verifies webhooks. Checkout stays closed without it. | checkout off |
 | `STRIPE_ALLOW_LIVE_PAYMENTS` | One of four requirements for real payments. Leave unset. | off |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Turn on booking and order emails. | no email |
+| `FORMSUBMIT_ENABLED` | `true` emails Jimmy every booking and plan request through FormSubmit. Production only; ignored on previews and the demo store. Read "Activating and testing" first. | off |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Firewood order emails only (Stripe webhook). Dormant. | none |
 | `SITE_URL` | The canonical address: canonical tags, sitemap, robots.txt, social cards, JSON-LD and Stripe's return page all use it. Once set on Production, the old `*.vercel.app` production address redirects to it. | Vercel production domain |
 | `ALLOW_INDEXING` | `true` lets search engines index the site. Unset means `noindex` everywhere. | noindex |
 | `GOOGLE_SITE_VERIFICATION` | The token from Search Console's "HTML tag" method, added as a meta tag on every page. | none |
@@ -74,7 +76,7 @@ All business content lives in `content/`. The pages, the APIs and the SEO markup
 | `content/machine.ts` | "Why choose Keystone Gutter Glow": the vacuum tour's chapters and the machine's specs. |
 | `content/booking.ts` | Scheduling mode, daily cap, start times, closed weekdays, blackout dates, lead time, horizon |
 | `content/firewood.ts` | Firewood sizes, prices, charges, delivery rules, policies, each with a confirmation status |
-| `content/season.ts` | The gutter/firewood switch |
+| `content/season.ts` | The gutter/firewood switch, and `firewoodSwitch`, the off switch for firewood |
 | `content/services.ts` | The four parts of a cleaning (matched to the drawing callouts) |
 | `content/faqs.ts` | FAQ. Also generates the FAQPage schema. |
 | `content/area.ts` | Towns, ZIPs (for the "do we come to you?" check), map coordinates |
@@ -95,7 +97,13 @@ One variable decides which business the site shows:
 
 To change season: set `SITE_MODE` in Vercel and redeploy. Nothing changes on its own, and no date triggers it.
 
-**Production right now (2026-11-06):** `FIREWOOD_PREVIEW=true` is set on Production at Sam's request, so `/firewood`, the hero's "We also deliver firewood" link and the mode switch are live while `/` stays the gutter site. Checkout stays closed until Stripe is set up. Remove the variable and redeploy to hide firewood again.
+**Firewood switched off (2026-11-09).** Jimmy doesn't want any way to reach the firewood site for now, so `firewoodSwitch.off` is `true` in `content/season.ts`. That one line overrides everything above, on every deployment, preview and dev server:
+- There's no hero button, no phone-menu, rail or footer link, and no mode switch.
+- `/firewood`, `/firewood/order` and `/firewood/opengraph-image` are real 404s. `app/firewood/layout.tsx` does the order page's check, above its loading screen, so the status is 404 rather than 200.
+- The sitemap lists only `/`, `/gutters` redirects to `/`, and the search markup and share-image text don't mention firewood.
+- Checkout stays shut (`firewood_hidden`).
+
+All the firewood code, content and tests stay. The tests run the firewood logic switched on, and separately check that the off switch hides it. To bring firewood back, set `off: false` and redeploy. `FIREWOOD_PREVIEW=true` is still set on Production, so firewood then shows there again with `/` staying the gutter site. To keep it hidden after that, remove the variable.
 
 ## Why choose Keystone Gutter Glow (the vacuum tour)
 
@@ -147,7 +155,7 @@ There are two ways in, both offering Jimmy's four frequencies with every 6 month
 
 - **While booking.** The house step asks "Want this on a schedule?", defaulting to just this once. The choice goes in the booking's notes, so it reaches Jimmy with the booking and needs no database change.
 - **From Prices.** "Set up a recurring plan" and the four frequency buttons under Prices pick that plan in the booking form, jump to it, and say so at the top ("Every 3 months plan selected…"). The plan then travels with the booking, so these work on every deployment, with or without email (`BookLink`'s `plan` intent).
-- **After booking without a plan.** "Make it recurring" on the confirmation opens a dialog that posts to `/api/plan-requests`, which emails Jimmy. That email is the only record, so this path needs `RESEND_API_KEY` and `EMAIL_FROM`. A real deployment without them doesn't show the button at all (`lib/plan/open.ts`): Prices says "You choose when you book" and links to booking instead, and the booking confirmation drops "Make it recurring". A demo deployment keeps the button and says plainly that nothing was sent.
+- **After booking without a plan.** "Make it recurring" on the confirmation opens a dialog that posts to `/api/plan-requests`, which emails Jimmy. That email is the only record, so this path needs FormSubmit switched on (`FORMSUBMIT_ENABLED`). A real deployment without it doesn't show the button at all (`lib/plan/open.ts`): Prices says "You choose when you book" and links to booking instead, and the booking confirmation drops "Make it recurring". A demo deployment keeps the button and says plainly that nothing was sent.
 
 ## Database setup
 
@@ -220,11 +228,56 @@ All four, checked in `lib/firewood/gate.ts`:
 
 A test key is refused on the real domain (`ALLOW_INDEXING=true`), so no customer can mistake it for a real order.
 
-## Email
+## Notifications to Jimmy (FormSubmit)
 
-Booking and order emails go through Resend's HTTP API (`lib/notify/email.ts`). It's optional and off by default. Every notice for the business (new bookings, plan requests, firewood orders) goes to the address on the site, `email` in `content/site.ts` (jimmyesmond@keystonegutterglow.com). Customers' confirmations reply to it too. There's no separate setting to send them elsewhere.
+Every gutter booking and recurring-plan request is emailed to Jimmy at the address on the site, `email` in `content/site.ts` (jimmyesmond@keystonegutterglow.com), through **FormSubmit** (formsubmit.co). It's free and needs no account, API key or domain setup.
 
-To turn it on: create a free Resend account (3,000 emails a month), verify keystonegutterglow.com in it (a few DNS records wherever that domain is managed), then set `RESEND_API_KEY` and `EMAIL_FROM` (for example `Keystone Gutter Glow <bookings@keystonegutterglow.com>`) on Production. Until the domain is verified, Resend only delivers to the account owner's own address, so customer confirmations need the domain step. Without `RESEND_API_KEY` and `EMAIL_FROM`, nothing is sent and the booking confirmation doesn't promise an email. Resend has a free tier, but any recurring cost needs Jimmy's approval. Its sending domain must be verified first. Swapping providers means changing that one file.
+**Status (2026-11-09): built and tested, switched OFF.** Production doesn't set `FORMSUBMIT_ENABLED`, so nothing is sent to FormSubmit and Jimmy hasn't been contacted. Bookings still save to the database as before. Jimmy's mailbox works: keystonegutterglow.com's mail is on Zoho.
+
+**How it works**
+1. The customer submits. The server checks everything as before: validation, the honeypot, rate limits, and the booking itself in the database, which enforces the four-a-day limit. A request the server refuses never produces a notification.
+2. With notifications on, the server's answer includes a ready-made notice (`lib/notify/formsubmit.ts`): Jimmy's FormSubmit address plus every detail. That's the reference, day, address, house, price, any recurring plan, name, phone, email and notes, with Reply-To set to the customer.
+3. The browser posts it to FormSubmit's AJAX endpoint, `https://formsubmit.co/ajax/<Jimmy's email>` (`lib/notify/notice.ts`), so the customer stays on the page. The server never contacts FormSubmit itself.
+4. The page says it worked **only** when FormSubmit answers `"success": "true"`:
+   - **Booking.** The button reads "Checking the schedule…", then "Sending it to Jimmy…". If FormSubmit fails (down, offline, refused, not yet activated), the booking is already saved, so the page says "Your day is held, but Jimmy hasn't been told yet". It offers "Try sending again", and the phone number with the booking reference. The customer can't accidentally book twice.
+   - **Recurring-plan request.** This email is the only record, so a failure says "We couldn't send that, and Jimmy hasn't seen it" and the form stays filled in, ready to try again.
+
+**FormSubmit is email delivery only.** It doesn't store bookings, check availability or enforce the daily cap; Supabase does all of that, unchanged. If a customer closes the tab in the second before the send finishes, Jimmy may not get that one email (the request uses `keepalive`, which usually still completes). The booking is in the `bookings` table either way.
+
+**Spam protection**
+- The site's own honeypot field: bots that fill it get a fake success, and no notice is created.
+- Server-side validation and per-address rate limits on bookings, plan requests and the test page.
+- A booking notice only exists once a real booking is saved in a real slot.
+- FormSubmit's `_honey` honeypot, plus its own spam filtering.
+- `sendNotice` refuses to post anywhere but `https://formsubmit.co/ajax/`.
+
+AJAX can't show FormSubmit's reCAPTCHA, so it's turned off (`_captcha=false`). Customer auto-replies (`_autoresponse`) don't work over AJAX either, so customers get the on-screen confirmation and their calendar file, not an email.
+
+**Where it's allowed to run.** Only when `FORMSUBMIT_ENABLED=true`. Even then, never on a Vercel preview or with the demo store, so fake or test bookings can't reach Jimmy.
+
+### Activating and testing (do this when Jimmy is expecting it)
+
+Until Jimmy activates FormSubmit, **every** submission sends him another "Activate Form" email instead of the notification. FormSubmit keeps those submissions for 30 days and delivers them once he activates. So switch it on only right before he can click the link, and activate it with the test page rather than waiting for a customer.
+
+1. **Tell Jimmy first.** Tell him to expect an email from FormSubmit (formsubmit.co) titled something like "Activate Form", and to check spam.
+2. **Turn it on.** In Vercel, open keystone-gutter-glow, then Settings, then Environment Variables. Add `FORMSUBMIT_ENABLED` with the value `true`, for the **Production** environment only. Then go to Deployments, open the latest production deployment's "⋯" menu, and choose Redeploy.
+3. **Check it's on.** Open https://keystone-gutter-glow.vercel.app/notify-test. It should show a "Send a test message" button. If it says notifications are off, the variable or the redeploy didn't take.
+4. **Activate.** Press "Send a test message". It should say "FormSubmit needs activating". Jimmy gets the activation email and clicks **Activate Form**. FormSubmit then also delivers the test message, "Test: Keystone Gutter Glow website notifications".
+5. **Confirm.** Press "Send a test message" again. It should now say "FormSubmit confirmed it", and Jimmy gets a second test email within a few minutes (check spam).
+6. **End-to-end booking test (optional, writes to the real database).**
+   - Book on the live site with your own name, email and phone, on a day far ahead. The button shows "Sending it to Jimmy…", then "You're on the schedule.", with "Jimmy has your booking details" under "What happens now".
+   - Jimmy gets "New booking KGG-…" with every detail. Pressing Reply in his email answers you.
+   - On the confirmation, "Make it recurring", then "Send my request", should end at "Your request is with Jimmy." and send him "Recurring plan request: …".
+   - Afterwards, delete the test booking in Supabase: Table Editor, then `bookings`, find the reference, and delete the row.
+
+**Later**
+- `/notify-test` stays available, unlinked and `noindex`, for checking that notifications still arrive.
+- Connecting the custom domain makes FormSubmit see a new site address, so expect one more activation email. Repeat steps 3 to 5 on `https://<domain>/notify-test`.
+- After activation, FormSubmit's email includes a random-string alias for the address. It isn't needed: the address is already published on the site.
+- To switch notifications off: remove `FORMSUBMIT_ENABLED` and redeploy. Bookings keep working.
+- Privacy: customer details pass through FormSubmit, which keeps submissions for 30 days. The privacy policy should say so.
+
+**Firewood orders** are the one notification FormSubmit can't send: they're confirmed by Stripe's webhook on the server, where there's no browser. `lib/notify/email.ts` (Resend) is kept for that path only, and it's dormant: firewood is switched off and no `RESEND_API_KEY` is set. Before firewood returns, choose either Resend with a key, or Stripe's own "successful payment" emails to Jimmy.
 
 ## Map
 
@@ -255,7 +308,7 @@ The service-area map uses Leaflet with OpenStreetMap's public tiles (`components
 - **Local content.** The "Where we work" section lists every town inside the circle, from the same ZIP data the ZIP check uses. The FAQ answers cost, how often and which towns, built from `content/` so the answers can't drift.
 
 **Indexing is currently OFF on production (2026-11-09).** `ALLOW_INDEXING` isn't set, so every page is `noindex` and robots.txt blocks crawling. It stays off until these are sorted, because indexing brings real customers:
-1. Email isn't set up, so a booking made on the site reaches the database but nobody is told.
+1. Notifications are switched off until Jimmy activates FormSubmit, so a booking made on the site reaches the database but nobody is told.
 2. There are no privacy, terms or cancellation pages yet, though the site takes names, addresses and phone numbers.
 3. The final domain isn't connected. Indexing the `.vercel.app` address now builds Google's history on an address that will later redirect.
 
@@ -273,7 +326,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
    - A page's canonical tag shows the domain.
 6. Elsewhere:
    - Point Stripe's webhook at `https://<domain>/api/stripe/webhook`.
-   - Verify the domain in Resend and set `EMAIL_FROM` to an address on it.
+   - Send a test from `https://<domain>/notify-test`. FormSubmit sees a new site address, so Jimmy gets one more activation email to click.
    - Add the domain to Search Console (below).
 
 **Google Search Console** (Jimmy's Google account; can't be done from here):
@@ -299,7 +352,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 - [ ] Jimmy's decision on Supabase Free or Pro
 - [ ] Stripe account created and verified, with his bank details
 - [ ] Domain pointed at Vercel
-- [ ] Email provider set up, if wanted, with the sending domain verified
+- [ ] FormSubmit activated by Jimmy (see "Activating and testing")
 
 **Database**
 - [x] All three migrations run
@@ -309,12 +362,14 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 **Gutter site**
 - [ ] Items under "Things to confirm" below answered
 - [ ] Daily job cap confirmed (four or three), and `content/booking.ts` updated
-- [ ] Email set up, so booking notices and recurring plan requests reach Jimmy (the stand-alone plan button stays hidden until then)
+- [ ] `FORMSUBMIT_ENABLED=true` on Production and FormSubmit activated, so booking notices and recurring plan requests reach Jimmy (the stand-alone plan button stays hidden until then)
 - [ ] Terms, privacy and cancellation pages added, with Jimmy's approval
 - [ ] Custom domain connected and `SITE_URL` set, then `ALLOW_INDEXING=true` (see SEO, "Connecting the custom domain"), and `BOOKING_DEMO_MODE` removed
 - [ ] Search Console verified, sitemap submitted; Google Business Profile created as a service-area business
 
-**Firewood, before the season**
+**Firewood, before it's switched back on**
+- [ ] `firewoodSwitch.off` set to `false` in `content/season.ts` (see "Firewood switched off")
+- [ ] How Jimmy hears about paid orders decided: Resend with a key, or Stripe's payment emails (see "Notifications to Jimmy")
 - [ ] Every group in `content/firewood.ts` answered and marked `confirmed`
 - [ ] A full test-mode order on a preview: pay, webhook, order page, both emails
 - [ ] Canceled checkout and an expired session both tested
@@ -354,9 +409,9 @@ Everything factual came from the current site or the agreement. These items were
 | A1 Vacuum visual resembling GutterPro-style equipment | Done: an unbranded drawing in the hero of a worker steadying the pole up to the gutter, leaves going into the nozzle, and a hose to a three-motor stainless vacuum on a wheeled cart (`components/hero/Rig.tsx`). |
 | A1 10-mile radius shown from the private address | Done, on a real OpenStreetMap map, at every screen size. Every ZIP inside it is accepted. |
 | A1 Biography with age, school and quotation | Done with Jimmy's text. His photo is still to come. |
-| A1 Recurring-plan request form | Built and tested. Needs email set up to reach Jimmy; hidden on a real deployment until then. Choosing a plan while booking works without email. |
+| A1 Recurring-plan request form | Built and tested. Reaches Jimmy through FormSubmit once it's switched on and activated; hidden on a real deployment until then. Choosing a plan while booking works without email. |
 | A1 Terms, privacy and cancellation policy pages | Not started. Needs approved text. |
 | A2 Separate winter mode with switch, colors and igniting log visual | Done. Firewood is sold all year, so the page has no snow or winter wording; "winter mode" is only the code's name for it. |
 | A2 Prices, options and itemized total | Done, from config, marked unconfirmed |
 | A3 Hosted checkout and order confirmation | Built and tested without a live account |
-| A3 Order notification to the owner | Built. Needs an email provider. |
+| A3 Order notification to the owner | Built on Resend (server-side, from the Stripe webhook), dormant. FormSubmit can't send it; see "Notifications to Jimmy". |

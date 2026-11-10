@@ -79,7 +79,17 @@ On the gutter site they stay in navy line and pale sky, so brown still only ever
 
 ## Firewood links are red
 
+*Hidden for now (2026-11-09): firewood is switched off, so none of these links render. With them gone, the hero's "Book a cleaning" stands alone, and the phone menu's extras row holds only "Refer a neighbor". The styles stay for when firewood comes back.*
+
 Everything on the gutter site that leads to firewood uses firewood's red (`--fire`): the Firewood side of the Gutters/Firewood switch, the hero's "We also deliver firewood" button (the same size as "Book a cleaning"), the footer's "Firewood delivery" button, and the firewood link in the phone menu. Red never appears elsewhere on the gutter site, so it reads as "the other business" at a glance.
+
+## Telling the customer what happened
+
+The booking confirmation only says "You're on the schedule." once two things are true: the database has the booking, and FormSubmit has confirmed Jimmy's email. While the email goes out, the button reads "Sending it to Jimmy…".
+
+If the email fails, the screen doesn't pretend otherwise and doesn't send the customer back to the form, where they could book twice. The heading says "Your day is held, but Jimmy hasn't been told yet." Below it sits a box in the form's own error red, with "Try sending again", the phone number and the booking reference. Customers never see FormSubmit's name or its activation wording.
+
+The recurring-plan dialog works the same way: no "Your request is with Jimmy" until FormSubmit confirms it.
 
 ## Section order
 

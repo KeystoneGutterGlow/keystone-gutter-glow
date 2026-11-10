@@ -1,8 +1,9 @@
 import Stripe from "stripe";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as checkoutRoute } from "@/app/api/firewood/checkout/route";
 import { GET as statusRoute } from "@/app/api/firewood/status/route";
 import { POST as webhookRoute } from "@/app/api/stripe/webhook/route";
+import { firewoodSwitch } from "@/content/season";
 import { addDays, todayIn } from "@/lib/booking/dates";
 import { startCheckout, type StripeSessions } from "@/lib/firewood/checkout";
 import { applySessionPaid, handleStripeEvent } from "@/lib/firewood/fulfill";
@@ -63,7 +64,13 @@ function sessionEvent(type: string, session: Record<string, unknown>, livemode =
   return { id, object: "event", type, livemode, data: { object: { object: "checkout.session", ...session } } } as unknown as Stripe.Event;
 }
 
+// Firewood is switched off on the site for now. Its checkout is tested switched on.
+afterEach(() => {
+  firewoodSwitch.off = true;
+});
+
 beforeEach(() => {
+  firewoodSwitch.off = false;
   vi.stubEnv("STRIPE_SECRET_KEY", TEST_KEY);
   vi.stubEnv("STRIPE_WEBHOOK_SECRET", WEBHOOK_SECRET);
   vi.stubEnv("BOOKING_STORE", "");

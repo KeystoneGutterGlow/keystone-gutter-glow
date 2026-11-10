@@ -52,7 +52,7 @@ describe("POST /api/bookings", () => {
     expect(body.booking.priceDollars).toBe(packages[0]!.price + rinse.price); // whatever the client sent
     expect(body.booking.ref).toMatch(/^KGG-/);
     expect(body.booking.demo).toBe(true);
-    expect(body.booking.emailSent).toBe(false);
+    expect(body.notice).toBeNull(); // the demo store never notifies Jimmy
   });
 
   it("books up to the cap when 10 people want the same day at once, and tells the rest it's full", async () => {

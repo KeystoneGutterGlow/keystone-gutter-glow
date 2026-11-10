@@ -6,12 +6,14 @@ import { additionalInfo } from "@/content/booking";
 import { getPlanFrequency, planFrequencies, recommendedPlan, recommendedWhy } from "@/content/plans";
 import { site } from "@/content/site";
 import { formatPhone } from "@/lib/booking/validate";
+import { sendNotice, type Notice } from "@/lib/notify/notice";
 import { validatePlan, type PlanFieldErrors, type PlanRequest } from "@/lib/plan/validate";
 import styles from "./PlanDialog.module.css";
 
 // The recurring-plan request. A native modal <dialog>, so the browser handles the focus trap,
 // Escape and hiding the page behind it from screen readers. Every customer sees 6 months selected
-// and recommended first. Sending only emails Jimmy; nothing is scheduled or billed.
+// and recommended first. Sending only emails Jimmy (the server checks it, then this sends it through
+// FormSubmit); nothing is scheduled or billed. It only says "sent" once FormSubmit confirms it.
 
 type Contact = Omit<PlanRequest, "frequencyId" | "notes">;
 
@@ -97,8 +99,15 @@ export function PlanDialog({
         signal: AbortSignal.timeout(20_000),
         body: JSON.stringify({ ...form, company }),
       });
-      const data = (await res.json().catch(() => ({}))) as { demo?: boolean; errors?: PlanFieldErrors; error?: string };
+      const data = (await res.json().catch(() => ({}))) as { demo?: boolean; notice?: Notice; errors?: PlanFieldErrors; error?: string };
       if (res.ok) {
+        if (data.notice) {
+          const delivered = await sendNotice(data.notice);
+          if (!delivered.ok) {
+            showBanner(`We couldn't send that, and Jimmy hasn't seen it. Try again, or call or text ${site.phone.display}.`);
+            return;
+          }
+        }
         setSent({ demo: data.demo === true });
         requestAnimationFrame(() => headingRef.current?.focus());
       } else if (res.status === 400 && data.errors) {

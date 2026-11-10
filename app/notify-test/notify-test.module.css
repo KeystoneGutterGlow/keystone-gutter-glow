@@ -1,0 +1,53 @@
+.page {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 48px var(--gutter) 80px;
+}
+.home {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 40px;
+  color: var(--navy);
+  font-weight: 700;
+  text-decoration: none;
+}
+.logo {
+  flex: none;
+}
+.page h1 {
+  margin: 0 0 12px;
+}
+.page p {
+  line-height: 1.6;
+}
+.page code {
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+.status {
+  margin-top: 20px;
+  outline: none;
+}
+.status p {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 4px solid;
+}
+.good {
+  background: var(--sky-pale);
+  border-color: var(--sky-ink);
+}
+.wait {
+  background: #fff7e0;
+  border-color: #b7791f;
+}
+.bad,
+.off {
+  background: var(--err-pale);
+  border-color: var(--err);
+}
+.off {
+  padding: 12px 16px;
+  border-left: 4px solid var(--err);
+}

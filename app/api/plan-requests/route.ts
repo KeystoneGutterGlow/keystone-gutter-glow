@@ -1,19 +1,18 @@
 import { getPlanFrequency } from "@/content/plans";
 import { site } from "@/content/site";
-import { formatPhone } from "@/lib/booking/validate";
-import { emailConfigured, ownerEmail, sendEmail } from "@/lib/notify/email";
+import { formSubmitEnabled, planRequestNotice } from "@/lib/notify/formsubmit";
 import { parsePlanRequest } from "@/lib/plan/validate";
 import { allowRequest, readJson } from "@/lib/rateLimit";
 import { isDemoStorage } from "@/lib/storage";
 
 // POST /api/plan-requests
-// Emails Jimmy a recurring-plan request. The email is the only record, so the customer is only
-// told it worked once it has been sent.
-//   201 { ok: true, demo? }   sent (or, on a demo deployment with no email, deliberately not sent)
+// Checks a recurring-plan request and returns Jimmy's FormSubmit notice for the browser to send.
+// That email is the only record, so the page only says it worked once FormSubmit confirms it.
+//   201 { ok: true, notice }  valid: the browser sends `notice` (lib/notify/notice.ts)
+//   201 { ok: true, demo }    demo deployment: nothing is sent, and the page says so
 //   400 { errors }            bad input
 //   429 { error }             too many attempts from one address
-//   502 { error }             the email provider refused or failed
-//   503 { error }             email isn't configured on a real deployment
+//   503 { error }             notifications are off on a real deployment
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +33,7 @@ export async function POST(request: Request) {
     return Response.json({ errors: parsed.errors }, { status: 400, headers: noStore });
   }
 
-  if (!emailConfigured()) {
+  if (!formSubmitEnabled()) {
     if (isDemoStorage()) return Response.json({ ok: true, demo: true }, { status: 201, headers: noStore });
     return Response.json(
       { error: `Online plan requests aren't open right now. Call or text ${site.phone.display} and we'll set it up.` },
@@ -43,28 +42,15 @@ export async function POST(request: Request) {
   }
 
   const r = parsed.data;
-  const frequency = getPlanFrequency(r.frequencyId)?.label ?? r.frequencyId;
-  const sent = await sendEmail({
-    to: ownerEmail(),
-    replyTo: r.email,
-    subject: `Recurring plan request: ${frequency}, ${r.city}`,
-    text: [
-      "This is a request. Nothing has been scheduled or billed.",
-      "",
-      `How often: ${frequency}`,
-      `Where: ${r.street}, ${r.city}, ${site.state} ${r.zip}`,
-      `Customer: ${r.name}, ${formatPhone(r.phone)}, ${r.email}`,
-      r.notes ? `Additional information: ${r.notes}` : "",
-    ]
-      .filter((line, i) => line !== "" || i === 1)
-      .join("\n"),
+  const notice = planRequestNotice({
+    frequency: getPlanFrequency(r.frequencyId)?.label ?? r.frequencyId,
+    name: r.name,
+    email: r.email,
+    phone: r.phone,
+    street: r.street,
+    city: r.city,
+    zip: r.zip,
+    notes: r.notes,
   });
-
-  if (!sent.sent) {
-    return Response.json(
-      { error: `We couldn't send that, and Jimmy hasn't seen it. Call or text ${site.phone.display} and we'll set it up.` },
-      { status: 502, headers: noStore },
-    );
-  }
-  return Response.json({ ok: true }, { status: 201, headers: noStore });
+  return Response.json({ ok: true, notice }, { status: 201, headers: noStore });
 }

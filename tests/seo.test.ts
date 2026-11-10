@@ -6,10 +6,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const ENV_KEYS = ["SITE_URL", "VERCEL_PROJECT_PRODUCTION_URL", "ALLOW_INDEXING", "FIREWOOD_PREVIEW", "SITE_MODE", "VERCEL_ENV"];
 const saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
 
-async function load(env: Record<string, string | undefined>) {
+async function load(env: Record<string, string | undefined>, firewood: "on" | "off" = "on") {
   vi.resetModules();
   for (const k of ENV_KEYS) delete process.env[k];
   Object.assign(process.env, env);
+  // Firewood is switched off on the site for now. Most of these test it switched on.
+  (await import("@/content/season")).firewoodSwitch.off = firewood === "off";
   return {
     robots: (await import("@/app/robots")).default,
     sitemap: (await import("@/app/sitemap")).default,
@@ -53,6 +55,11 @@ describe("sitemap", () => {
     const { sitemap } = await load({ SITE_URL: "https://example.test", SITE_MODE: "firewood" });
     expect(sitemap().map((p) => p.url)).toEqual(["https://example.test/", "https://example.test/gutters"]);
   });
+
+  it("lists only the gutter site while firewood is switched off, whatever the environment says", async () => {
+    const { sitemap } = await load({ SITE_URL: "https://example.test", SITE_MODE: "firewood", FIREWOOD_PREVIEW: "true" }, "off");
+    expect(sitemap().map((p) => p.url)).toEqual(["https://example.test/"]);
+  });
 });
 
 describe("JSON-LD", () => {
@@ -66,6 +73,13 @@ describe("JSON-LD", () => {
       // No street address, coordinates, hours, ratings or reviews: none are confirmed.
       for (const key of ['"address"', '"geo"', '"openingHours', '"aggregateRating"', '"review"']) expect(text).not.toContain(key);
     }
+  });
+
+  it("doesn't mention firewood in the home page markup while it's switched off", async () => {
+    const on = await load({ SITE_URL: "https://example.test", FIREWOOD_PREVIEW: "true" });
+    expect(JSON.stringify(on.schema.homeJsonLd())).toContain("Firewood delivery");
+    const off = await load({ SITE_URL: "https://example.test", FIREWOOD_PREVIEW: "true" }, "off");
+    expect(JSON.stringify(off.schema.homeJsonLd()).toLowerCase()).not.toContain("firewood");
   });
 
   it("describes the business, its service and its FAQ on the home page", async () => {

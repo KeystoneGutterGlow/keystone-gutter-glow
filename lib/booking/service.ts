@@ -1,9 +1,8 @@
 import { bookingRules, type BookingRules } from "@/content/booking";
 import { getPlanFrequency } from "@/content/plans";
 import { getPackage, totalFor } from "@/content/pricing";
-import { site } from "@/content/site";
-import { emailConfigured, ownerEmail, sendEmail } from "@/lib/notify/email";
-import { isDemoStorage } from "@/lib/storage";
+import { bookingNotice, formSubmitEnabled } from "@/lib/notify/formsubmit";
+import type { Notice } from "@/lib/notify/notice";
 import { checkDate, dayDetail, firstOpening, rangeSummary } from "./availability";
 import { addDays, diffDays, formatLong, todayIn } from "./dates";
 import { getBookingStore } from "./store";
@@ -52,7 +51,8 @@ function makeRef(): string {
 }
 
 export type CreateOutcome =
-  | { ok: true; booking: BookingRecord; emailSent: boolean }
+  /** `notice` is Jimmy's notification for the browser to send, or null when notices are off. */
+  | { ok: true; booking: BookingRecord; notice: Notice | null }
   | { ok: false; status: 409 | 422; code: "slot_taken" | "day_full" | "date_unavailable"; message: string; day: DayDetail };
 
 export async function createBooking(req: CleanBookingRequest, rules: BookingRules = bookingRules): Promise<CreateOutcome> {
@@ -103,8 +103,10 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
   }
 
   if (result.ok) {
-    const emailSent = result.duplicate ? false : await sendBookingEmails(result.booking, rules, plan?.label);
-    return { ok: true, booking: result.booking, emailSent };
+    // A repeat of the same request gets the notice too: the browser only sends one per booking,
+    // and if the first answer was lost on the way, this is its only chance.
+    const notice = formSubmitEnabled() ? bookingNotice(result.booking, rules, { planLabel: plan?.label, notes: req.notes }) : null;
+    return { ok: true, booking: result.booking, notice };
   }
 
   const slot = rules.slots.find((s) => s.id === req.slotId);
@@ -118,53 +120,4 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
         : "That day just filled up. Pick another day.",
     day: await getDay(req.date, rules),
   };
-}
-
-/** Returns whether the customer's confirmation went out. A failed email never fails a booking. */
-async function sendBookingEmails(b: BookingRecord, rules: BookingRules, planLabel?: string): Promise<boolean> {
-  if (isDemoStorage() || !emailConfigured()) return false;
-
-  const pkg = getPackage(b.packageId);
-  const when =
-    rules.scheduleMode === "day-only"
-      ? formatLong(b.date)
-      : `${formatLong(b.date)}, ${rules.slots.find((s) => s.id === b.slotId)?.label ?? b.slotId}`;
-  const address = `${b.address.street}, ${b.address.city}, ${site.state} ${b.address.zip}`;
-  const price = `${b.priceIsEstimate ? "Starting at " : ""}$${b.priceDollars}`;
-
-  const [customer] = await Promise.all([
-    sendEmail({
-      to: b.customer.email,
-      replyTo: site.email,
-      subject: `You're booked: ${formatLong(b.date)} (${b.ref})`,
-      text: [
-        `Thanks, ${b.customer.name}. Your gutter cleaning is on the schedule.`,
-        "",
-        `Booking: ${b.ref}`,
-        `When: ${when}`,
-        `Where: ${address}`,
-        `House: ${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
-        `Price: ${price}. We invoice after the cleaning.`,
-        ...(planLabel ? [`Recurring plan you asked about: ${planLabel}. Jimmy will be in touch to set it up. Nothing bills automatically.`] : []),
-        "",
-        `Need to change something? Call or text ${site.phone.display}.`,
-      ].join("\n"),
-    }),
-    sendEmail({
-      to: ownerEmail(),
-      replyTo: b.customer.email,
-      subject: `New booking ${b.ref}: ${when}`,
-      text: [
-        `When: ${when}`,
-        `Where: ${address}`,
-        `House: ${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
-        `Price: ${price}`,
-        `Customer: ${b.customer.name}, ${b.customer.phone}, ${b.customer.email}`,
-        b.notes ? `Additional information: ${b.notes}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    }),
-  ]);
-  return customer.sent;
 }

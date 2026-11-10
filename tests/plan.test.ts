@@ -86,36 +86,10 @@ describe("asking for a plan while booking", () => {
 });
 
 describe("POST /api/plan-requests", () => {
-  it("emails Jimmy the frequency, address and contact details", async () => {
-    vi.stubEnv("RESEND_API_KEY", "re_test");
-    vi.stubEnv("EMAIL_FROM", "Keystone <test@example.com>");
-    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
+  // What the notice says, and that it's only sent through FormSubmit, is in tests/notify.test.ts.
 
-    const res = await post(valid);
-    expect(res.status).toBe(201);
-    expect((await res.json()).demo).toBeUndefined();
-
-    const sent = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
-    expect(sent.reply_to).toBe("pat@example.com");
-    expect(sent.text).toContain("Every 6 months");
-    expect(sent.text).toContain("1 Test Ln, Jamison, PA 18929");
-    expect(sent.text).toContain("(215) 555-0100");
-    expect(sent.text).toContain("Enter through the gate");
-    expect(sent.text).toContain("Nothing has been scheduled or billed");
-  });
-
-  it("doesn't claim success when the email fails", async () => {
-    vi.stubEnv("RESEND_API_KEY", "re_test");
-    vi.stubEnv("EMAIL_FROM", "Keystone <test@example.com>");
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 500 })));
-    const res = await post(valid);
-    expect(res.status).toBe(502);
-    expect((await res.json()).error).toMatch(/hasn't seen it/);
-  });
-
-  it("marks the answer as a demo on a demo deployment with no email", async () => {
-    vi.stubEnv("RESEND_API_KEY", "");
+  it("marks the answer as a demo on a demo deployment, and sends nothing", async () => {
+    vi.stubEnv("FORMSUBMIT_ENABLED", "true");
     vi.stubEnv("BOOKING_STORE", "memory");
     vi.stubEnv("NODE_ENV", "development");
     const res = await post(valid);
@@ -123,8 +97,8 @@ describe("POST /api/plan-requests", () => {
     expect((await res.json()).demo).toBe(true);
   });
 
-  it("refuses on a real deployment with no email, rather than losing the request", async () => {
-    vi.stubEnv("RESEND_API_KEY", "");
+  it("refuses on a real deployment with notifications off, rather than losing the request", async () => {
+    vi.stubEnv("FORMSUBMIT_ENABLED", "");
     vi.stubEnv("BOOKING_STORE", "supabase");
     vi.stubEnv("SUPABASE_URL", "https://x.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "key");

@@ -1,5 +1,6 @@
 import type { DayDetail, DaySummary } from "@/lib/booking/types";
 import type { FieldErrors } from "@/lib/booking/validate";
+import type { Notice } from "@/lib/notify/notice";
 
 // Thin client for the booking API. The UI only ever talks to these endpoints, never to
 // storage, so the backend can change without touching the components.
@@ -38,14 +39,14 @@ export interface Confirmation {
   priceIsEstimate: boolean;
   email: string;
   address: { street: string; city: string; zip: string };
-  emailSent: boolean;
   demo: boolean;
   /** The recurring plan they asked for, if any */
   planLabel?: string | null;
 }
 
 export type SubmitResult =
-  | { kind: "ok"; booking: Confirmation }
+  /** `notice` is Jimmy's FormSubmit notification to send now, or null when notifications are off. */
+  | { kind: "ok"; booking: Confirmation; notice: Notice | null }
   | { kind: "conflict"; code: "slot_taken" | "day_full" | "date_unavailable"; message: string; day: DayDetail }
   | { kind: "invalid"; errors: FieldErrors }
   | { kind: "error"; message: string };
@@ -63,7 +64,9 @@ export async function submitBooking(body: Record<string, unknown>): Promise<Subm
     return { kind: "error", message: "We couldn't reach the server. Check your connection and try again." };
   }
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (res.status === 201 && data.booking) return { kind: "ok", booking: data.booking as Confirmation };
+  if (res.status === 201 && data.booking) {
+    return { kind: "ok", booking: data.booking as Confirmation, notice: (data.notice as Notice | null | undefined) ?? null };
+  }
   if (res.status === 409 || res.status === 422) {
     return {
       kind: "conflict",
