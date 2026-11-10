@@ -31,7 +31,10 @@ export async function sendNotice(notice: Notice, signal?: AbortSignal): Promise<
 
   let res: Response;
   try {
-    const timeout = AbortSignal.timeout(20_000);
+    // FormSubmit sends the email before it answers: about 6 seconds normally, and over 20 when it's
+    // busy (measured 2026-11-10). Give up too early and the customer is told it failed when it may
+    // still arrive, so wait up to a minute. The button says "Sending it to Jimmy…" meanwhile.
+    const timeout = AbortSignal.timeout(60_000);
     res = await fetch(notice.endpoint, {
       method: "POST",
       // Form-encoded rather than JSON: a "simple" cross-origin request, so the browser sends it
