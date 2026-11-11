@@ -1,9 +1,8 @@
-import { PhotoSlot } from "@/components/PhotoSlot";
 import { BeforeAfter } from "./BeforeAfter";
 import styles from "./Work.module.css";
 
-// The one real before/after on the current site, split into its two halves for the
-// slider. More jobs go in the photo slots as they're shot.
+// The one real before/after from Jimmy's current site, split into its two halves for the slider.
+// Placeholder slots for more jobs were removed at Sam's request (2026-11-11); add real pairs only.
 
 export function Work() {
   return (
@@ -34,20 +33,6 @@ export function Work() {
             that&rsquo;s how you know the job got done, and it&rsquo;s the only way most people ever see the inside of
             their gutters.
           </p>
-
-          {/* Real pairs go in public/images/work/ as job-02-before.jpg and job-02-after.jpg, and so on */}
-          <div className={styles.more}>
-            <PhotoSlot
-              label="Next job"
-              want="A before/after pair from a Bucks County job. Shoot both from exactly the same spot."
-              ratio="1 / 1"
-            />
-            <PhotoSlot
-              label="Next job"
-              want="A clogged downspout outlet, then water running clear out of it."
-              ratio="1 / 1"
-            />
-          </div>
         </div>
       </div>
     </section>

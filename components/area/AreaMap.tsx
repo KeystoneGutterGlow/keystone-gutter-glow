@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { mapLabels, serviceRadius } from "@/content/area";
 import styles from "./Area.module.css";
 
-// A real map of the service area: OpenStreetMap tiles and the 10-mile circle. The tiles name the
+// A real map of the service area: OpenStreetMap tiles and the service circle. The tiles name the
 // towns themselves, so the only label we add is Jamison, which they leave unnamed at this zoom.
 // Leaflet and the tiles only load once the map is nearly on screen. The center is already rounded
 // (see content/area.ts) and gets no marker. A list for screen readers sits beside it, and the ZIP
@@ -87,7 +87,7 @@ export function AreaMap() {
       className={styles.mapBox}
       data-loading=""
       role="group"
-      aria-label={`Map of Bucks County and the edge of Montgomery County, Pennsylvania, with a ${serviceRadius.miles}-mile circle around Jamison. Everywhere inside the circle is in our area.`}
+      aria-label={`Map of the area around Jamison, Pennsylvania, with a ${serviceRadius.miles}-mile circle that reaches Philadelphia and across the Delaware River into New Jersey. Everywhere inside the circle is in our area.`}
     />
   );
 }

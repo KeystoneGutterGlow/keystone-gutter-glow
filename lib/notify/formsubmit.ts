@@ -1,3 +1,4 @@
+import { stateForZip } from "@/content/area";
 import { getPackage } from "@/content/pricing";
 import { site } from "@/content/site";
 import type { BookingRules } from "@/content/booking";
@@ -67,7 +68,7 @@ export function bookingNotice(
       ...compact({
         Booking: `${b.ref} (saved in the booking database)`,
         When: when,
-        Address: `${b.address.street}, ${b.address.city}, ${site.state} ${b.address.zip}`,
+        Address: `${b.address.street}, ${b.address.city}, ${stateForZip(b.address.zip)} ${b.address.zip}`,
         House: `${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
         Price: `${b.priceIsEstimate ? "Starting at " : ""}$${b.priceDollars}, invoiced after the job`,
         "Recurring plan": extra.planLabel ? `${extra.planLabel} (asked for; nothing bills automatically)` : undefined,
@@ -101,7 +102,7 @@ export function planRequestNotice(r: PlanNoticeInput): Notice {
       ...compact({
         Request: "Recurring plan. Nothing has been scheduled or billed.",
         "How often": r.frequency,
-        Address: `${r.street}, ${r.city}, ${site.state} ${r.zip}`,
+        Address: `${r.street}, ${r.city}, ${stateForZip(r.zip)} ${r.zip}`,
         Name: r.name,
         Phone: formatPhone(r.phone),
         email: r.email,

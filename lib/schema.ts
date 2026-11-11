@@ -1,4 +1,4 @@
-import { areaPlaces, serviceRadius } from "@/content/area";
+import { areaCounties, countyName, serviceRadius } from "@/content/area";
 import { faqs } from "@/content/faqs";
 import { packages, rinse } from "@/content/pricing";
 import { isFirewoodVisible } from "@/content/season";
@@ -13,13 +13,9 @@ import { publicUrl } from "./env";
 
 const bizId = () => `${publicUrl}/#business`;
 
-/** Every place inside the 10-mile circle (content/area.ts), plus the two counties it covers. */
+/** Every county with part of the service circle in it (content/area.ts), nearest first. */
 function areaServed() {
-  return [
-    { "@type": "AdministrativeArea", name: `${site.county}, ${site.state}` },
-    { "@type": "AdministrativeArea", name: `Montgomery County, ${site.state}` },
-    ...areaPlaces.map((name) => ({ "@type": "Place", name: `${name}, ${site.state}` })),
-  ];
+  return areaCounties.map((c) => ({ "@type": "AdministrativeArea", name: `${countyName(c)}, ${c.state}` }));
 }
 
 function businessNode() {
@@ -35,7 +31,7 @@ function businessNode() {
     telephone: site.phone.schema,
     email: site.email,
     priceRange: `$${Math.min(...packages.map((p) => p.price))}+`,
-    description: `Residential gutter cleaning by vacuum within ${serviceRadius.miles} miles of Jamison, PA: central Bucks County and the nearby corner of Montgomery County. Every gutter run vacuumed, downspouts cleared and flow-tested, before-and-after photos, and online booking.${firewood ? " Firewood delivery too." : ""}`,
+    description: `Residential gutter cleaning by vacuum within ${serviceRadius.miles} miles of Jamison, PA: Bucks, Montgomery and Philadelphia Counties, the counties around them, and nearby New Jersey. Every gutter run vacuumed, downspouts cleared and flow-tested, before-and-after photos, and online booking.${firewood ? " Firewood delivery too." : ""}`,
     areaServed: areaServed(),
     founder: { "@type": "Person", name: site.owner },
     knowsAbout: ["Gutter cleaning", "Gutter vacuuming", "Downspout clearing", "Gutter rinsing", ...(firewood ? ["Firewood delivery"] : [])],

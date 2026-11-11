@@ -25,14 +25,6 @@
   color: var(--muted);
 }
 
-.more {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  margin-top: 36px;
-  max-width: 520px;
-}
-
 /* ---------- Slider ---------- */
 
 .ba {
@@ -130,9 +122,6 @@
   }
   .ba {
     aspect-ratio: 1 / 1;
-  }
-  .more {
-    grid-template-columns: minmax(0, 1fr);
   }
   /* clear the mobile rail lane on the full-bleed photo */
   .tagBefore {

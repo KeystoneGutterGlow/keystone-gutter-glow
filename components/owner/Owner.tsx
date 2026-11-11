@@ -19,10 +19,10 @@ export function Owner() {
           {owner.photo.src ? (
             <Image
               src={owner.photo.src}
-              alt={`${owner.name}, owner of ${site.name}`}
-              width={800}
-              height={1000}
-              sizes="(max-width: 899px) 90vw, 420px"
+              alt={owner.photo.alt}
+              width={owner.photo.width}
+              height={owner.photo.height}
+              sizes="(max-width: 899px) 90vw, 440px"
               className={styles.photo}
             />
           ) : (
@@ -61,7 +61,11 @@ export function Owner() {
             <div>
               <dt>Email, straight to Jimmy</dt>
               <dd>
-                <a href={`mailto:${site.email}`}>{site.email}</a>
+                {/* Break after the @ when it doesn't fit, not inside the domain */}
+                <a href={`mailto:${site.email}`}>
+                  {site.email.split("@")[0]}@<wbr />
+                  {site.email.split("@")[1]}
+                </a>
               </dd>
             </div>
           </dl>

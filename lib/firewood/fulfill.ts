@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { stateForZip } from "@/content/area";
 import { firewood, getProduct } from "@/content/firewood";
 import { site } from "@/content/site";
 import { formatLong } from "@/lib/booking/dates";
@@ -95,7 +96,7 @@ function ownerNotice(order: FirewoodOrder) {
       order.testMode ? "This was Stripe test mode. No real money moved." : "",
       `Order: ${order.ref}`,
       `Requested delivery: ${formatLong(order.deliveryDate)}`,
-      `Address: ${order.address.street}, ${order.address.city}, ${site.state} ${order.address.zip}`,
+      `Address: ${order.address.street}, ${order.address.city}, ${stateForZip(order.address.zip)} ${order.address.zip}`,
       `Customer: ${order.customer.name}, ${order.customer.phone}, ${order.customer.email}`,
       "",
       ...orderLines(order),
@@ -122,7 +123,7 @@ function customerConfirmation(order: FirewoodOrder) {
       "",
       `Order: ${order.ref}`,
       `Requested delivery: ${formatLong(order.deliveryDate)}`,
-      `Address: ${order.address.street}, ${order.address.city}, ${site.state} ${order.address.zip}`,
+      `Address: ${order.address.street}, ${order.address.city}, ${stateForZip(order.address.zip)} ${order.address.zip}`,
       "",
       ...orderLines(order),
       `  Total paid: ${formatCents(order.totalCents)}`,

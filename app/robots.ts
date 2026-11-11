@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
   }
   // Scripts, styles and images (/_next/) stay crawlable so Google can render the pages.
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/firewood/order"] }],
+    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/firewood/order", "/booking-confirmed", "/notify-test"] }],
     sitemap: `${publicUrl}/sitemap.xml`,
   };
 }

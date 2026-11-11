@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cloneElement, useCallback, useEffect, useId, useRef, useState } from "react";
 import { BOOK_EVENT, type BookIntent } from "@/components/BookLink";
 import { House } from "@/components/pricing/Houses";
 import { areaPlaces, serviceZips } from "@/content/area";
-import { PlanDialog } from "@/components/plan/PlanDialog";
 import { additionalInfo, bookingRules } from "@/content/booking";
 import { getPlanFrequency, planFrequencies, recommendedPlan, recommendedWhy } from "@/content/plans";
 import { getPackage, packages, rinse, totalFor, type PackageId } from "@/content/pricing";
@@ -13,11 +12,12 @@ import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
 import type { DayDetail, DaySummary } from "@/lib/booking/types";
 import { formatPhone, validateContact, type FieldErrors } from "@/lib/booking/validate";
-import { sendNotice, type Notice } from "@/lib/notify/notice";
-import { fetchDay, fetchRange, submitBooking, type Confirmation, type Meta } from "./api";
+import { sendNotice } from "@/lib/notify/notice";
+import { fetchDay, fetchRange, submitBooking, type Meta } from "./api";
 import styles from "./Booking.module.css";
 import { Calendar } from "./Calendar";
-import { buildIcs, downloadIcs } from "./ics";
+import { CONFIRMED_PATH, saveConfirmation } from "./confirmation";
+import { DemoNote, type Delivery } from "./Done";
 
 type Step = 0 | 1 | 2 | 3;
 const dayOnly = bookingRules.scheduleMode === "day-only";
@@ -58,17 +58,9 @@ const EMPTY: Draft = {
 
 const slotLabel = (id: string | null) => bookingRules.slots.find((s) => s.id === id)?.label ?? "";
 
-/**
- * Whether Jimmy has been told about the booking. The booking is saved before anything is sent,
- * so a failed send never loses it: the customer can send again, or call with the reference.
- *   off       notifications aren't on for this deployment, so there's nothing to send
- *   sent      FormSubmit confirmed it
- *   failed    FormSubmit didn't confirm it (down, refused, not activated, offline)
- *   retrying  sending again after a failure
- */
-type Delivery = { status: "off" } | { status: "sent" } | { status: "failed" | "retrying"; notice: Notice };
 
-export function BookingApp({ planRequests = true }: { planRequests?: boolean }) {
+export function BookingApp() {
+  const router = useRouter();
   const uid = useId();
   const [step, setStep] = useState<Step>(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -77,10 +69,8 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
   const [planPicked, setPlanPicked] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  /** What the button says while it works: saving the booking, then telling Jimmy. */
-  const [submitStage, setSubmitStage] = useState<"saving" | "notifying">("saving");
-  const [done, setDone] = useState<Confirmation | null>(null);
-  const [delivery, setDelivery] = useState<Delivery>({ status: "off" });
+  /** What the button says while it works: saving the booking, telling Jimmy, then opening the confirmation. */
+  const [submitStage, setSubmitStage] = useState<"saving" | "notifying" | "opening">("saving");
 
   const [meta, setMeta] = useState<Meta | null>(null);
   const [month, setMonth] = useState<string | null>(null);
@@ -129,13 +119,17 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
       el.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
     }
     el.focus({ preventScroll: true });
-  }, [step, done]);
+  }, [step]);
+
+  // Load the confirmation page ahead of time, so moving there after booking is instant.
+  useEffect(() => {
+    if (step === 3) router.prefetch(CONFIRMED_PATH);
+  }, [step, router]);
 
   // ---- Preselection from links elsewhere on the page (pricing, hero "next opening") ----
   useEffect(() => {
     const onIntent = (e: Event) => {
       const intent = (e as CustomEvent<BookIntent>).detail ?? {};
-      if (done) return;
       setDraft((d) => ({
         ...d,
         packageId: intent.packageId ?? d.packageId,
@@ -151,7 +145,7 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
     };
     window.addEventListener(BOOK_EVENT, onIntent);
     return () => window.removeEventListener(BOOK_EVENT, onIntent);
-  }, [done, go]);
+  }, [go]);
 
   // ---- Availability: month view ----
   useEffect(() => {
@@ -278,16 +272,17 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
     if (result.kind === "ok") {
       attemptKey.current = null;
       // The booking is saved. Now tell Jimmy, and only call it done once FormSubmit confirms.
-      let next: Delivery = { status: "off" };
+      let delivery: Delivery = { status: "off" };
       if (result.notice) {
         setSubmitStage("notifying");
         const sent = await sendNotice(result.notice);
-        next = sent.ok ? { status: "sent" } : { status: "failed", notice: result.notice };
+        delivery = sent.ok ? { status: "sent" } : { status: "failed", notice: result.notice };
       }
-      setSubmitting(false);
-      focusOnStep.current = true;
-      setDelivery(next);
-      setDone(result.booking);
+      // Then on to the confirmation page, which Google Ads counts as the conversion. The button stays
+      // busy until the page changes.
+      setSubmitStage("opening");
+      saveConfirmation({ booking: result.booking, delivery, name: draft.name, phone: draft.phone });
+      router.push(CONFIRMED_PATH);
       return;
     }
     setSubmitting(false);
@@ -320,40 +315,7 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
     setBanner(`${result.message} Or call or text ${site.phone.display} and we'll book you by hand.`);
   }
 
-  function reset() {
-    setDraft(EMPTY);
-    attemptKey.current = null;
-    setDone(null);
-    setDelivery({ status: "off" });
-    setDay(null);
-    setErrors({});
-    go(0);
-  }
-
   // ---------------------------------------------------------------- render
-
-  async function resend() {
-    if (delivery.status !== "failed") return;
-    const { notice } = delivery;
-    setDelivery({ status: "retrying", notice });
-    const sent = await sendNotice(notice);
-    setDelivery(sent.ok ? { status: "sent" } : { status: "failed", notice });
-    requestAnimationFrame(() => headingRef.current?.focus());
-  }
-
-  if (done)
-    return (
-      <Done
-        booking={done}
-        delivery={delivery}
-        onResend={resend}
-        name={draft.name}
-        phone={draft.phone}
-        onAnother={reset}
-        headingRef={headingRef}
-        planRequests={planRequests}
-      />
-    );
 
   const minMonth = meta ? monthStart(addDays(meta.today, meta.minLeadDays)) : null;
   const maxMonth = meta ? monthStart(addDays(meta.today, meta.horizonDays)) : null;
@@ -772,9 +734,11 @@ export function BookingApp({ planRequests = true }: { planRequests?: boolean }) 
             ) : (
               <button type="button" className="btn btn--sky" onClick={submit} disabled={submitting} aria-busy={submitting}>
                 {submitting
-                  ? submitStage === "notifying"
-                    ? "Sending it to Jimmy…"
-                    : "Checking the schedule…"
+                  ? submitStage === "opening"
+                    ? "Booked. Opening your confirmation…"
+                    : submitStage === "notifying"
+                      ? "Sending it to Jimmy…"
+                      : "Checking the schedule…"
                   : `Book ${draft.date ? formatShort(draft.date) : ""}${dayOnly ? "" : `, ${slotLabel(draft.slotId)}`}`}
               </button>
             )}
@@ -835,15 +799,6 @@ function todayGuess() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function DemoNote({ done }: { done?: boolean }) {
-  return (
-    <p className={styles.demoNote}>
-      {done
-        ? "Demo only. This isn't a real booking, and nobody was told about it."
-        : `Demo schedule. Some days are filled with sample bookings, and nothing you book here is real. To book, call or text ${site.phone.display}.`}
-    </p>
-  );
-}
 
 function Field({
   id,
@@ -891,121 +846,3 @@ function Field({
   );
 }
 
-function Done({
-  booking,
-  delivery,
-  onResend,
-  name,
-  phone,
-  onAnother,
-  headingRef,
-  planRequests,
-}: {
-  booking: Confirmation;
-  delivery: Delivery;
-  onResend: () => void;
-  name: string;
-  phone: string;
-  onAnother: () => void;
-  headingRef: React.RefObject<HTMLHeadingElement | null>;
-  planRequests: boolean;
-}) {
-  const pkg = getPackage(booking.packageId);
-  const address = `${booking.address.street}, ${booking.address.city}, PA ${booking.address.zip}`;
-  const unsent = delivery.status === "failed" || delivery.status === "retrying";
-  return (
-    <div className={`${styles.app} ${styles.done}`}>
-      {booking.demo && <DemoNote done />}
-      <p className={styles.doneRef}>Booking {booking.ref}</p>
-      <h3 ref={headingRef} tabIndex={-1} className={styles.doneTitle}>
-        {booking.demo
-          ? "That\u2019s how booking works."
-          : unsent
-            ? "Your day is held, but Jimmy hasn\u2019t been told yet."
-            : "You\u2019re on the schedule."}
-      </h3>
-      {unsent && (
-        <div className={styles.unsent} role="alert">
-          <p>
-            Your booking is saved, so nobody else can take your spot. Sending the details to Jimmy didn&rsquo;t go through.
-          </p>
-          <button
-            type="button"
-            className="btn btn--sky"
-            onClick={onResend}
-            disabled={delivery.status === "retrying"}
-            aria-busy={delivery.status === "retrying"}
-          >
-            {delivery.status === "retrying" ? "Sending it to Jimmy…" : "Try sending again"}
-          </button>
-          <p className={styles.unsentCall}>
-            Or call or text <a href={site.phone.href}>{site.phone.display}</a> and give him booking {booking.ref}.
-          </p>
-        </div>
-      )}
-      <p className={styles.doneWhen}>
-        {formatLong(booking.date)}
-        {!dayOnly && `, ${slotLabel(booking.slotId)}`}
-        <br />
-        <span>{address}</span>
-      </p>
-      <dl className={styles.doneFacts}>
-        <div>
-          <dt>House</dt>
-          <dd>
-            {pkg?.name}
-            {booking.rinse ? ", with a rinse" : ""}
-          </dd>
-        </div>
-        <div>
-          <dt>{booking.priceIsEstimate ? "Starting at" : "Total"}</dt>
-          <dd>${booking.priceDollars}, invoiced after</dd>
-        </div>
-      </dl>
-      <h4 className={styles.nextTitle}>What happens now</h4>
-      <ol className={styles.nextList}>
-        {delivery.status === "sent" ? (
-          <li>Jimmy has your booking details. Keep this reference number; he&rsquo;ll be in touch at {booking.email} if anything changes.</li>
-        ) : (
-          !booking.demo && <li>Keep this reference number. We&rsquo;ll be in touch at {booking.email} if anything changes.</li>
-        )}
-        <li>On the day, we clean. You don&rsquo;t need to be home if we can reach the gutters.</li>
-        <li>Photos and the invoice come after.</li>
-        {booking.planLabel && (
-          <li>
-            You asked for a recurring plan: {booking.planLabel.toLowerCase()}. Jimmy will be in touch to set it up. Nothing bills
-            automatically.
-          </li>
-        )}
-      </ol>
-      <div className={styles.doneActions}>
-        <button
-          type="button"
-          className="btn btn--sky"
-          onClick={() =>
-            downloadIcs(
-              `keystone-${booking.date}.ics`,
-              buildIcs({ ref: booking.ref, date: booking.date, slotId: dayOnly ? null : booking.slotId, address }),
-            )
-          }
-        >
-          Add to my calendar
-        </button>
-        {!booking.planLabel && planRequests && (
-          <PlanDialog className="btn" initial={{ ...booking.address, name, phone, email: booking.email }}>
-            Make it recurring
-          </PlanDialog>
-        )}
-        <button type="button" className={styles.back} onClick={onAnother}>
-          Book another house
-        </button>
-      </div>
-      <p className={styles.doneFoot}>
-        Need to change something? Call or text {site.phone.display}.{" "}
-        <Link href="/referred" className="textlink">
-          Send a neighbor our way
-        </Link>
-      </p>
-    </div>
-  );
-}

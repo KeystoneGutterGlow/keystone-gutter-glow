@@ -1,0 +1,10 @@
+/* The same navy band as the booking section, with the confirmation card in it */
+.page {
+  background: var(--navy);
+  color: #fff;
+  min-height: 72vh;
+  padding: clamp(56px, 8vw, 104px) 0 clamp(64px, 9vw, 112px);
+}
+.wrap {
+  max-width: calc(820px + 2 * var(--gutter));
+}

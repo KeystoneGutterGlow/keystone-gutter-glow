@@ -53,7 +53,7 @@ The client's existing navy and cyan are kept and refined. No gradients except th
 ## Photography
 
 - Use real job photos only: gutter-level shots looking down the run, debris close-ups, the rig on a lawn. No filters, no stock houses.
-- Where a photo doesn't exist yet, show a **hatched placeholder** (the architectural convention for "to be supplied") with the shot described and a target filename, so it's obvious what to shoot.
+- **No photo placeholders.** Jimmy's portrait (2026-11-11, `public/images/jimmy.webp`, re-saved without metadata) is in Meet Jimmy. Sam had the "Next job" placeholder panels removed the same day. Add more job photos only when real ones exist.
 - The before/after on the current site is the strongest asset. It powers the interactive slider.
 
 ## Dividers

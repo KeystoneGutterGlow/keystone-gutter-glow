@@ -12,8 +12,8 @@ export interface Faq {
 }
 
 const price = (id: Parameters<typeof getPackage>[0]) => getPackage(id)?.price;
-/** Better-known places inside the circle, named in the towns answer. Any that leave the list drop out. */
-const namedTowns = ["Doylestown", "Warminster", "Warrington", "Horsham", "Hatboro", "Richboro", "Southampton", "Newtown", "Chalfont", "New Hope", "Willow Grove"].filter(
+/** Well-known places spread across the area, for the towns answer. Any not inside the circle drop out. */
+const namedTowns = ["Doylestown", "Newtown", "Warminster", "Horsham", "Lansdale", "Quakertown", "Norristown", "King of Prussia", "Philadelphia", "Trenton", "Princeton", "Cherry Hill"].filter(
   (t) => areaZips.some((z) => z.name === t),
 );
 
@@ -28,7 +28,7 @@ export const faqs: Faq[] = [
   },
   {
     q: "Which towns do you cover?",
-    a: `Anywhere within ${serviceRadius.miles} miles of our base in Jamison. That includes ${namedTowns.slice(0, -1).join(", ")} and ${namedTowns.at(-1)}, among others. Not sure about your street? Check your ZIP in the Where we work section, or call or text.`,
+    a: `Anywhere within ${serviceRadius.miles} miles of our base in Jamison, in Pennsylvania and New Jersey. That includes ${namedTowns.slice(0, -1).join(", ")} and ${namedTowns.at(-1)}, among others. Not sure about your street? Check your ZIP in the Where we work section, or call or text.`,
   },
   {
     q: "Do I need to be home?",

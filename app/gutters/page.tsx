@@ -8,7 +8,7 @@ import { getSiteMode } from "@/content/season";
 
 export const metadata: Metadata = {
   title: { absolute: "Gutter Cleaning in Bucks County, PA | Keystone Gutter Glow" },
-  description: `Residential gutter cleaning by vacuum within 10 miles of Jamison, PA: Doylestown, Warminster, Warrington and nearby. From $${startingPrice}, pay after the job. Book online.`,
+  description: `Gutter cleaning by vacuum within 30 miles of Jamison, PA: Bucks, Montgomery, Philadelphia and nearby New Jersey. From $${startingPrice}, pay after the job. Book online.`,
   alternates: { canonical: "/gutters" },
 };
 

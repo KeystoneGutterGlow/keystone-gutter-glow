@@ -3,7 +3,7 @@ import { bookingRules, type BookingRules } from "@/content/booking";
 import { checkDate, dayDetail, firstOpening, rangeSummary } from "@/lib/booking/availability";
 import { addDays, addMonths, daysInMonth, diffDays, formatLong, isISODate, todayIn, weekday } from "@/lib/booking/dates";
 import { isUsPhone, normalizePhone, parseBookingRequest } from "@/lib/booking/validate";
-import { areaZips, lookupArea, serviceRadius } from "@/content/area";
+import { areaCounties, areaZips, lookupArea, serviceRadius, stateForZip } from "@/content/area";
 
 const rules: BookingRules = bookingRules;
 // A Tuesday, so the closed-Sunday rule is easy to reason about.
@@ -168,14 +168,40 @@ describe("service area lookup", () => {
     expect(lookupArea("123")).toEqual({ status: "invalid" });
   });
 
-  it("covers everything within 10 miles and nothing past it", () => {
-    for (const zip of ["18974", "19044", "19040", "18954", "18966", "18938", "19006", "19053"]) {
+  it("covers everything within 30 miles, in both states, and nothing past it", () => {
+    expect(serviceRadius.miles).toBe(30);
+    // The old 10-mile area, the towns just past it, and well-known places further out
+    for (const zip of ["18974", "19044", "19040", "18954", "18966", "18938", "19006", "19053", "19067", "18977", "19047"]) {
       expect(lookupArea(zip).status).toBe("yes");
     }
+    for (const zip of ["19103", "18951", "19464", "19406", "08540", "08618", "08002", "08822"]) expect(lookupArea(zip).status).toBe("yes");
     expect(areaZips.every((z) => z.miles <= serviceRadius.miles)).toBe(true);
-    // Just outside the circle: Yardley, Washington Crossing, Langhorne
-    for (const zip of ["19067", "18977", "19047"]) expect(lookupArea(zip)).toEqual({ status: "ask" });
-    expect(lookupArea("Yardley")).toEqual({ status: "unknown" });
+    expect(areaZips).toHaveLength(305);
+    expect(areaZips.filter((z) => z.miles <= 10)).toHaveLength(33);
+    expect(new Set(areaZips.map((z) => z.zip)).size).toBe(areaZips.length);
+    // Just outside the circle: Allentown, Bethlehem, Chester County and Somerset County edges
+    for (const zip of ["18103", "18018", "19345", "08869"]) expect(lookupArea(zip)).toEqual({ status: "ask" });
+    expect(lookupArea("Yardley")).toEqual({ status: "yes", town: "Yardley" });
+    expect(lookupArea("Princeton, NJ")).toEqual({ status: "yes", town: "Princeton" });
+    expect(lookupArea("King of Prussia")).toEqual({ status: "yes", town: "King of Prussia" });
+  });
+
+  it("knows each address's state from its ZIP", () => {
+    expect(stateForZip("18929")).toBe("PA");
+    expect(stateForZip("08540")).toBe("NJ");
+    expect(areaZips.every((z) => stateForZip(z.zip) === z.state && (z.state === "NJ") === z.zip.startsWith("0"))).toBe(true);
+    // Outside the list, the ZIP's first digits decide
+    expect(stateForZip("08901")).toBe("NJ");
+    expect(stateForZip("18103")).toBe("PA");
+    expect(stateForZip("19801")).toBe("DE");
+  });
+
+  it("groups the towns by county, Bucks first and New Jersey after Pennsylvania", () => {
+    expect(areaCounties[0]).toMatchObject({ county: "Bucks", state: "PA" });
+    const states = areaCounties.map((c) => c.state);
+    expect(states.indexOf("NJ")).toBeGreaterThan(states.lastIndexOf("PA"));
+    expect(areaCounties.some((c) => c.county === "Mercer" && c.state === "NJ")).toBe(true);
+    for (const c of areaCounties) expect(c.towns).toEqual([...c.towns].sort((a, b) => a.localeCompare(b)));
   });
 
   it("matches other names for places in the area", () => {

@@ -125,7 +125,7 @@
 .facts dd {
   margin: 2px 0 0;
   font-weight: 700;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .facts a {
   text-decoration: none;

@@ -35,7 +35,7 @@ describe("robots.txt", () => {
   it("opens the site, keeps APIs and the order page out, and points at the sitemap", async () => {
     const { robots } = await load({ ALLOW_INDEXING: "true", SITE_URL: "https://example.test" });
     const r = robots();
-    expect(r.rules).toEqual([{ userAgent: "*", allow: "/", disallow: ["/api/", "/firewood/order"] }]);
+    expect(r.rules).toEqual([{ userAgent: "*", allow: "/", disallow: ["/api/", "/firewood/order", "/booking-confirmed", "/notify-test"] }]);
     expect(r.sitemap).toBe("https://example.test/sitemap.xml");
   });
 });

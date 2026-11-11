@@ -30,6 +30,7 @@ npm run build
 - `tests/sql.test.ts`: every migration on PGlite (real Postgres in WASM), plus the Supabase adapters run against those tables
 - `tests/firewood.test.ts`: prices, order validation, the payment gate, the seasonal switch, and the off switch
 - `tests/notify.test.ts`: FormSubmit notices. A booking through the real migrations hands back a notice with every detail, addressed to Jimmy's email. The fifth booking of a day is refused with no notice. Notices are off unless switched on, and never on previews or the demo store. The server never contacts FormSubmit. The browser only reports success when FormSubmit confirms.
+- `tests/ads.test.ts`: the Google tag's IDs and setup script, production only, and the Purchase conversion firing once per booking with the booking number
 - `tests/stripe.test.ts`: checkout, webhook signatures, duplicate events. Signature checks use Stripe's real code. Session creation is a stand-in, so no network or key is needed.
 
 `npm run test:booking` runs another 15 checks over HTTP against a running dev server (`BASE=http://localhost:3000 npm run test:booking`).
@@ -130,6 +131,8 @@ BookingApp (client)  ->  /api/availability  (GET: month summary, one day's times
 ```
 
 The flow: the customer picks a day. On submit, the server validates everything again, re-checks the date, computes the price itself, files the job under a free internal slot, and asks the store to create the booking atomically. If the day filled up in the meantime, the API returns `409` with fresh availability, and the UI sends the customer back to the calendar.
+
+After a successful booking the form moves to `/booking-confirmed` (see "Google Ads").
 
 **Double booking is blocked in storage, not in the UI.**
 - A partial unique index on `(service_date, slot_id)` allows one confirmed booking per time.
@@ -232,7 +235,7 @@ A test key is refused on the real domain (`ALLOW_INDEXING=true`), so no customer
 
 Every gutter booking and recurring-plan request is emailed to Jimmy at the address on the site, `email` in `content/site.ts` (jimmyesmond@keystonegutterglow.com), through **FormSubmit** (formsubmit.co). It's free and needs no account, API key or domain setup.
 
-**Status (2026-11-09): built and tested, switched OFF.** Production doesn't set `FORMSUBMIT_ENABLED`, so nothing is sent to FormSubmit and Jimmy hasn't been contacted. Bookings still save to the database as before. Jimmy's mailbox works: keystonegutterglow.com's mail is on Zoho.
+**Status (2026-11-10): ON in production, waiting for Jimmy to activate it.** `FORMSUBMIT_ENABLED=true` is set on Production, and FormSubmit's activation email went to Jimmy from `/notify-test`. Until he clicks "Activate Form", submissions are held by FormSubmit and he gets activation emails instead. Bookings always save to the database. Jimmy's mailbox works: keystonegutterglow.com's mail is on Zoho.
 
 **How it works**
 1. The customer submits. The server checks everything as before: validation, the honeypot, rate limits, and the booking itself in the database, which enforces the four-a-day limit. A request the server refuses never produces a notification.
@@ -279,11 +282,40 @@ Until Jimmy activates FormSubmit, **every** submission sends him another "Activa
 
 **Firewood orders** are the one notification FormSubmit can't send: they're confirmed by Stripe's webhook on the server, where there's no browser. `lib/notify/email.ts` (Resend) is kept for that path only, and it's dormant: firewood is switched off and no `RESEND_API_KEY` is set. Before firewood returns, choose either Resend with a key, or Stripe's own "successful payment" emails to Jimmy.
 
+## Google Ads (tag and booking conversion)
+
+Set up 2026-11-11 from Jimmy's Google Ads account. The IDs are public by design; they're in `lib/ads.ts`.
+
+- **Google tag** (container `GTM-MVK64PHQ`): Google's two scripts, in `<head>` on every page (`app/layout.tsx`). React puts Next's own preloads and styles first, so the tag sits after them; it still loads asynchronously, early in the page.
+- **Purchase conversion** (`AW-18566097431/YzNNCIGmpLUdEJfUgJVF`, value 1.0 USD): fires on `/booking-confirmed`, the page the booking form sends people to once their booking is saved. It's Google's event snippet, with the booking number as `transaction_id`, so a reload or reopened tab can't count the same booking twice. It fires once per booking per browser tab, and never when someone opens the page without a booking.
+- **Production only.** The tag loads only on Vercel's production deployment (`VERCEL_ENV=production`). Previews, local runs and tests never count as visits or conversions. In QA, Google's domains are blocked and the conversion is read from `window.dataLayer` (`tests/ads.test.ts` covers the snippet).
+- **Checking it.** In Google Ads, open Goals, then Conversions. The tag shows as active once the site has had visits, and a real booking shows up as a Purchase conversion within a few hours. Don't make a test booking on the live site: it writes to the real database and emails Jimmy. Google's Tag Assistant (tagassistant.google.com) shows the tag firing on any page.
+- **Privacy.** The tag sets Google cookies and tells Google about visits, so the privacy policy should say so.
+
+### The confirmation page (`/booking-confirmed`)
+
+When a booking succeeds, the form tells Jimmy (FormSubmit), saves the confirmation for that browser tab, and moves to `/booking-confirmed`. The button reads "Booked. Opening your confirmation…".
+
+`components/booking/confirmation.ts` keeps the confirmation in memory and in `sessionStorage`, so a reload still shows it. The page shows the same card as before (`components/booking/Done.tsx`): the reference, day, address, price, calendar file, "Make it recurring", and "Try sending again" if Jimmy's email didn't go through. Opened without a booking, it says so and links to booking. It's `noindex`, kept out of the sitemap, and disallowed in robots.txt.
+
 ## Map
 
 The service-area map uses Leaflet with OpenStreetMap's public tiles (`components/area/AreaMap.tsx`). There's no key and no cost. The tiles name the towns themselves. The only label the site adds is Jamison, which the tiles leave out at that zoom.
 
-**Service area.** Anything within 10 miles of the rounded center in `content/area.ts` counts. `areaZips` lists every ZIP whose Census 2020 ZIP-area center is inside the circle (33 of them, Jamison through Dublin, including Warminster, Horsham, Hatboro, Richboro, Southampton, Willow Grove and New Hope). That one list drives the "Do we come to you?" check, the booking form's out-of-area note and firewood delivery. Yardley (11.8 mi), Washington Crossing (11.0), Langhorne and Philadelphia 19116 (10.4) and Lumberville (10.1) fall just outside, so they're told to ask rather than refused. It only loads as it nears the screen, and the required attribution stays on it. Each visitor's browser requests the tiles from OpenStreetMap, which therefore sees their IP address, so the privacy policy should mention it. OpenStreetMap's tile servers are meant for light use, which suits a local business site. If traffic ever grows a lot, point the tile URL at a paid provider.
+**Service area: 30 miles (since 2026-11-11, at Sam's request; Addendum A1 said 10).** Anything within 30 miles of the rounded center in `content/area.ts` counts.
+- **The list.** `areaZips` lists every ZIP whose Census 2020 ZIP-area center is inside the circle, with its post-office name, state, county and distance. That's 305 ZIPs: 203 in Pennsylvania and 102 in New Jersey, covering 232 town names in 17 counties.
+- **The circle crosses into New Jersey.** It takes in Trenton, Princeton, Flemington and Cherry Hill. Check that Jimmy is set up to work there, or limit `areaZips` to `state: "PA"`.
+- **What it drives:**
+  - the "Do we come to you?" check
+  - the county summary and the "Every town" list under the map
+  - the booking form's town suggestions and out-of-area note
+  - firewood delivery
+  - the search markup's `areaServed` (counties)
+  - the state printed on every address: `stateForZip`, since an address can be in NJ
+- **Just outside.** Allentown 18103, Bethlehem 18018, and a few Chester County and New Jersey ZIPs (30.0 to 31.5 mi, listed in the file) are told to ask rather than refused.
+- **How it was built.** The ZIP areas and their centers come from the Census TIGERweb ZCTA layer, and each county from the TIGERweb county containing that center. Names come from GeoNames, via the Zippopotam API. The 33 ZIPs inside 10 miles keep their hand-checked names and other names (Warwick, Holland, Ivyland…), and 19067 is named Yardley (Morrisville as another name).
+
+**Map.** It only loads as it nears the screen, and the required attribution stays on it. Each visitor's browser requests the tiles from OpenStreetMap, which therefore sees their IP address, so the privacy policy should mention it. OpenStreetMap's tile servers are meant for light use, which suits a local business site. If traffic ever grows a lot, point the tile URL at a paid provider.
 
 ## Loading and speed
 
@@ -301,14 +333,14 @@ The service-area map uses Leaflet with OpenStreetMap's public tiles (`components
 - **JSON-LD** (`lib/schema.ts`), built from `content/` so it can't drift from the page:
   - Home: `WebSite`, `HomeAndConstructionBusiness`, a gutter-cleaning `Service` with real prices, and `FAQPage`.
   - Firewood: the business, a firewood-delivery `Service`, and a `BreadcrumbList`.
-  - `areaServed` lists Bucks and Montgomery Counties and every place inside the 10-mile circle.
+  - `areaServed` lists every county with part of the 30-mile circle in it, Pennsylvania and New Jersey.
   - Not included, because none of them are confirmed: street address, coordinates, opening hours, ratings and reviews. `tests/seo.test.ts` fails if any of them appear.
   - The FAQ markup is valid, but Google currently shows FAQ rich results only for government and health sites, so don't expect them.
 - **Crawling.** `robots.txt` and `sitemap.xml` are generated. When indexing is on, robots.txt allows everything except `/api/` and `/firewood/order`, and points at the sitemap. The sitemap lists `/`, plus `/firewood` whenever firewood is public (or `/gutters` in firewood mode). `/referred` stays `noindex` and out of the sitemap until `referral.indexable` is true, because its content is still placeholder. `/firewood/order` is `noindex`.
-- **Local content.** The "Where we work" section lists every town inside the circle, from the same ZIP data the ZIP check uses. The FAQ answers cost, how often and which towns, built from `content/` so the answers can't drift.
+- **Local content.** The "Where we work" section names the counties inside the circle and lists every town by county (in a closed "Every town inside the circle" list), from the same ZIP data the ZIP check uses. The FAQ answers cost, how often and which towns, built from `content/` so the answers can't drift.
 
 **Indexing is currently OFF on production (2026-11-09).** `ALLOW_INDEXING` isn't set, so every page is `noindex` and robots.txt blocks crawling. It stays off until these are sorted, because indexing brings real customers:
-1. Notifications are switched off until Jimmy activates FormSubmit, so a booking made on the site reaches the database but nobody is told.
+1. Notifications only reach Jimmy once he activates FormSubmit; until then a booking reaches the database but he isn't told.
 2. There are no privacy, terms or cancellation pages yet, though the site takes names, addresses and phone numbers.
 3. The final domain isn't connected. Indexing the `.vercel.app` address now builds Google's history on an address that will later redirect.
 
@@ -338,7 +370,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 
 **Google Business Profile** (Jimmy has to do this himself, from his Google account; it needs verification by Google):
 - Create the profile as a **service-area business**, so the home address stays hidden. Pick the category "Gutter cleaning service".
-- Add the service area: the towns and ZIPs in `content/area.ts`, or "within 10 miles of Jamison".
+- Add the service area: the counties and towns in `content/area.ts`, or "within 30 miles of Jamison" (Google caps a service area at 20 entries, so counties work better than towns).
 - Add the phone number (214) 642-5081, the website address, and the hours he actually works (bookings run Monday to Saturday).
 - Add real photos of his work and his vacuum.
 - Ask real customers for Google reviews after each job. Don't add reviews or ratings to the site's markup unless they're real and shown on the page.
@@ -353,6 +385,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 - [ ] Stripe account created and verified, with his bank details
 - [ ] Domain pointed at Vercel
 - [ ] FormSubmit activated by Jimmy (see "Activating and testing")
+- [ ] Google Ads shows the tag as active and records a Purchase conversion from a real booking (see "Google Ads")
 
 **Database**
 - [x] All three migrations run
@@ -383,7 +416,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 Everything factual came from the current site or the agreement. These items were either unclear or assumed:
 
 - **Daily cap.** The site allows four jobs a day. Addendum A1 says three.
-- **Firewood ZIPs.** Delivery uses the same 10-mile ZIP list as gutter cleaning, as Jimmy asked. Firewood is paid up front, so ZIPs outside it are told to call.
+- **Firewood ZIPs.** Delivery uses the same ZIP list as gutter cleaning (now 30 miles), as Jimmy asked. Firewood is paid up front, so ZIPs outside it are told to call.
 - **Failed deliveries.** "No refunds" covers a customer changing their mind. Jimmy still has to approve what happens if a delivery doesn't happen. That keeps the "Cancellation and refunds" group unconfirmed.
 - **Sales tax.** Still unanswered, so none is added and live payments stay blocked. The site no longer shows this to visitors. `content/firewood.ts` is where the open items are listed.
 - **Biography.** It publishes Jimmy's age and school, as Addendum A1 asks. He's a minor, so his parent or guardian should approve it, and the age needs updating when he turns 17. "No liabilities on anyone" is his wording and is a legal-sounding claim worth a second look.
@@ -392,7 +425,7 @@ Everything factual came from the current site or the agreement. These items were
 - **"Ground-based" / ladder-free.** This is in the old site's schema markup, but its 2-story description also says "insured for elevated work". The copy says the pole reaches 40 ft and that the pole does the reaching, so the cleaning is done from the ground. It doesn't promise "no ladders" outright.
 - **The vacuum kit.** The tour describes the Cyclone Classic Pro 16-gallon kit with the 40 ft carbon clamping poles, the exact listing Sam sent on 2026-11-06. The listing was on preorder that day, so confirm Jimmy has this machine before the page says he cleans with it.
 - **"Insured".** This is on the old site's trust bar and shown in the footer. Confirm it, and add a policy or registration number if he has one.
-- **Newtown.** It was only in the old site's hidden schema, not its visible town list. It's inside the 10-mile circle, so it's served. Yardley is outside the circle and is no longer listed.
+- **Newtown.** It was only in the old site's hidden schema, not its visible town list. It's inside the circle, so it's served. Yardley is back in since the area grew to 30 miles.
 - **"Houses and townhomes only."** This is inferred from the site saying "residential" everywhere.
 - **Photos, coming from Jimmy.** His portrait next to the equipment, before-and-after pairs from real jobs, and his actual vacuum. The old stand-in rig photo (a UK manufacturer shot) has been removed; the vacuum tour draws Jimmy's actual machine instead. The hero's drawing of the setup is unbranded and stays either way. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
 - **Removed from the old site** because nothing backs them up: the "5.0" rating (the reviews list was empty), "100% debris captured", and "2× more thorough".
@@ -407,8 +440,8 @@ Everything factual came from the current site or the agreement. These items were
 | A1 No time slots, arrival explanation | Done |
 | A1 Three jobs a day | Built, still set to four until Jimmy confirms |
 | A1 Vacuum visual resembling GutterPro-style equipment | Done: an unbranded drawing in the hero of a worker steadying the pole up to the gutter, leaves going into the nozzle, and a hose to a three-motor stainless vacuum on a wheeled cart (`components/hero/Rig.tsx`). |
-| A1 10-mile radius shown from the private address | Done, on a real OpenStreetMap map, at every screen size. Every ZIP inside it is accepted. |
-| A1 Biography with age, school and quotation | Done with Jimmy's text. His photo is still to come. |
+| A1 10-mile radius shown from the private address | Done, then widened to 30 miles at Sam's request (2026-11-11). Shown on a real OpenStreetMap map, at every screen size. Every ZIP inside it is accepted. |
+| A1 Biography with age, school and quotation | Done with Jimmy's text and his photo (2026-11-11). |
 | A1 Recurring-plan request form | Built and tested. Reaches Jimmy through FormSubmit once it's switched on and activated; hidden on a real deployment until then. Choosing a plan while booking works without email. |
 | A1 Terms, privacy and cancellation policy pages | Not started. Needs approved text. |
 | A2 Separate winter mode with switch, colors and igniting log visual | Done. Firewood is sold all year, so the page has no snow or winter wording; "winter mode" is only the code's name for it. |
