@@ -3,15 +3,17 @@
 import { useRouter } from "next/navigation";
 import { cloneElement, useCallback, useEffect, useId, useRef, useState } from "react";
 import { BOOK_EVENT, type BookIntent } from "@/components/BookLink";
+import { PlanAgreement } from "@/components/plan/PlanAgreement";
 import { House } from "@/components/pricing/Houses";
-import { areaPlaces, serviceZips } from "@/content/area";
+import { areaPlaces, serviceZips, stateForZip } from "@/content/area";
 import { additionalInfo, bookingRules } from "@/content/booking";
+import { legalPaths } from "@/content/legalPaths";
 import { getPlanFrequency, planFrequencies, recommendedPlan, recommendedWhy } from "@/content/plans";
 import { getPackage, packages, rinse, totalFor, type PackageId } from "@/content/pricing";
 import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
 import type { DayDetail, DaySummary } from "@/lib/booking/types";
-import { formatPhone, validateContact, type FieldErrors } from "@/lib/booking/validate";
+import { formatPhone, PLAN_TERMS_ERROR, validateContact, type FieldErrors } from "@/lib/booking/validate";
 import { sendNotice } from "@/lib/notify/notice";
 import { fetchDay, fetchRange, submitBooking, type Meta } from "./api";
 import styles from "./Booking.module.css";
@@ -38,6 +40,8 @@ interface Draft {
   email: string;
   notes: string;
   company: string;
+  /** Agreed to the Recurring Plan Terms. Cleared whenever the plan, house or rinse changes. */
+  planTerms: boolean;
 }
 
 const EMPTY: Draft = {
@@ -54,6 +58,7 @@ const EMPTY: Draft = {
   email: "",
   notes: "",
   company: "",
+  planTerms: false,
 };
 
 const slotLabel = (id: string | null) => bookingRules.slots.find((s) => s.id === id)?.label ?? "";
@@ -90,7 +95,9 @@ export function BookingApp() {
 
   // Editing a field clears its error, so a fixed field stops showing red straight away.
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
-    setDraft((d) => ({ ...d, [key]: value }));
+    // The plan agreement covers the plan and price shown, so changing either needs a fresh tick.
+    const resetsTerms = key === "plan" || key === "packageId" || key === "rinse";
+    setDraft((d) => ({ ...d, [key]: value, ...(resetsTerms && d[key] !== value ? { planTerms: false } : {}) }));
     setErrors((e) => {
       const k = key as keyof FieldErrors;
       if (!e[k]) return e;
@@ -248,6 +255,11 @@ export function BookingApp() {
 
   async function submit() {
     if (submitting || !draft.packageId || !draft.date || (!dayOnly && !draft.slotId)) return;
+    if (draft.plan && !draft.planTerms) {
+      setErrors((e) => ({ ...e, planTerms: PLAN_TERMS_ERROR }));
+      document.getElementById(`${uid}-planterms`)?.focus();
+      return;
+    }
     setSubmitting(true);
     setSubmitStage("saving");
     setBanner(null);
@@ -257,6 +269,7 @@ export function BookingApp() {
       packageId: draft.packageId,
       rinse: draft.rinse,
       planFrequencyId: draft.plan,
+      planTerms: draft.plan ? draft.planTerms : false,
       date: draft.date,
       slotId: draft.slotId ?? "",
       name: draft.name,
@@ -306,6 +319,10 @@ export function BookingApp() {
     if (result.kind === "invalid") {
       setErrors(result.errors);
       const keys = Object.keys(result.errors);
+      if (keys.every((k) => k === "planTerms")) {
+        document.getElementById(`${uid}-planterms`)?.focus();
+        return;
+      }
       if (keys.some((k) => k === "packageId")) go(0);
       else if (keys.some((k) => k === "date" || k === "slotId")) go(1);
       else go(2);
@@ -319,7 +336,8 @@ export function BookingApp() {
 
   const minMonth = meta ? monthStart(addDays(meta.today, meta.minLeadDays)) : null;
   const maxMonth = meta ? monthStart(addDays(meta.today, meta.horizonDays)) : null;
-  const zipOutside = /^\d{5}$/.test(draft.zip) && !serviceZips.has(draft.zip);
+  // A Pennsylvania ZIP past the edge can still book; anything outside Pennsylvania gets a field error instead.
+  const zipOutside = /^\d{5}$/.test(draft.zip) && !serviceZips.has(draft.zip) && stateForZip(draft.zip) === "PA";
 
   return (
     <div className={styles.app}>
@@ -435,7 +453,7 @@ export function BookingApp() {
                     ))}
                   </div>
                   <p id={`${uid}-repeat-why`} className={styles.repeatWhy}>
-                    {recommendedWhy} Nothing bills automatically. Jimmy sets up a plan with you.
+                    {recommendedWhy} A plan renews every year until you cancel; you&rsquo;ll see its terms before you book.
                   </p>
                 </fieldset>
               </fieldset>
@@ -696,6 +714,17 @@ export function BookingApp() {
                   <span>{pkg.needsQuote ? "Starting at" : "Total"}</span>
                   <strong>${total}</strong>
                 </p>
+                {draft.plan && (
+                  <PlanAgreement
+                    id={`${uid}-planterms`}
+                    frequencyId={draft.plan}
+                    pricePerCleaning={total}
+                    priceIsFrom={pkg.needsQuote}
+                    checked={draft.planTerms}
+                    onChange={(v) => set("planTerms", v)}
+                    error={errors.planTerms}
+                  />
+                )}
                 <ul className={styles.fine}>
                   <li>Nothing is charged now. We invoice after the cleaning.</li>
                   <li>
@@ -706,6 +735,17 @@ export function BookingApp() {
                   </li>
                   {dayOnly && <li>We don&rsquo;t normally give an exact arrival time, and you don&rsquo;t need to be home.</li>}
                   {pkg.needsQuote && <li>We&rsquo;ll confirm the final price with you before the visit.</li>}
+                  <li>
+                    By booking, you agree to our{" "}
+                    <a href={legalPaths.terms} target="_blank" rel="noopener">
+                      Terms of Service
+                    </a>{" "}
+                    and{" "}
+                    <a href={legalPaths.privacy} target="_blank" rel="noopener">
+                      Privacy Policy
+                    </a>
+                    , and to calls, texts and emails about your booking.
+                  </li>
                 </ul>
               </div>
             )}

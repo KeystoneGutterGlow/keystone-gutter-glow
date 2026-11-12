@@ -1,3 +1,4 @@
+import { stateForZip } from "@/content/area";
 import { bookingRules, type BookingRules } from "@/content/booking";
 import { getPlanFrequency } from "@/content/plans";
 import { getPackage, type PackageId } from "@/content/pricing";
@@ -21,8 +22,10 @@ export interface BookingRequest {
   /** Honeypot. Real people never see or fill it. */
   company?: string;
   idempotencyKey?: string;
-  /** A recurring plan they'd like set up. A request for Jimmy, nothing automatic. */
+  /** The recurring plan they're signing up for, if any (content/plans.ts) */
   planFrequencyId?: string;
+  /** Ticked "I agree to the Recurring Plan Terms". Required whenever there's a plan. */
+  planTerms?: boolean;
 }
 
 export interface CleanBookingRequest extends Omit<BookingRequest, "packageId" | "company"> {
@@ -30,6 +33,8 @@ export interface CleanBookingRequest extends Omit<BookingRequest, "packageId" | 
 }
 
 export type FieldErrors = Partial<Record<keyof BookingRequest, string>>;
+
+export const PLAN_TERMS_ERROR = "Tick the box to agree to the recurring plan terms, or choose Just this once.";
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const IDEMPOTENCY_RE = /^[\w-]{8,80}$/;
@@ -67,6 +72,8 @@ export function validateContact(input: Pick<BookingRequest, "name" | "email" | "
   if (input.street.trim().length < 4) errors.street = "Add the street address where the gutters are.";
   if (input.city.trim().length < 2) errors.city = "Which town is the house in?";
   if (!/^\d{5}$/.test(input.zip.trim())) errors.zip = "Five-digit ZIP, please.";
+  // Jimmy can only do business in Pennsylvania (content/area.ts).
+  else if (stateForZip(input.zip.trim()) !== "PA") errors.zip = "We only work in Pennsylvania, so we can't take this address.";
   if (input.name.trim().length < 2) errors.name = "Who should we ask for?";
   if (!isUsPhone(input.phone)) errors.phone = "A 10-digit phone number, in case we need to reach you on the day.";
   if (!EMAIL_RE.test(input.email.trim())) errors.email = "That email doesn't look right. The confirmation goes here.";
@@ -95,8 +102,9 @@ export function parseBookingRequest(
     zip: cleanText(b.zip, 10),
     notes: cleanText(b.notes, 1000, true),
     idempotencyKey: cleanIdempotencyKey(b.idempotencyKey),
-    // Anything unknown just means no plan. It's an extra, so it never stops a booking.
+    // Anything unknown just means no plan.
     planFrequencyId: getPlanFrequency(cleanText(b.planFrequencyId, 20))?.id,
+    planTerms: b.planTerms === true,
   };
 
   const errors: FieldErrors = validateContact(req);
@@ -105,6 +113,8 @@ export function parseBookingRequest(
   // In day-only mode the server chooses the slot, so anything the client sends is ignored.
   if (rules.scheduleMode === "day-only") req.slotId = "";
   else if (!rules.slots.some((s) => s.id === req.slotId)) errors.slotId = "Pick a start time.";
+  // A plan renews and has a cancellation fee, so it needs the customer's explicit agreement.
+  if (req.planFrequencyId && !req.planTerms) errors.planTerms = PLAN_TERMS_ERROR;
 
   if (Object.keys(errors).length) return { ok: false, errors };
   return {

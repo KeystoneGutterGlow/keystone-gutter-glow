@@ -1,5 +1,5 @@
 import { getPlanFrequency, type PlanFrequencyId } from "@/content/plans";
-import { cleanText, normalizePhone, validateContact } from "@/lib/booking/validate";
+import { cleanText, normalizePhone, PLAN_TERMS_ERROR, validateContact } from "@/lib/booking/validate";
 
 // Shared by the recurring-plan dialog (instant feedback) and its API route (authoritative).
 
@@ -12,6 +12,8 @@ export interface PlanRequest {
   city: string;
   zip: string;
   notes: string;
+  /** Ticked "I agree to the Recurring Plan Terms". Required. */
+  planTerms: boolean;
 }
 
 export interface CleanPlanRequest extends Omit<PlanRequest, "frequencyId"> {
@@ -23,6 +25,7 @@ export type PlanFieldErrors = Partial<Record<keyof PlanRequest, string>>;
 export function validatePlan(input: PlanRequest): PlanFieldErrors {
   const errors: PlanFieldErrors = validateContact(input);
   if (!getPlanFrequency(input.frequencyId)) errors.frequencyId = "Pick how often you want it cleaned.";
+  if (!input.planTerms) errors.planTerms = PLAN_TERMS_ERROR.replace(", or choose Just this once", "");
   return errors;
 }
 
@@ -42,6 +45,7 @@ export function parsePlanRequest(
     city: cleanText(b.city, 80),
     zip: cleanText(b.zip, 10),
     notes: cleanText(b.notes, 1000, true),
+    planTerms: b.planTerms === true,
   };
 
   const errors = validatePlan(req);

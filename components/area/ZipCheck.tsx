@@ -53,6 +53,9 @@ export function ZipCheck() {
             .
           </>
         )}
+        {result?.status === "outOfState" && (
+          <>We only work in Pennsylvania, so we can&rsquo;t come to {result.state === "NJ" ? "New Jersey" : "addresses outside the state"}.</>
+        )}
         {result?.status === "unknown" && <>We couldn&rsquo;t match that to a town. Try your five-digit ZIP.</>}
         {result?.status === "invalid" && <>Try a five-digit ZIP or a town name.</>}
       </p>

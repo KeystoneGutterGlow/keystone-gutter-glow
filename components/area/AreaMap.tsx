@@ -87,7 +87,7 @@ export function AreaMap() {
       className={styles.mapBox}
       data-loading=""
       role="group"
-      aria-label={`Map of the area around Jamison, Pennsylvania, with a ${serviceRadius.miles}-mile circle that reaches Philadelphia and across the Delaware River into New Jersey. Everywhere inside the circle is in our area.`}
+      aria-label={`Map of the area around Jamison, Pennsylvania, with a ${serviceRadius.miles}-mile circle. Everywhere inside it on the Pennsylvania side of the Delaware River is in our area. The part in New Jersey isn't.`}
     />
   );
 }

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { BookLink } from "@/components/BookLink";
+import { legalPaths } from "@/content/legalPaths";
 import { planFrequencies, recommendedPlan } from "@/content/plans";
 import { packages, priceLabel, rinse } from "@/content/pricing";
 import { site } from "@/content/site";
@@ -67,7 +69,11 @@ export function Pricing() {
         <div className={styles.plan}>
           <p>
             <strong>Want it on a schedule?</strong> Every 3, 4 or 6 months, or once a year. We recommend every 6
-            months. Pick one and book the first cleaning.
+            months. Pick one and book the first cleaning. Plans renew yearly until you cancel; see the{" "}
+            <Link href={legalPaths.planTerms} className="textlink">
+              Recurring Plan Terms
+            </Link>
+            .
           </p>
           <BookLink className="btn" plan={recommendedPlan}>
             Set up a recurring plan

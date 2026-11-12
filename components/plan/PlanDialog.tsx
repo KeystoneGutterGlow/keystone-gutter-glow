@@ -1,10 +1,11 @@
 "use client";
 
 import { cloneElement, useId, useRef, useState } from "react";
-import { serviceZips } from "@/content/area";
+import { serviceZips, stateForZip } from "@/content/area";
 import { additionalInfo } from "@/content/booking";
 import { getPlanFrequency, planFrequencies, recommendedPlan, recommendedWhy } from "@/content/plans";
 import { site } from "@/content/site";
+import { PlanAgreement } from "@/components/plan/PlanAgreement";
 import { formatPhone } from "@/lib/booking/validate";
 import { sendNotice, type Notice } from "@/lib/notify/notice";
 import { validatePlan, type PlanFieldErrors, type PlanRequest } from "@/lib/plan/validate";
@@ -12,10 +13,11 @@ import styles from "./PlanDialog.module.css";
 
 // The recurring-plan request. A native modal <dialog>, so the browser handles the focus trap,
 // Escape and hiding the page behind it from screen readers. Every customer sees 6 months selected
-// and recommended first. Sending only emails Jimmy (the server checks it, then this sends it through
-// FormSubmit); nothing is scheduled or billed. It only says "sent" once FormSubmit confirms it.
+// and recommended first. The customer has to tick the Recurring Plan Terms box (PlanAgreement), the
+// same as when booking a plan. Sending emails Jimmy (the server checks it, then this sends it through
+// FormSubmit), and he confirms the dates. It only says "sent" once FormSubmit confirms it.
 
-type Contact = Omit<PlanRequest, "frequencyId" | "notes">;
+type Contact = Omit<PlanRequest, "frequencyId" | "notes" | "planTerms">;
 
 const EMPTY: PlanRequest = {
   frequencyId: recommendedPlan,
@@ -26,17 +28,21 @@ const EMPTY: PlanRequest = {
   city: "",
   zip: "",
   notes: "",
+  planTerms: false,
 };
 
-const FIELD_ORDER: Array<keyof PlanRequest> = ["street", "city", "zip", "name", "phone", "email"];
+const FIELD_ORDER: Array<keyof PlanRequest> = ["street", "city", "zip", "name", "phone", "email", "planTerms"];
 
 export function PlanDialog({
   className,
   initial,
+  price,
   children,
 }: {
   className?: string;
   initial?: Partial<Contact>;
+  /** One cleaning's price for this house, so the agreement can show the annual total */
+  price?: { perCleaning: number; isFrom: boolean };
   children: React.ReactNode;
 }) {
   const uid = useId();
@@ -51,7 +57,8 @@ export function PlanDialog({
   const [sent, setSent] = useState<{ demo: boolean } | null>(null);
 
   const set = <K extends keyof PlanRequest>(key: K, value: PlanRequest[K]) => {
-    setForm((f) => ({ ...f, [key]: value }));
+    // A different frequency means different terms to agree to.
+    setForm((f) => ({ ...f, [key]: value, ...(key === "frequencyId" && f.frequencyId !== value ? { planTerms: false } : {}) }));
     setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
   };
 
@@ -123,7 +130,7 @@ export function PlanDialog({
     }
   }
 
-  const zipOutside = /^\d{5}$/.test(form.zip) && !serviceZips.has(form.zip);
+  const zipOutside = /^\d{5}$/.test(form.zip) && !serviceZips.has(form.zip) && stateForZip(form.zip) === "PA";
   const chosen = getPlanFrequency(form.frequencyId);
 
   return (
@@ -150,12 +157,12 @@ export function PlanDialog({
             <div className={styles.sent}>
               {sent.demo && <p className={styles.demo}>Demo only. This request didn&rsquo;t go anywhere, and nobody was told about it.</p>}
               <h2 id={`${uid}-title`} ref={headingRef} tabIndex={-1}>
-                {sent.demo ? "That’s how a plan request works." : "Your request is with Jimmy."}
+                {sent.demo ? "That’s how a plan request works." : "Your plan request is with Jimmy."}
               </h2>
               <p>
-                {chosen?.label}, at {form.street}, {form.city}. He&rsquo;ll be in touch to set it up.
+                {chosen?.label}, at {form.street}, {form.city}. He&rsquo;ll be in touch to confirm your dates.
               </p>
-              <p>Nothing is scheduled or billed until then. This is a request, not a subscription.</p>
+              <p>Your plan follows the Recurring Plan Terms you agreed to.</p>
               <button type="button" className="btn" onClick={close}>
                 Done
               </button>
@@ -256,6 +263,16 @@ export function PlanDialog({
                 </div>
               </div>
 
+              <PlanAgreement
+                id={`${uid}-planTerms`}
+                frequencyId={form.frequencyId}
+                pricePerCleaning={price?.perCleaning ?? null}
+                priceIsFrom={price?.isFrom}
+                checked={form.planTerms}
+                onChange={(v) => set("planTerms", v)}
+                error={errors.planTerms}
+              />
+
               <p ref={bannerRef} tabIndex={-1} role="alert" className={banner ? styles.banner : "vh"}>
                 {banner}
               </p>
@@ -263,7 +280,7 @@ export function PlanDialog({
                 <button type="submit" className="btn btn--sky" disabled={submitting}>
                   {submitting ? "Sending…" : "Send my request"}
                 </button>
-                <p>This goes to Jimmy. Nothing is scheduled or billed until he sets it up with you.</p>
+                <p>This goes to Jimmy, who confirms your dates with you.</p>
               </div>
             </form>
           )}

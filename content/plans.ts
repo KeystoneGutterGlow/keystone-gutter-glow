@@ -1,5 +1,6 @@
-// Recurring cleaning plans. A request only emails Jimmy; nothing is scheduled or billed
-// automatically (Website Agreement, Addendum A1). The frequencies are Jimmy's.
+// Recurring cleaning plans. The frequencies are Jimmy's; the plan rules below are Sam's, for Jimmy
+// (2026-11-11). The full wording is the Recurring Plan Terms page (content/legal.tsx), and the
+// customer has to tick a box agreeing to it before booking a plan or sending a plan request.
 
 export type PlanFrequencyId = "3-months" | "4-months" | "6-months" | "12-months";
 
@@ -7,13 +8,15 @@ export interface PlanFrequency {
   id: PlanFrequencyId;
   label: string;
   visits: string;
+  /** Cleanings in a plan year */
+  perYear: number;
 }
 
 export const planFrequencies: PlanFrequency[] = [
-  { id: "6-months", label: "Every 6 months", visits: "2 cleanings a year" },
-  { id: "3-months", label: "Every 3 months", visits: "4 cleanings a year" },
-  { id: "4-months", label: "Every 4 months", visits: "3 cleanings a year" },
-  { id: "12-months", label: "Once a year", visits: "1 cleaning a year" },
+  { id: "6-months", label: "Every 6 months", visits: "2 cleanings a year", perYear: 2 },
+  { id: "3-months", label: "Every 3 months", visits: "4 cleanings a year", perYear: 4 },
+  { id: "4-months", label: "Every 4 months", visits: "3 cleanings a year", perYear: 3 },
+  { id: "12-months", label: "Once a year", visits: "1 cleaning a year", perYear: 1 },
 ];
 
 /** Recommended to every customer, and selected when the dialog opens. */
@@ -24,4 +27,29 @@ export const recommendedWhy =
 
 export function getPlanFrequency(id: string) {
   return planFrequencies.find((f) => f.id === id);
+}
+
+/** The plan rules every customer agrees to. Change them here and on the terms page together. */
+export const planRules = {
+  /** Bump this whenever the Recurring Plan Terms change, so each agreement records which version it was. */
+  termsVersion: "2026-11-11",
+  /** Notice before every visit, in hours */
+  noticeHours: [72, 24] as const,
+  /** The year's total is paid in full after the year's first cleaning */
+  paidInFullAfterFirst: true,
+  /** Renews every plan year until the customer cancels */
+  autoRenews: true,
+  /** Cancelling costs this share of the plan's annual total */
+  cancellationFeePercent: 30,
+};
+
+/** Price per cleaning times the cleanings in a plan year. */
+export function planAnnualTotal(pricePerCleaning: number, frequencyId: string): number | null {
+  const f = getPlanFrequency(frequencyId);
+  return f ? pricePerCleaning * f.perYear : null;
+}
+
+/** The cancellation fee for a given annual total, rounded to the cent. */
+export function planCancellationFee(annualTotal: number): number {
+  return Math.round(annualTotal * planRules.cancellationFeePercent) / 100;
 }

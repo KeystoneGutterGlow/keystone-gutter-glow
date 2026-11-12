@@ -30,6 +30,7 @@ npm run build
 - `tests/sql.test.ts`: every migration on PGlite (real Postgres in WASM), plus the Supabase adapters run against those tables
 - `tests/firewood.test.ts`: prices, order validation, the payment gate, the seasonal switch, and the off switch
 - `tests/notify.test.ts`: FormSubmit notices. A booking through the real migrations hands back a notice with every detail, addressed to Jimmy's email. The fifth booking of a day is refused with no notice. Notices are off unless switched on, and never on previews or the demo store. The server never contacts FormSubmit. The browser only reports success when FormSubmit confirms.
+- `tests/plan.test.ts`: recurring plans, including that a plan can't be booked or requested without the Recurring Plan Terms box ticked, and that the agreed version is recorded
 - `tests/ads.test.ts`: the Google tag's IDs and setup script, production only, and the Purchase conversion firing once per booking with the booking number
 - `tests/stripe.test.ts`: checkout, webhook signatures, duplicate events. Signature checks use Stripe's real code. Session creation is a stand-in, so no network or key is needed.
 
@@ -158,6 +159,7 @@ There are two ways in, both offering Jimmy's four frequencies with every 6 month
 
 - **While booking.** The house step asks "Want this on a schedule?", defaulting to just this once. The choice goes in the booking's notes, so it reaches Jimmy with the booking and needs no database change.
 - **From Prices.** "Set up a recurring plan" and the four frequency buttons under Prices pick that plan in the booking form, jump to it, and say so at the top ("Every 3 months plan selected…"). The plan then travels with the booking, so these work on every deployment, with or without email (`BookLink`'s `plan` intent).
+- **Agreement.** Both ways of signing up need the Recurring Plan Terms box ticked (see "Legal pages and recurring plans").
 - **After booking without a plan.** "Make it recurring" on the confirmation opens a dialog that posts to `/api/plan-requests`, which emails Jimmy. That email is the only record, so this path needs FormSubmit switched on (`FORMSUBMIT_ENABLED`). A real deployment without it doesn't show the button at all (`lib/plan/open.ts`): Prices says "You choose when you book" and links to booking instead, and the booking confirmation drops "Make it recurring". A demo deployment keeps the button and says plainly that nothing was sent.
 
 ## Database setup
@@ -270,7 +272,7 @@ Until Jimmy activates FormSubmit, **every** submission sends him another "Activa
 6. **End-to-end booking test (optional, writes to the real database).**
    - Book on the live site with your own name, email and phone, on a day far ahead. The button shows "Sending it to Jimmy…", then "You're on the schedule.", with "Jimmy has your booking details" under "What happens now".
    - Jimmy gets "New booking KGG-…" with every detail. Pressing Reply in his email answers you.
-   - On the confirmation, "Make it recurring", then "Send my request", should end at "Your request is with Jimmy." and send him "Recurring plan request: …".
+   - On the confirmation, "Make it recurring", tick the plan terms box, then "Send my request". It should end at "Your plan request is with Jimmy." and send him "Recurring plan request: …".
    - Afterwards, delete the test booking in Supabase: Table Editor, then `bookings`, find the reference, and delete the row.
 
 **Later**
@@ -278,7 +280,7 @@ Until Jimmy activates FormSubmit, **every** submission sends him another "Activa
 - Connecting the custom domain makes FormSubmit see a new site address, so expect one more activation email. Repeat steps 3 to 5 on `https://<domain>/notify-test`.
 - After activation, FormSubmit's email includes a random-string alias for the address. It isn't needed: the address is already published on the site.
 - To switch notifications off: remove `FORMSUBMIT_ENABLED` and redeploy. Bookings keep working.
-- Privacy: customer details pass through FormSubmit, which keeps submissions for 30 days. The privacy policy should say so.
+- Privacy: customer details pass through FormSubmit, which keeps submissions for 30 days. The Privacy Policy (`/privacy`) says so.
 
 **Firewood orders** are the one notification FormSubmit can't send: they're confirmed by Stripe's webhook on the server, where there's no browser. `lib/notify/email.ts` (Resend) is kept for that path only, and it's dormant: firewood is switched off and no `RESEND_API_KEY` is set. Before firewood returns, choose either Resend with a key, or Stripe's own "successful payment" emails to Jimmy.
 
@@ -290,7 +292,7 @@ Set up 2026-11-11 from Jimmy's Google Ads account. The IDs are public by design;
 - **Purchase conversion** (`AW-18566097431/YzNNCIGmpLUdEJfUgJVF`, value 1.0 USD): fires on `/booking-confirmed`, the page the booking form sends people to once their booking is saved. It's Google's event snippet, with the booking number as `transaction_id`, so a reload or reopened tab can't count the same booking twice. It fires once per booking per browser tab, and never when someone opens the page without a booking.
 - **Production only.** The tag loads only on Vercel's production deployment (`VERCEL_ENV=production`). Previews, local runs and tests never count as visits or conversions. In QA, Google's domains are blocked and the conversion is read from `window.dataLayer` (`tests/ads.test.ts` covers the snippet).
 - **Checking it.** In Google Ads, open Goals, then Conversions. The tag shows as active once the site has had visits, and a real booking shows up as a Purchase conversion within a few hours. Don't make a test booking on the live site: it writes to the real database and emails Jimmy. Google's Tag Assistant (tagassistant.google.com) shows the tag firing on any page.
-- **Privacy.** The tag sets Google cookies and tells Google about visits, so the privacy policy should say so.
+- **Privacy.** The tag sets Google cookies and tells Google about visits. The Privacy Policy (`/privacy`) says so and links Google's opt-out.
 
 ### The confirmation page (`/booking-confirmed`)
 
@@ -302,17 +304,17 @@ When a booking succeeds, the form tells Jimmy (FormSubmit), saves the confirmati
 
 The service-area map uses Leaflet with OpenStreetMap's public tiles (`components/area/AreaMap.tsx`). There's no key and no cost. The tiles name the towns themselves. The only label the site adds is Jamison, which the tiles leave out at that zoom.
 
-**Service area: 30 miles (since 2026-11-11, at Sam's request; Addendum A1 said 10).** Anything within 30 miles of the rounded center in `content/area.ts` counts.
-- **The list.** `areaZips` lists every ZIP whose Census 2020 ZIP-area center is inside the circle, with its post-office name, state, county and distance. That's 305 ZIPs: 203 in Pennsylvania and 102 in New Jersey, covering 232 town names in 17 counties.
-- **The circle crosses into New Jersey.** It takes in Trenton, Princeton, Flemington and Cherry Hill. Check that Jimmy is set up to work there, or limit `areaZips` to `state: "PA"`.
+**Service area: 20 miles, Pennsylvania only (2026-11-11, at Sam's request; Addendum A1 said 10).** Anything within 20 miles of the rounded center in `content/area.ts`, on the Pennsylvania side of the Delaware River, counts. Jimmy can't do business in New Jersey.
+- **The list.** `areaZips` lists every Pennsylvania ZIP whose Census 2020 ZIP-area center is inside the circle, with its post-office name, county and distance. That's 116 ZIPs and 83 town names, in Bucks, Montgomery and Philadelphia Counties. The 25 New Jersey ZIPs that are also within 20 miles are left out on purpose.
+- **Outside Pennsylvania is refused.** A New Jersey (or any non-Pennsylvania) ZIP gets "We only work in Pennsylvania" from the ZIP check. The booking form and the plan dialog won't accept the address, and the server refuses it too (`validateContact` in `lib/booking/validate.ts`).
 - **What it drives:**
   - the "Do we come to you?" check
   - the county summary and the "Every town" list under the map
   - the booking form's town suggestions and out-of-area note
   - firewood delivery
   - the search markup's `areaServed` (counties)
-  - the state printed on every address: `stateForZip`, since an address can be in NJ
-- **Just outside.** Allentown 18103, Bethlehem 18018, and a few Chester County and New Jersey ZIPs (30.0 to 31.5 mi, listed in the file) are told to ask rather than refused.
+  - the state on every address, and the Pennsylvania-only rule: `stateForZip`
+- **Just outside.** Pennsylvania ZIPs just past 20 miles (Kintnersville, Milford Square, Center City and West Philadelphia, the Main Line, Pottstown…) are told to ask rather than refused.
 - **How it was built.** The ZIP areas and their centers come from the Census TIGERweb ZCTA layer, and each county from the TIGERweb county containing that center. Names come from GeoNames, via the Zippopotam API. The 33 ZIPs inside 10 miles keep their hand-checked names and other names (Warwick, Holland, Ivyland…), and 19067 is named Yardley (Morrisville as another name).
 
 **Map.** It only loads as it nears the screen, and the required attribution stays on it. Each visitor's browser requests the tiles from OpenStreetMap, which therefore sees their IP address, so the privacy policy should mention it. OpenStreetMap's tile servers are meant for light use, which suits a local business site. If traffic ever grows a lot, point the tile URL at a paid provider.
@@ -333,7 +335,7 @@ The service-area map uses Leaflet with OpenStreetMap's public tiles (`components
 - **JSON-LD** (`lib/schema.ts`), built from `content/` so it can't drift from the page:
   - Home: `WebSite`, `HomeAndConstructionBusiness`, a gutter-cleaning `Service` with real prices, and `FAQPage`.
   - Firewood: the business, a firewood-delivery `Service`, and a `BreadcrumbList`.
-  - `areaServed` lists every county with part of the 30-mile circle in it, Pennsylvania and New Jersey.
+  - `areaServed` lists the counties the service area covers: Bucks, Montgomery and Philadelphia.
   - Not included, because none of them are confirmed: street address, coordinates, opening hours, ratings and reviews. `tests/seo.test.ts` fails if any of them appear.
   - The FAQ markup is valid, but Google currently shows FAQ rich results only for government and health sites, so don't expect them.
 - **Crawling.** `robots.txt` and `sitemap.xml` are generated. When indexing is on, robots.txt allows everything except `/api/` and `/firewood/order`, and points at the sitemap. The sitemap lists `/`, plus `/firewood` whenever firewood is public (or `/gutters` in firewood mode). `/referred` stays `noindex` and out of the sitemap until `referral.indexable` is true, because its content is still placeholder. `/firewood/order` is `noindex`.
@@ -370,7 +372,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 
 **Google Business Profile** (Jimmy has to do this himself, from his Google account; it needs verification by Google):
 - Create the profile as a **service-area business**, so the home address stays hidden. Pick the category "Gutter cleaning service".
-- Add the service area: the counties and towns in `content/area.ts`, or "within 30 miles of Jamison" (Google caps a service area at 20 entries, so counties work better than towns).
+- Add the service area: Bucks, Montgomery and Philadelphia Counties, or the towns in `content/area.ts` (Google allows up to 20 service areas). Don't add New Jersey.
 - Add the phone number (214) 642-5081, the website address, and the hours he actually works (bookings run Monday to Saturday).
 - Add real photos of his work and his vacuum.
 - Ask real customers for Google reviews after each job. Don't add reviews or ratings to the site's markup unless they're real and shown on the page.
@@ -396,7 +398,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 - [ ] Items under "Things to confirm" below answered
 - [ ] Daily job cap confirmed (four or three), and `content/booking.ts` updated
 - [ ] `FORMSUBMIT_ENABLED=true` on Production and FormSubmit activated, so booking notices and recurring plan requests reach Jimmy (the stand-alone plan button stays hidden until then)
-- [ ] Terms, privacy and cancellation pages added, with Jimmy's approval
+- [ ] Terms of Service, Privacy Policy and Recurring Plan Terms reviewed by a Pennsylvania attorney and approved by Jimmy (see "Legal pages and recurring plans")
 - [ ] Custom domain connected and `SITE_URL` set, then `ALLOW_INDEXING=true` (see SEO, "Connecting the custom domain"), and `BOOKING_DEMO_MODE` removed
 - [ ] Search Console verified, sitemap submitted; Google Business Profile created as a service-area business
 
@@ -411,12 +413,57 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 - [ ] One real low-value order placed and refunded
 - [ ] `SITE_MODE=firewood` set, and the site redeployed
 
+## Legal pages and recurring plans
+
+**Pages** (drafted 2026-11-11, text in `content/legal.tsx`, layout in `components/legal/`):
+- `/terms`: Terms of Service. Covers booking, what a cleaning includes, access, prices and payment, rescheduling and cancelling, the 48-hour come-back promise, care and liability (with a cap on liability), the website, Pennsylvania law and Bucks County courts, and changes.
+- `/privacy`: Privacy Policy. Covers what's collected, who processes it (Vercel, Supabase, FormSubmit, Google, OpenStreetMap), Google Ads cookies and how to opt out, retention, the right to see, correct or delete, security, and children.
+- `/recurring-plan-terms`: Recurring Plan Terms, from Sam's rules (below).
+
+They're linked from:
+- the footer of every page;
+- the booking review step: "By booking, you agree to our Terms of Service and Privacy Policy, and to calls, texts and emails about your booking";
+- the plan agreement box;
+- Prices and the FAQ.
+
+They're built from `content/` (prices, phone, email, policies), so they can't drift from the rest of the site.
+
+**Recurring plan rules** (`planRules` in `content/plans.ts`):
+- We show up on each scheduled date, and text or email 72 and 24 hours before.
+- The customer doesn't need to be home.
+- The year is paid in full after its first cleaning.
+- The plan renews every year until cancelled.
+- Cancelling costs 30% of the annual total.
+- To cancel, call or text (214) 642-5081, or email Jimmy.
+
+**The agreement box** (`components/plan/PlanAgreement.tsx`) appears in two places: in the booking review step whenever a plan is chosen, and in the "Make it recurring" dialog.
+- **What it shows.** The key terms are in plain sight with the customer's own numbers: the annual total and the cancellation fee in dollars. Below them is the checkbox "I have read and agree to the Recurring Plan Terms, and I understand them".
+- **How it behaves.** It's never pre-ticked. Changing the plan, house or rinse clears it.
+- **Enforced on the server.** `/api/bookings` and `/api/plan-requests` refuse a plan without `planTerms: true` (`lib/booking/validate.ts`, `lib/plan/validate.ts`).
+- **The record.** Each plan booking's notes record "Agreed to the Recurring Plan Terms (version 2026-11-11)", and Jimmy's notification email says the same. When the terms change, bump `planRules.termsVersion`, so every agreement says which version it was.
+
+**Not legal advice. Before relying on these pages, have a Pennsylvania attorney review them.** In particular:
+1. **Additions that need Jimmy's OK.** The plan terms include five fairness points that Sam's list didn't cover:
+   - A plan year is 12 months from the first cleaning.
+   - Prices stay the same at renewal unless Jimmy gives written notice first, and a price rise lets the customer cancel without the fee.
+   - Cancellations are confirmed by text or email.
+   - If Jimmy ends a plan for a reason that isn't the customer's doing, there's no fee and prepaid unused cleanings are refunded.
+   - Changes to the terms apply from the next plan year.
+2. **Questions the terms don't answer yet:**
+   - Does the 30% fee apply to someone who cancels before their renewal starts, that is, someone who just doesn't want another year?
+   - When someone cancels partway through a year they've paid in full, what happens to the cleanings they've paid for but not received?
+3. **Pennsylvania's Home Improvement Consumer Protection Act (HICPA)** requires many home-service contractors to register with the Attorney General and put specific terms in their contracts. Ask whether gutter cleaning is covered for Jimmy.
+4. **Jimmy is 16.** The LLC is the business that contracts with customers. Have the attorney confirm that's set up properly.
+5. **Federal online-renewal rules (ROSCA).** Plans sold online that renew automatically need clear terms, express consent and a simple way to cancel. The summary box, the checkbox and phone/text/email cancellation are meant to meet that; have the attorney confirm.
+6. **"Insured" in the footer** comes from Jimmy's old site. Confirm he has liability insurance, or remove it (`site.insured` in `content/site.ts`).
+7. **If firewood returns,** add Stripe to the Privacy Policy and the firewood order terms to the Terms of Service.
+
 ## Things to confirm with Jimmy
 
 Everything factual came from the current site or the agreement. These items were either unclear or assumed:
 
 - **Daily cap.** The site allows four jobs a day. Addendum A1 says three.
-- **Firewood ZIPs.** Delivery uses the same ZIP list as gutter cleaning (now 30 miles), as Jimmy asked. Firewood is paid up front, so ZIPs outside it are told to call.
+- **Firewood ZIPs.** Delivery uses the same ZIP list as gutter cleaning (now 20 miles, Pennsylvania only), as Jimmy asked. Firewood is paid up front, so ZIPs outside it are told to call.
 - **Failed deliveries.** "No refunds" covers a customer changing their mind. Jimmy still has to approve what happens if a delivery doesn't happen. That keeps the "Cancellation and refunds" group unconfirmed.
 - **Sales tax.** Still unanswered, so none is added and live payments stay blocked. The site no longer shows this to visitors. `content/firewood.ts` is where the open items are listed.
 - **Biography.** It publishes Jimmy's age and school, as Addendum A1 asks. He's a minor, so his parent or guardian should approve it, and the age needs updating when he turns 17. "No liabilities on anyone" is his wording and is a legal-sounding claim worth a second look.
@@ -425,7 +472,7 @@ Everything factual came from the current site or the agreement. These items were
 - **"Ground-based" / ladder-free.** This is in the old site's schema markup, but its 2-story description also says "insured for elevated work". The copy says the pole reaches 40 ft and that the pole does the reaching, so the cleaning is done from the ground. It doesn't promise "no ladders" outright.
 - **The vacuum kit.** The tour describes the Cyclone Classic Pro 16-gallon kit with the 40 ft carbon clamping poles, the exact listing Sam sent on 2026-11-06. The listing was on preorder that day, so confirm Jimmy has this machine before the page says he cleans with it.
 - **"Insured".** This is on the old site's trust bar and shown in the footer. Confirm it, and add a policy or registration number if he has one.
-- **Newtown.** It was only in the old site's hidden schema, not its visible town list. It's inside the circle, so it's served. Yardley is back in since the area grew to 30 miles.
+- **Newtown.** It was only in the old site's hidden schema, not its visible town list. It's inside the circle, so it's served. Yardley is in now that the area is 20 miles.
 - **"Houses and townhomes only."** This is inferred from the site saying "residential" everywhere.
 - **Photos, coming from Jimmy.** His portrait next to the equipment, before-and-after pairs from real jobs, and his actual vacuum. The old stand-in rig photo (a UK manufacturer shot) has been removed; the vacuum tour draws Jimmy's actual machine instead. The hero's drawing of the setup is unbranded and stays either way. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
 - **Removed from the old site** because nothing backs them up: the "5.0" rating (the reviews list was empty), "100% debris captured", and "2× more thorough".
@@ -440,10 +487,10 @@ Everything factual came from the current site or the agreement. These items were
 | A1 No time slots, arrival explanation | Done |
 | A1 Three jobs a day | Built, still set to four until Jimmy confirms |
 | A1 Vacuum visual resembling GutterPro-style equipment | Done: an unbranded drawing in the hero of a worker steadying the pole up to the gutter, leaves going into the nozzle, and a hose to a three-motor stainless vacuum on a wheeled cart (`components/hero/Rig.tsx`). |
-| A1 10-mile radius shown from the private address | Done, then widened to 30 miles at Sam's request (2026-11-11). Shown on a real OpenStreetMap map, at every screen size. Every ZIP inside it is accepted. |
+| A1 10-mile radius shown from the private address | Done, then set to 20 miles and Pennsylvania only at Sam's request (2026-11-11). Shown on a real OpenStreetMap map, at every screen size. Every Pennsylvania ZIP inside it is accepted. |
 | A1 Biography with age, school and quotation | Done with Jimmy's text and his photo (2026-11-11). |
 | A1 Recurring-plan request form | Built and tested. Reaches Jimmy through FormSubmit once it's switched on and activated; hidden on a real deployment until then. Choosing a plan while booking works without email. |
-| A1 Terms, privacy and cancellation policy pages | Not started. Needs approved text. |
+| A1 Terms, privacy and cancellation policy pages | Drafted 2026-11-11: `/terms` (with cancellation), `/privacy`, `/recurring-plan-terms`. Needs attorney review and Jimmy's approval. |
 | A2 Separate winter mode with switch, colors and igniting log visual | Done. Firewood is sold all year, so the page has no snow or winter wording; "winter mode" is only the code's name for it. |
 | A2 Prices, options and itemized total | Done, from config, marked unconfirmed |
 | A3 Hosted checkout and order confirmation | Built and tested without a live account |

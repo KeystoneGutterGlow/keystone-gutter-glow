@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bookingRules, type BookingRules } from "@/content/booking";
 import { checkDate, dayDetail, firstOpening, rangeSummary } from "@/lib/booking/availability";
 import { addDays, addMonths, daysInMonth, diffDays, formatLong, isISODate, todayIn, weekday } from "@/lib/booking/dates";
-import { isUsPhone, normalizePhone, parseBookingRequest } from "@/lib/booking/validate";
+import { isUsPhone, normalizePhone, parseBookingRequest, validateContact } from "@/lib/booking/validate";
 import { areaCounties, areaZips, lookupArea, serviceRadius, stateForZip } from "@/content/area";
 
 const rules: BookingRules = bookingRules;
@@ -164,43 +164,52 @@ describe("service area lookup", () => {
   it("knows a ZIP and a town, and asks about anything else", () => {
     expect(lookupArea("18929")).toEqual({ status: "yes", town: "Jamison" });
     expect(lookupArea("Doylestown, PA")).toEqual({ status: "yes", town: "Doylestown" });
-    expect(lookupArea("90210")).toEqual({ status: "ask" });
+    expect(lookupArea("19464")).toEqual({ status: "ask" }); // Pottstown, PA: past the edge
     expect(lookupArea("123")).toEqual({ status: "invalid" });
   });
 
-  it("covers everything within 30 miles, in both states, and nothing past it", () => {
-    expect(serviceRadius.miles).toBe(30);
+  it("covers everything within 20 miles in Pennsylvania, and nothing past it", () => {
+    expect(serviceRadius.miles).toBe(20);
     // The old 10-mile area, the towns just past it, and well-known places further out
     for (const zip of ["18974", "19044", "19040", "18954", "18966", "18938", "19006", "19053", "19067", "18977", "19047"]) {
       expect(lookupArea(zip).status).toBe("yes");
     }
-    for (const zip of ["19103", "18951", "19464", "19406", "08540", "08618", "08002", "08822"]) expect(lookupArea(zip).status).toBe("yes");
+    for (const zip of ["18951", "19406", "19401", "19446", "19020", "19111"]) expect(lookupArea(zip).status).toBe("yes");
     expect(areaZips.every((z) => z.miles <= serviceRadius.miles)).toBe(true);
-    expect(areaZips).toHaveLength(305);
+    expect(areaZips).toHaveLength(116);
     expect(areaZips.filter((z) => z.miles <= 10)).toHaveLength(33);
     expect(new Set(areaZips.map((z) => z.zip)).size).toBe(areaZips.length);
-    // Just outside the circle: Allentown, Bethlehem, Chester County and Somerset County edges
-    for (const zip of ["18103", "18018", "19345", "08869"]) expect(lookupArea(zip)).toEqual({ status: "ask" });
+    // Just past 20 miles, still Pennsylvania: told to ask
+    for (const zip of ["18930", "19131", "19103", "19464"]) expect(lookupArea(zip)).toEqual({ status: "ask" });
     expect(lookupArea("Yardley")).toEqual({ status: "yes", town: "Yardley" });
-    expect(lookupArea("Princeton, NJ")).toEqual({ status: "yes", town: "Princeton" });
     expect(lookupArea("King of Prussia")).toEqual({ status: "yes", town: "King of Prussia" });
+  });
+
+  it("leaves New Jersey out entirely, even the parts inside 20 miles", () => {
+    expect(areaZips.every((z) => z.state === "PA" && !z.zip.startsWith("0"))).toBe(true);
+    // Lambertville, Trenton, Princeton and Ewing are all within 20 miles of Jamison
+    for (const zip of ["08530", "08618", "08540", "08628"]) expect(lookupArea(zip)).toEqual({ status: "outOfState", state: "NJ" });
+    expect(lookupArea("Princeton, NJ")).toEqual({ status: "unknown" });
+    expect(lookupArea("19801")).toEqual({ status: "outOfState", state: "DE" });
+  });
+
+  it("refuses addresses outside Pennsylvania when booking", () => {
+    const contact = { name: "Pat", email: "pat@example.com", phone: "2155550100", street: "1 Test Ln", city: "Lambertville" };
+    expect(validateContact({ ...contact, zip: "08530" }).zip).toMatch(/only work in Pennsylvania/);
+    expect(validateContact({ ...contact, zip: "18929" }).zip).toBeUndefined();
+    // A Pennsylvania ZIP past the edge can still book; Jimmy confirms it
+    expect(validateContact({ ...contact, zip: "19464" }).zip).toBeUndefined();
   });
 
   it("knows each address's state from its ZIP", () => {
     expect(stateForZip("18929")).toBe("PA");
     expect(stateForZip("08540")).toBe("NJ");
-    expect(areaZips.every((z) => stateForZip(z.zip) === z.state && (z.state === "NJ") === z.zip.startsWith("0"))).toBe(true);
-    // Outside the list, the ZIP's first digits decide
-    expect(stateForZip("08901")).toBe("NJ");
     expect(stateForZip("18103")).toBe("PA");
     expect(stateForZip("19801")).toBe("DE");
   });
 
-  it("groups the towns by county, Bucks first and New Jersey after Pennsylvania", () => {
-    expect(areaCounties[0]).toMatchObject({ county: "Bucks", state: "PA" });
-    const states = areaCounties.map((c) => c.state);
-    expect(states.indexOf("NJ")).toBeGreaterThan(states.lastIndexOf("PA"));
-    expect(areaCounties.some((c) => c.county === "Mercer" && c.state === "NJ")).toBe(true);
+  it("groups the towns by county, Bucks first", () => {
+    expect(areaCounties.map((c) => c.county)).toEqual(["Bucks", "Montgomery", "Philadelphia"]);
     for (const c of areaCounties) expect(c.towns).toEqual([...c.towns].sort((a, b) => a.localeCompare(b)));
   });
 

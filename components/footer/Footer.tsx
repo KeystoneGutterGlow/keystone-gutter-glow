@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { IvyRun } from "@/components/botanical/Botanical";
+import { legalPaths } from "@/content/legalPaths";
 import { modeLinks } from "@/content/season";
 import { site } from "@/content/site";
 import styles from "./Footer.module.css";
@@ -55,6 +56,9 @@ export function Footer({ onHome = true }: { onHome?: boolean }) {
         </span>
         {site.insured && <span>Insured</span>}
         <span>Residential gutter cleaning, {site.county}, {site.state}</span>
+        <Link href={legalPaths.terms}>Terms of Service</Link>
+        <Link href={legalPaths.privacy}>Privacy Policy</Link>
+        <Link href={legalPaths.planTerms}>Recurring Plan Terms</Link>
       </div>
     </footer>
   );

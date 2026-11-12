@@ -1,5 +1,5 @@
 import { bookingRules, type BookingRules } from "@/content/booking";
-import { getPlanFrequency } from "@/content/plans";
+import { getPlanFrequency, planRules } from "@/content/plans";
 import { getPackage, totalFor } from "@/content/pricing";
 import { bookingNotice, formSubmitEnabled } from "@/lib/notify/formsubmit";
 import type { Notice } from "@/lib/notify/notice";
@@ -82,7 +82,12 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
         priceIsEstimate: pkg.needsQuote,
         customer: { name: req.name, email: req.email, phone: req.phone },
         address: { street: req.street, city: req.city, zip: req.zip },
-        notes: plan ? [`Recurring plan requested: ${plan.label}.`, req.notes].filter(Boolean).join(" ") : req.notes,
+        // The plan, and the version of the terms the customer agreed to, are kept with the booking as the record.
+        notes: plan
+          ? [`Recurring plan: ${plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}).`, req.notes]
+              .filter(Boolean)
+              .join(" ")
+          : req.notes,
         idempotencyKey: req.idempotencyKey,
       },
       rules.maxJobsPerDay,

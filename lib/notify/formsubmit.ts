@@ -1,4 +1,5 @@
 import { stateForZip } from "@/content/area";
+import { planRules } from "@/content/plans";
 import { getPackage } from "@/content/pricing";
 import { site } from "@/content/site";
 import type { BookingRules } from "@/content/booking";
@@ -71,7 +72,9 @@ export function bookingNotice(
         Address: `${b.address.street}, ${b.address.city}, ${stateForZip(b.address.zip)} ${b.address.zip}`,
         House: `${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
         Price: `${b.priceIsEstimate ? "Starting at " : ""}$${b.priceDollars}, invoiced after the job`,
-        "Recurring plan": extra.planLabel ? `${extra.planLabel} (asked for; nothing bills automatically)` : undefined,
+        "Recurring plan": extra.planLabel
+          ? `${extra.planLabel}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): paid in full after the first cleaning, renews yearly until cancelled, ${planRules.cancellationFeePercent}% of the annual total to cancel.`
+          : undefined,
         Name: b.customer.name,
         Phone: formatPhone(b.customer.phone),
         // Lower-case "email" is the field FormSubmit reads for Reply-To.
@@ -100,7 +103,7 @@ export function planRequestNotice(r: PlanNoticeInput): Notice {
     fields: {
       ...settings(`Recurring plan request: ${r.frequency}, ${r.city}`, r.email),
       ...compact({
-        Request: "Recurring plan. Nothing has been scheduled or billed.",
+        Request: `Recurring plan. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}). Confirm the dates with the customer.`,
         "How often": r.frequency,
         Address: `${r.street}, ${r.city}, ${stateForZip(r.zip)} ${r.zip}`,
         Name: r.name,

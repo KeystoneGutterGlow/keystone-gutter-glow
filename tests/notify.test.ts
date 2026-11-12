@@ -88,7 +88,7 @@ async function book(over: Record<string, unknown> = {}) {
 describe("a booking's notice", () => {
   it("carries everything Jimmy needs, addressed to the email on the site", async () => {
     expect(site.email).toBe("jimmyesmond@keystonegutterglow.com");
-    const { status, body } = await book({ planFrequencyId: "6-months" });
+    const { status, body } = await book({ planFrequencyId: "6-months", planTerms: true });
     expect(status).toBe(201);
 
     const notice = body.notice!;
@@ -106,6 +106,7 @@ describe("a booking's notice", () => {
     expect(f.Name).toBe("Pat Example");
     expect(f.Phone).toBe("(215) 555-0100");
     expect(f["Recurring plan"]).toContain("Every 6 months");
+    expect(f["Recurring plan"]).toContain("Agreed to the Recurring Plan Terms (version");
     expect(f["Additional information"]).toBe("Side gate is unlocked");
   });
 
@@ -172,7 +173,7 @@ describe("a recurring-plan request", () => {
         body: JSON.stringify(body),
       }),
     );
-  const valid = { ...customer, frequencyId: "6-months", notes: "Enter through the gate" };
+  const valid = { ...customer, frequencyId: "6-months", notes: "Enter through the gate", planTerms: true };
 
   it("is checked by the server, which hands back Jimmy's notice without sending anything itself", async () => {
     const res = await post(valid);
@@ -181,7 +182,7 @@ describe("a recurring-plan request", () => {
     expect(notice.endpoint).toBe(JIMMY_ENDPOINT);
     expect(notice.fields._subject).toBe("Recurring plan request: Every 6 months, Jamison");
     expect(notice.fields["How often"]).toBe("Every 6 months");
-    expect(notice.fields.Request).toContain("Nothing has been scheduled or billed");
+    expect(notice.fields.Request).toContain("Agreed to the Recurring Plan Terms (version");
     expect(notice.fields.Phone).toBe("(215) 555-0100");
     expect(notice.fields.email).toBe("pat@example.com");
     expect(notice.fields["Additional information"]).toBe("Enter through the gate");

@@ -103,6 +103,14 @@
   font-size: 0.8125rem;
   color: rgb(255 255 255 / 0.55);
 }
+.base a {
+  color: rgb(255 255 255 / 0.8);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.base a:hover {
+  color: #fff;
+}
 
 @media (max-width: 1239px) {
   .grid {

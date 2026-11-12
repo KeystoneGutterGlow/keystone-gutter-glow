@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { legalPaths } from "@/content/legalPaths";
+import { planRules } from "@/content/plans";
 import { PlanDialog } from "@/components/plan/PlanDialog";
 import { stateForZip } from "@/content/area";
 import { bookingRules } from "@/content/booking";
@@ -124,8 +126,12 @@ export function Done({
         <li>Photos and the invoice come after.</li>
         {booking.planLabel && (
           <li>
-            You asked for a recurring plan: {booking.planLabel.toLowerCase()}. Jimmy will be in touch to set it up. Nothing bills
-            automatically.
+            Your recurring plan: {booking.planLabel.toLowerCase()}, under the{" "}
+            <Link href={legalPaths.planTerms} className="textlink">
+              Recurring Plan Terms
+            </Link>{" "}
+            you agreed to. The year&rsquo;s total is due after this first cleaning, we text or email{" "}
+            {planRules.noticeHours.join(" and ")} hours before each visit, and it renews every year until you cancel.
           </li>
         )}
       </ol>
@@ -143,7 +149,11 @@ export function Done({
           Add to my calendar
         </button>
         {!booking.planLabel && planRequests && (
-          <PlanDialog className="btn" initial={{ ...booking.address, name, phone, email: booking.email }}>
+          <PlanDialog
+            className="btn"
+            initial={{ ...booking.address, name, phone, email: booking.email }}
+            price={{ perCleaning: booking.priceDollars, isFrom: booking.priceIsEstimate }}
+          >
             Make it recurring
           </PlanDialog>
         )}

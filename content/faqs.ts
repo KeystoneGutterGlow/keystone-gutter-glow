@@ -3,7 +3,7 @@
 // The cost, schedule and towns answers are built from content/, so they can't drift from the page.
 
 import { areaZips, serviceRadius } from "./area";
-import { recommendedWhy } from "./plans";
+import { planRules, recommendedWhy } from "./plans";
 import { getPackage, rinse } from "./pricing";
 
 export interface Faq {
@@ -13,7 +13,7 @@ export interface Faq {
 
 const price = (id: Parameters<typeof getPackage>[0]) => getPackage(id)?.price;
 /** Well-known places spread across the area, for the towns answer. Any not inside the circle drop out. */
-const namedTowns = ["Doylestown", "Newtown", "Warminster", "Horsham", "Lansdale", "Quakertown", "Norristown", "King of Prussia", "Philadelphia", "Trenton", "Princeton", "Cherry Hill"].filter(
+const namedTowns = ["Doylestown", "Newtown", "Yardley", "Warminster", "Horsham", "Lansdale", "Quakertown", "Bensalem", "Norristown", "King of Prussia"].filter(
   (t) => areaZips.some((z) => z.name === t),
 );
 
@@ -28,7 +28,7 @@ export const faqs: Faq[] = [
   },
   {
     q: "Which towns do you cover?",
-    a: `Anywhere within ${serviceRadius.miles} miles of our base in Jamison, in Pennsylvania and New Jersey. That includes ${namedTowns.slice(0, -1).join(", ")} and ${namedTowns.at(-1)}, among others. Not sure about your street? Check your ZIP in the Where we work section, or call or text.`,
+    a: `Anywhere within ${serviceRadius.miles} miles of our base in Jamison, in Pennsylvania, including the northern part of Philadelphia. We don't work in New Jersey. That includes ${namedTowns.slice(0, -1).join(", ")} and ${namedTowns.at(-1)}, among others. Not sure about your street? Check your ZIP in the Where we work section, or call or text.`,
   },
   {
     q: "Do I need to be home?",
@@ -44,7 +44,7 @@ export const faqs: Faq[] = [
   },
   {
     q: "Can I put it on a schedule?",
-    a: "Yes. You can ask for a cleaning every 3, 4 or 6 months, or once a year, when you book or from the Prices section. We recommend every 6 months, to catch spring seeds and fall leaves. It's a request, so Jimmy sets it up with you and nothing bills automatically.",
+    a: `Yes. Pick every 3, 4 or 6 months, or once a year, when you book or from the Prices section. We recommend every 6 months, to catch spring seeds and fall leaves. We show up on each date and text or email ${planRules.noticeHours.join(" and ")} hours before; you don't need to be home. You pay the year in full after the first cleaning, the plan renews every year until you cancel, and cancelling costs ${planRules.cancellationFeePercent}% of the annual total. The Recurring Plan Terms have the details.`,
   },
   {
     q: "What's the rinse, and do I need it?",
