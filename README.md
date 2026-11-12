@@ -177,7 +177,7 @@ There are two ways in, both offering Jimmy's four frequencies with every 6 month
 
 ## Database setup
 
-**Status (2026-11-05): done.** Supabase project `keystone-gutter-glow` (ref `rsmilcleohxlqzbgwmcl`, Free plan, US East) is connected to the Vercel project's Production environment only. Migrations 001 to 003 have been run. **004_referrals.sql (2026-11-12) has to be run before the referral-code release goes live.** Row-level security is on for every table, and the public (anon) key can neither read the tables nor call `create_booking()`. Production has `BOOKING_STORE=supabase`. The booking rules were tested inside the database, then the test rows were deleted: a booking, a retried request returning the same booking, a taken spot and a full day all behaved correctly. Not tested yet: the site reaching the database with its server key over HTTPS, which first happens on the launch deploy. The first item under "Database" in the launch checklist covers it.
+**Status (2026-11-05): done.** Supabase project `keystone-gutter-glow` (ref `rsmilcleohxlqzbgwmcl`, Free plan, US East) is connected to the Vercel project's Production environment only. All four migrations have been run; 004_referrals.sql on 2026-11-12, checked afterwards (table, row-level security, grants, and a fake code refused). Row-level security is on for every table, and the public (anon) key can neither read the tables nor call `create_booking()`. Production has `BOOKING_STORE=supabase`. The booking rules were tested inside the database, then the test rows were deleted: a booking, a retried request returning the same booking, a taken spot and a full day all behaved correctly. Not tested yet: the site reaching the database with its server key over HTTPS, which first happens on the launch deploy. The first item under "Database" in the launch checklist covers it.
 
 To open it: Vercel, then Storage, then keystone-gutter-glow, then "Open in Supabase" (or `npx vercel integration open supabase keystone-gutter-glow`). It's reached through the Vercel login, not a separate Supabase account.
 
@@ -405,7 +405,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 
 **Database**
 - [x] Migrations 001 to 003 run
-- [ ] Migration 004 (referrals) run
+- [x] Migration 004 (referrals) run, 2026-11-12
 - [ ] After the launch deploy, a test booking made on the site appears in the `bookings` table (then delete it)
 - [ ] Two people booking the last spot at once on the deployed site gives one booking and one "just taken" message (`BASE=<url> npm run test:booking` does this, but it writes bookings, so delete them afterward)
 
@@ -469,7 +469,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 - To let a friend use their link again, for example after a cancelled booking, clear `booking_ref` and `booked_at`.
 - If FormSubmit didn't deliver an email, the referral is still in the table. If the customer then sent it again, there may be two rows for one friend; only one link will be used.
 
-**The database change:** `db/migrations/004_referrals.sql` adds the `referrals` table (row-level security on, closed to the public key). It also replaces `create_booking()` with the version that handles codes, and otherwise behaves exactly the same. **Run it in Supabase's SQL editor before deploying this code.** Without it, referrals can't be saved and referral links show "can't check your link". Normal bookings keep working either way.
+**The database change:** `db/migrations/004_referrals.sql` adds the `referrals` table (row-level security on, closed to the public key). It also replaces `create_booking()` with the version that handles codes, and otherwise behaves exactly the same. It was run on 2026-11-12, before this code was deployed. On a rebuild, run it before deploying: without it, referrals can't be saved and referral links show "can't check your link". Normal bookings keep working either way.
 
 **Not decided, so the site doesn't promise them:**
 - whether the $30 combines with the plan discount (the site says it does, on the first cleaning);
