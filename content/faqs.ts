@@ -3,7 +3,7 @@
 // The cost, schedule and towns answers are built from content/, so they can't drift from the page.
 
 import { areaZips, serviceRadius } from "./area";
-import { planRules, recommendedWhy } from "./plans";
+import { planAnnualTotal, planPrice, planRules, recommendedWhy } from "./plans";
 import { getPackage, rinse } from "./pricing";
 
 export interface Faq {
@@ -12,6 +12,9 @@ export interface Faq {
 }
 
 const price = (id: Parameters<typeof getPackage>[0]) => getPackage(id)?.price;
+const pct = planRules.discountPercent;
+// The worked plan example: a two-story house every 6 months
+const twoStory = getPackage("two-story")!.price;
 /** Well-known places spread across the area, for the towns answer. Any not inside the circle drop out. */
 const namedTowns = ["Doylestown", "Newtown", "Yardley", "Warminster", "Horsham", "Lansdale", "Quakertown", "Bensalem", "Norristown", "King of Prussia"].filter(
   (t) => areaZips.some((z) => z.name === t),
@@ -20,11 +23,11 @@ const namedTowns = ["Doylestown", "Newtown", "Yardley", "Warminster", "Horsham",
 export const faqs: Faq[] = [
   {
     q: "How much does gutter cleaning cost?",
-    a: `One-story homes are $${price("one-story")}, townhomes $${price("townhome")} and two-story homes $${price("two-story")}. Three floors, a big footprint or a complicated roofline start at $${price("large")}, and we confirm that price before we come out. The rinse is $${rinse.price} extra. Nothing is due until the job is done.`,
+    a: `One-story homes are $${price("one-story")}, townhomes $${price("townhome")} and two-story homes $${price("two-story")}. Three floors, a big footprint or a complicated roofline start at $${price("large")}, and we confirm that price before we come out. The rinse is $${rinse.price} extra. On a recurring plan every cleaning is ${pct}% off: a two-story home is $${planPrice(twoStory)} instead of $${twoStory}. Nothing is due until the job is done.`,
   },
   {
     q: "How often should gutters be cleaned?",
-    a: `${recommendedWhy} That's why we recommend every 6 months. Plans every 3 or 4 months, or once a year, are available too.`,
+    a: `${recommendedWhy} That's why we recommend every 6 months. Plans every 3 or 4 months, or once a year, are available too, and every cleaning on a plan is ${pct}% off.`,
   },
   {
     q: "Which towns do you cover?",
@@ -44,7 +47,7 @@ export const faqs: Faq[] = [
   },
   {
     q: "Can I put it on a schedule?",
-    a: `Yes. Pick every 3, 4 or 6 months, or once a year, when you book or from the Prices section. We recommend every 6 months, to catch spring seeds and fall leaves. We show up on each date and text or email ${planRules.noticeHours.join(" and ")} hours before; you don't need to be home. You pay the year in full after the first cleaning, the plan renews every year until you cancel, and cancelling costs ${planRules.cancellationFeePercent}% of the annual total. The Recurring Plan Terms have the details.`,
+    a: `Yes, and every cleaning on a plan is ${pct}% off. Pick every 3, 4 or 6 months, or once a year, when you book or from the Prices section. We recommend every 6 months, to catch spring seeds and fall leaves: for a two-story home that's $${planPrice(twoStory)} a cleaning instead of $${twoStory}, or $${planAnnualTotal(planPrice(twoStory), "6-months")} for the year. You pay for the whole year up front, in one payment after the first cleaning. We show up on each date and text or email ${planRules.noticeHours.join(" and ")} hours before; you don't need to be home. The plan renews every year until you cancel, and cancelling costs ${planRules.cancellationFeePercent}% of the annual total. The Recurring Plan Terms have the details.`,
   },
   {
     q: "What's the rinse, and do I need it?",
@@ -56,7 +59,7 @@ export const faqs: Faq[] = [
   },
   {
     q: "When do I pay?",
-    a: "After the job. Nothing is charged when you book; we send an invoice once the cleaning is finished.",
+    a: "After the job. Nothing is charged when you book; we send an invoice once the cleaning is finished. Recurring plans are paid a year at a time, up front: the whole year in one invoice after the first cleaning.",
   },
   {
     q: "What happens if the weather turns?",

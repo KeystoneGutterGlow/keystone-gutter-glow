@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BookLink } from "@/components/BookLink";
 import { LaurelShrub } from "@/components/botanical/Botanical";
+import { planRules, recommendedPlan } from "@/content/plans";
 import { startingPrice } from "@/content/pricing";
 import { modeLinks } from "@/content/season";
 import { GutterStrip } from "./GutterStrip";
@@ -39,6 +40,13 @@ export function Hero() {
               Nothing to pay until the job&rsquo;s done.
             </p>
           </div>
+          {/* Picks the recommended plan in the booking form and jumps there */}
+          <BookLink plan={recommendedPlan} className={styles.deal}>
+            <span className={styles.dealTag}>{planRules.discountPercent}% off</span>
+            <span className={styles.dealText}>
+              every cleaning on a recurring plan<span aria-hidden="true"> →</span>
+            </span>
+          </BookLink>
           <NextOpeningLine />
           {links && (
             <p className={styles.more}>

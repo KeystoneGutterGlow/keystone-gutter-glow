@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { BookLink } from "@/components/BookLink";
 import { legalPaths } from "@/content/legalPaths";
-import { planFrequencies, recommendedPlan } from "@/content/plans";
-import { packages, priceLabel, rinse } from "@/content/pricing";
+import { planAnnualTotal, planFrequencies, planPrice, planRules, recommendedPlan } from "@/content/plans";
+import { getPackage, packages, priceLabel, rinse } from "@/content/pricing";
 import { site } from "@/content/site";
 import { House } from "./Houses";
 import styles from "./Pricing.module.css";
+
+const pct = planRules.discountPercent;
+// The worked example in the plan box: a two-story house every 6 months
+const example = getPackage("two-story")!;
+const examplePlan = planPrice(example.price);
 
 export function Pricing() {
   return (
@@ -31,6 +36,9 @@ export function Pricing() {
                     ) : (
                       `$${p.price}`
                     )}
+                  </span>
+                  <span className={styles.planPrice}>
+                    {p.isFrom ? "from " : ""}${planPrice(p.price)} on a plan
                   </span>
                   <span className={styles.fits}>{p.fits}</span>
                   <span className={styles.go}>
@@ -60,23 +68,28 @@ export function Pricing() {
           </p>
           <p className={styles.terms}>
             {site.policies.payAfter && <>No deposit. You pay after the job, from the invoice. </>}
-            Split-levels count as two-story.
+            Recurring plans are paid a year at a time, up front, after the first cleaning. Split-levels count as two-story.
           </p>
         </div>
 
         {/* Each button picks that plan in the booking form below and jumps to it. The plan travels
             with the booking, so this works with or without email set up. */}
-        <div className={styles.plan}>
+        <div className={styles.plan} id="plans">
+          <h3 className={styles.planHead}>
+            <span className={styles.planTag}>{pct}% off</span> every cleaning on a recurring plan
+          </h3>
           <p>
-            <strong>Want it on a schedule?</strong> Every 3, 4 or 6 months, or once a year. We recommend every 6
-            months. Pick one and book the first cleaning. Plans renew yearly until you cancel; see the{" "}
+            Every 3, 4 or 6 months, or once a year. We recommend every 6 months: a {example.name.toLowerCase()} house is $
+            {examplePlan} a cleaning instead of ${example.price}, ${planAnnualTotal(examplePlan, "6-months")} for the year.{" "}
+            <strong>You pay for the whole year up front,</strong> in one payment after the first cleaning, and the plan renews
+            every year until you cancel. See the{" "}
             <Link href={legalPaths.planTerms} className="textlink">
               Recurring Plan Terms
             </Link>
             .
           </p>
           <BookLink className="btn" plan={recommendedPlan}>
-            Set up a recurring plan
+            Set up a plan and save {pct}%
             <span className="arrow" aria-hidden="true">
               →
             </span>

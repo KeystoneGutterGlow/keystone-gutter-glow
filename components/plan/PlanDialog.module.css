@@ -29,6 +29,17 @@
 .panel h2:focus {
   outline: none;
 }
+.panel h2:has(+ .deal) {
+  margin-bottom: 10px;
+}
+.deal {
+  margin: 0 0 18px;
+  padding: 8px 12px;
+  background: var(--sky-pale);
+  border-left: 4px solid var(--sky);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
 
 .close {
   position: absolute;

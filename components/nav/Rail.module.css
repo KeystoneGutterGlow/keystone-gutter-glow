@@ -211,6 +211,28 @@
   text-decoration: underline;
 }
 
+/* The plan offer, a tag hanging over the Book button */
+.offer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: -4px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: var(--sky);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.offerTag {
+  padding: 2px 7px 3px;
+  background: var(--sky);
+  color: var(--navy-deep);
+  text-decoration: none;
+}
+
 /* A real button, so people can tell it's there */
 .refer {
   display: block;

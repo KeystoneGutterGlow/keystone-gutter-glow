@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useRef } from "react";
+import { BookLink } from "@/components/BookLink";
 import type { NavItem } from "@/content/nav";
+import { planRules, recommendedPlan } from "@/content/plans";
 import { site } from "@/content/site";
 import styles from "./Rail.module.css";
 import { useSectionProgress, type SectionProgress } from "./useSectionProgress";
@@ -22,9 +24,11 @@ interface Props {
   referLink?: boolean;
   /** A plain link back to the home page, for pages other than home */
   homeLink?: boolean;
+  /** The recurring-plan offer above the Book button (gutter pages only) */
+  planOffer?: boolean;
 }
 
-export function Rail({ items, endId, endLabel, homeHref = "#top", bookHref, referLink, homeLink }: Props) {
+export function Rail({ items, endId, endLabel, homeHref = "#top", bookHref, referLink, homeLink, planOffer }: Props) {
   const pipeRef = useRef<HTMLDivElement>(null);
   const strapRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const ids = useRef(items.map((i) => i.id)).current;
@@ -98,6 +102,16 @@ export function Rail({ items, endId, endLabel, homeHref = "#top", bookHref, refe
       </svg>
 
       <div className={styles.foot}>
+        {planOffer &&
+          (bookHref ? (
+            <a href="/#plans" className={styles.offer}>
+              <span className={styles.offerTag}>{planRules.discountPercent}% off</span> on a recurring plan
+            </a>
+          ) : (
+            <BookLink plan={recommendedPlan} className={styles.offer}>
+              <span className={styles.offerTag}>{planRules.discountPercent}% off</span> on a recurring plan
+            </BookLink>
+          ))}
         <a
           href={bookHref ?? `#${endId}`}
           className={`btn btn--wide ${styles.book}`}

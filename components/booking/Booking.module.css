@@ -232,6 +232,15 @@
   font-size: max(0.55em, 0.8125rem);
   font-weight: 600;
 }
+/* With a plan picked, the regular price sits struck through beside the plan price */
+.housePriceWas {
+  display: block;
+  margin-bottom: 3px;
+  text-align: right;
+  font-size: max(0.55em, 0.8125rem);
+  font-weight: 600;
+  color: var(--muted);
+}
 
 .repeat {
   margin: 16px 0 0;
@@ -307,6 +316,22 @@
   background: var(--navy);
   color: #fff;
   font-size: 0.75rem;
+}
+.repeatDeal {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px 2px;
+  background: var(--sky);
+  color: var(--navy-deep);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+.repeatSave {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sky-ink);
 }
 .repeatWhy {
   margin: 12px 0 0;
@@ -737,6 +762,29 @@
   font-family: var(--font-display);
   font-size: 2.4rem;
   line-height: 1;
+  white-space: nowrap;
+}
+.totalWas {
+  font-size: 0.5em;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* The plan's year, under the per-cleaning price */
+.yearLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: -4px 0 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--alu-2);
+  font-weight: 700;
+}
+.yearLine strong {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 .fine {
   list-style: none;

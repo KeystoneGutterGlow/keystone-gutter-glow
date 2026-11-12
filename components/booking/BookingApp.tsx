@@ -8,7 +8,16 @@ import { House } from "@/components/pricing/Houses";
 import { areaPlaces, serviceZips, stateForZip } from "@/content/area";
 import { additionalInfo, bookingRules } from "@/content/booking";
 import { legalPaths } from "@/content/legalPaths";
-import { getPlanFrequency, planFrequencies, recommendedPlan, recommendedWhy } from "@/content/plans";
+import {
+  getPlanFrequency,
+  planAnnualTotal,
+  planFrequencies,
+  planPrice,
+  planRules,
+  planSaving,
+  recommendedPlan,
+  recommendedWhy,
+} from "@/content/plans";
 import { getPackage, packages, rinse, totalFor, type PackageId } from "@/content/pricing";
 import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
@@ -217,7 +226,12 @@ export function BookingApp() {
   }, [step, draft.date, loadDay, retry]);
 
   const pkg = draft.packageId ? getPackage(draft.packageId) : undefined;
-  const total = pkg ? totalFor(pkg, draft.rinse) : null;
+  const plan = getPlanFrequency(draft.plan);
+  // A plan takes 10% off every cleaning. `regular` is the price without a plan, `total` what this cleaning costs.
+  const regular = pkg ? totalFor(pkg, draft.rinse) : null;
+  const total = regular !== null && plan ? planPrice(regular) : regular;
+  const yearTotal = total !== null && plan ? planAnnualTotal(total, plan.id) : null;
+  const from = pkg?.needsQuote ? "from " : "";
 
   // ---- Step transitions with validation ----
   function next() {
@@ -373,8 +387,10 @@ export function BookingApp() {
             {/* ---------------- 1. House ---------------- */}
             {step === 0 && planPicked && draft.plan && (
               <p className={styles.planPicked} role="status">
-                <strong>{getPlanFrequency(draft.plan)?.label} plan selected.</strong> Pick your house and a day for the first
-                cleaning, and Jimmy will set up the rest with you.{" "}
+                <strong>
+                  {getPlanFrequency(draft.plan)?.label} plan selected: {planRules.discountPercent}% off every cleaning.
+                </strong>{" "}
+                Pick your house and a day for the first cleaning, and Jimmy will set up the rest with you.{" "}
                 <a href={`#${uid}-plan`} className={styles.planChange}>
                   Change it
                 </a>
@@ -406,7 +422,19 @@ export function BookingApp() {
                         <span className={styles.houseFits}>{p.fits}</span>
                       </span>
                       <span className={styles.housePrice}>
-                        {p.isFrom && <small>from </small>}${p.price}
+                        {plan ? (
+                          <>
+                            <s className={styles.housePriceWas}>
+                              <span className="vh">Regular price </span>${p.price}
+                            </s>
+                            <span className="vh">, on your plan </span>
+                            {p.isFrom && <small>from </small>}${planPrice(p.price)}
+                          </>
+                        ) : (
+                          <>
+                            {p.isFrom && <small>from </small>}${p.price}
+                          </>
+                        )}
                       </span>
                     </label>
                   ))}
@@ -440,20 +468,30 @@ export function BookingApp() {
                   data-picked={(planPicked && draft.plan) || undefined}
                   aria-describedby={`${uid}-repeat-why`}
                 >
-                  <legend>Want this on a schedule?</legend>
+                  <legend>
+                    Want this on a schedule? <span className={styles.repeatDeal}>Plans are {planRules.discountPercent}% off</span>
+                  </legend>
                   <div className={styles.repeatOpts}>
-                    {[{ id: "", label: "Just this once" }, ...planFrequencies].map((f) => (
+                    {[{ id: "", label: "Just this once", perYear: 0 }, ...planFrequencies].map((f) => (
                       <label key={f.id} className={styles.repeatOpt}>
                         <input type="radio" name={`${uid}-plan`} checked={draft.plan === f.id} onChange={() => set("plan", f.id)} />
                         <span>
                           {f.label}
                           {f.id === recommendedPlan && <span className={styles.repeatTag}>Recommended</span>}
+                          {/* What this plan saves in a year, once the house is known */}
+                          {f.id && regular !== null && (
+                            <span className={styles.repeatSave}>
+                              saves {from}${planSaving(regular) * f.perYear} a year
+                            </span>
+                          )}
                         </span>
                       </label>
                     ))}
                   </div>
                   <p id={`${uid}-repeat-why`} className={styles.repeatWhy}>
-                    {recommendedWhy} A plan renews every year until you cancel; you&rsquo;ll see its terms before you book.
+                    Every cleaning on a plan is {planRules.discountPercent}% off. You pay for the whole year up front, in one payment
+                    after the first cleaning, and the plan renews every year until you cancel. You&rsquo;ll see the terms before you
+                    book. {recommendedWhy}
                   </p>
                 </fieldset>
               </fieldset>
@@ -670,7 +708,7 @@ export function BookingApp() {
                   </div>
                   <div>
                     <dt>Schedule</dt>
-                    <dd>{getPlanFrequency(draft.plan)?.label ?? "Just this once"}</dd>
+                    <dd>{plan ? `${plan.label}, ${planRules.discountPercent}% off every cleaning` : "Just this once"}</dd>
                     <button type="button" className={styles.linkBtn} onClick={() => go(0)}>
                       Change
                     </button>
@@ -710,15 +748,39 @@ export function BookingApp() {
                     </div>
                   )}
                 </dl>
-                <p className={styles.totalLine}>
-                  <span>{pkg.needsQuote ? "Starting at" : "Total"}</span>
-                  <strong>${total}</strong>
-                </p>
+                {plan && yearTotal !== null ? (
+                  <>
+                    <p className={styles.totalLine}>
+                      <span>
+                        {pkg.needsQuote ? "Starting at, per cleaning" : "Per cleaning"}, {planRules.discountPercent}% off on your plan
+                      </span>
+                      <strong>
+                        <s className={styles.totalWas}>
+                          <span className="vh">Regular price </span>${regular}
+                        </s>{" "}
+                        <span className="vh">Plan price </span>${total}
+                      </strong>
+                    </p>
+                    <p className={styles.yearLine}>
+                      <span>
+                        The year, paid up front after the first cleaning ({plan.perYear} &times; ${total})
+                      </span>
+                      <strong>
+                        {from}${yearTotal}
+                      </strong>
+                    </p>
+                  </>
+                ) : (
+                  <p className={styles.totalLine}>
+                    <span>{pkg.needsQuote ? "Starting at" : "Total"}</span>
+                    <strong>${total}</strong>
+                  </p>
+                )}
                 {draft.plan && (
                   <PlanAgreement
                     id={`${uid}-planterms`}
                     frequencyId={draft.plan}
-                    pricePerCleaning={total}
+                    regularPrice={regular}
                     priceIsFrom={pkg.needsQuote}
                     checked={draft.planTerms}
                     onChange={(v) => set("planTerms", v)}
@@ -726,7 +788,11 @@ export function BookingApp() {
                   />
                 )}
                 <ul className={styles.fine}>
-                  <li>Nothing is charged now. We invoice after the cleaning.</li>
+                  <li>
+                    {plan
+                      ? `Nothing is charged now. After the first cleaning we invoice the whole year up front, ${from}$${yearTotal}.`
+                      : "Nothing is charged now. We invoice after the cleaning."}
+                  </li>
                   <li>
                     Free to cancel or move with {site.policies.freeRescheduleHours} hours&rsquo; notice.
                     {site.policies.lateCancelFeeDollars !== null &&
@@ -801,10 +867,13 @@ export function BookingApp() {
                 <dd className={styles.amt}>+${rinse.price}</dd>
               </div>
             )}
-            {draft.plan && (
+            {plan && (
               <div>
-                <dt>Schedule</dt>
-                <dd>{getPlanFrequency(draft.plan)?.label}</dd>
+                <dt>Plan</dt>
+                <dd>
+                  {plan.label}, {planRules.discountPercent}% off
+                </dd>
+                <dd className={styles.amt}>{regular !== null ? `−$${planSaving(regular)}` : ""}</dd>
               </div>
             )}
             <div>
@@ -823,10 +892,16 @@ export function BookingApp() {
             </div>
           </dl>
           <p className={styles.ticketTotal}>
-            <span>{pkg?.needsQuote ? "From" : "Total"}</span>
+            <span>{plan ? (pkg?.needsQuote ? "From, a cleaning" : "A cleaning") : pkg?.needsQuote ? "From" : "Total"}</span>
             <strong>{total !== null ? `$${total}` : "—"}</strong>
           </p>
-          <p className={styles.ticketNote}>Paid after the job.</p>
+          <p className={styles.ticketNote}>
+            {plan
+              ? yearTotal !== null
+                ? `The year, ${from}$${yearTotal}, is paid up front after the first cleaning.`
+                : "The year is paid up front, after the first cleaning."
+              : "Paid after the job."}
+          </p>
         </aside>
       </div>
     </div>

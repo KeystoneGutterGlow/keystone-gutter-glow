@@ -42,6 +42,7 @@ export interface Confirmation {
   demo: boolean;
   /** The recurring plan they asked for, if any */
   planLabel?: string | null;
+  planFrequencyId?: string | null;
 }
 
 export type SubmitResult =

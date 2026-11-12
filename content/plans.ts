@@ -1,6 +1,7 @@
 // Recurring cleaning plans. The frequencies are Jimmy's; the plan rules below are Sam's, for Jimmy
-// (2026-11-11). The full wording is the Recurring Plan Terms page (content/legal.tsx), and the
-// customer has to tick a box agreeing to it before booking a plan or sending a plan request.
+// (2026-11-11, and the 10% plan discount 2026-11-12). The full wording is the Recurring Plan Terms
+// page (content/legal.tsx), and the customer has to tick a box agreeing to it before booking a plan
+// or sending a plan request.
 
 export type PlanFrequencyId = "3-months" | "4-months" | "6-months" | "12-months";
 
@@ -32,10 +33,12 @@ export function getPlanFrequency(id: string) {
 /** The plan rules every customer agrees to. Change them here and on the terms page together. */
 export const planRules = {
   /** Bump this whenever the Recurring Plan Terms change, so each agreement records which version it was. */
-  termsVersion: "2026-11-11",
+  termsVersion: "2026-11-12",
+  /** Every cleaning on a plan is this much off the regular price */
+  discountPercent: 10,
   /** Notice before every visit, in hours */
   noticeHours: [72, 24] as const,
-  /** The year's total is paid in full after the year's first cleaning */
+  /** The year is paid up front: the whole annual total in one payment, after the year's first cleaning */
   paidInFullAfterFirst: true,
   /** Renews every plan year until the customer cancels */
   autoRenews: true,
@@ -43,7 +46,29 @@ export const planRules = {
   cancellationFeePercent: 30,
 };
 
-/** Price per cleaning times the cleanings in a plan year. */
+/**
+ * One cleaning's price on a plan: the regular price less the plan discount, rounded down to the
+ * whole dollar. Rounding down means the saving is never less than the advertised 10%, and the
+ * booking database keeps prices in whole dollars.
+ */
+export function planPrice(regularPrice: number): number {
+  return Math.floor((regularPrice * (100 - planRules.discountPercent)) / 100);
+}
+
+/** What a plan saves on one cleaning, in whole dollars. */
+export function planSaving(regularPrice: number): number {
+  return regularPrice - planPrice(regularPrice);
+}
+
+/** The ad line, wherever the site promotes plans. */
+export const planOffer = {
+  /** "10% off" */
+  off: `${planRules.discountPercent}% off`,
+  /** "Save 10%" */
+  save: `Save ${planRules.discountPercent}%`,
+};
+
+/** Price per cleaning (the plan price) times the cleanings in a plan year. */
 export function planAnnualTotal(pricePerCleaning: number, frequencyId: string): number | null {
   const f = getPlanFrequency(frequencyId);
   return f ? pricePerCleaning * f.perYear : null;

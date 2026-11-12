@@ -57,6 +57,7 @@ export async function POST(request: Request) {
           email: b.customer.email,
           address: b.address,
           planLabel: parsed.data.planFrequencyId ? (getPlanFrequency(parsed.data.planFrequencyId)?.label ?? null) : null,
+          planFrequencyId: parsed.data.planFrequencyId ? (getPlanFrequency(parsed.data.planFrequencyId)?.id ?? null) : null,
           demo: isDemoStorage(),
         },
         notice: outcome.notice,

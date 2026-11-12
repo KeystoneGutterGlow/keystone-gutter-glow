@@ -16,7 +16,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <Rail items={items} endId="__none" endLabel="Book a cleaning" homeHref="/" bookHref="/#book" homeLink />
+      <Rail items={items} endId="__none" endLabel="Book a cleaning" homeHref="/" bookHref="/#book" homeLink planOffer />
       <MobileNav items={items} endId="__none" homeHref="/" bookHref="/#book" bookLabel="Book a cleaning" />
 
       <main id="main">

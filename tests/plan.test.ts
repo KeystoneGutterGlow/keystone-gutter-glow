@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST as bookingPost } from "@/app/api/bookings/route";
 import { POST } from "@/app/api/plan-requests/route";
 import { bookingRules } from "@/content/booking";
-import { planFrequencies, planRules, recommendedPlan } from "@/content/plans";
+import { planAnnualTotal, planFrequencies, planPrice, planRules, planSaving, recommendedPlan } from "@/content/plans";
+import { packages, rinse, totalFor } from "@/content/pricing";
 import { today } from "@/lib/booking/service";
 import { getBookingStore, resetBookingStore } from "@/lib/booking/store";
 import { parsePlanRequest } from "@/lib/plan/validate";
@@ -113,12 +114,62 @@ describe("asking for a plan while booking", () => {
     // The demo store keeps its rows privately; reading them directly is fine in a test.
     const rows = (getBookingStore() as unknown as { rows: Array<{ ref: string; notes: string }> }).rows;
     const row = rows.find((r) => r.ref === booking.ref)!;
-    expect(row.notes).toBe(`Recurring plan: Every 4 months. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}). Gate code 1234`);
+    expect(row.notes).toBe(
+      `Recurring plan: Every 4 months, 10% off ($152 a cleaning instead of $169; $456 for the year, paid up front after the first cleaning). ` +
+        `Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}). Gate code 1234`,
+    );
+  });
+
+  it("charges the plan price, 10% off, and the regular price without a plan", async () => {
+    const cases: Array<[Record<string, unknown>, number, boolean]> = [
+      [{ packageId: "one-story", planFrequencyId: "6-months", planTerms: true }, 152, false],
+      [{ packageId: "two-story", rinse: true, planFrequencyId: "3-months", planTerms: true }, 228, false],
+      [{ packageId: "large", planFrequencyId: "12-months", planTerms: true }, 224, true],
+      [{ packageId: "one-story", planFrequencyId: "" }, 169, false],
+      [{ packageId: "two-story", rinse: true, planFrequencyId: "" }, 254, false],
+    ];
+    for (const [over, price, estimate] of cases) {
+      const { status, booking } = await book(over);
+      expect(status).toBe(201);
+      expect(booking.priceDollars).toBe(price);
+      expect(booking.priceIsEstimate).toBe(estimate);
+    }
+    // The browser can't set the price: a sent price is ignored.
+    expect((await book({ planFrequencyId: "6-months", planTerms: true, priceDollars: 1 })).booking.priceDollars).toBe(152);
+  });
+
+  it("returns the plan's id with the confirmation", async () => {
+    expect((await book({ planFrequencyId: "4-months", planTerms: true })).booking.planFrequencyId).toBe("4-months");
+    expect((await book({ planFrequencyId: "" })).booking.planFrequencyId).toBeNull();
   });
 
   it("books normally with no plan, or one it doesn't recognize", async () => {
     expect((await book({ planFrequencyId: "" })).booking.planLabel).toBeNull();
     expect((await book({ planFrequencyId: "weekly" })).booking.planLabel).toBeNull();
+  });
+});
+
+describe("the plan discount", () => {
+  it("is 10% off every price on the site, rounded down so it's never less than 10%", () => {
+    expect(planRules.discountPercent).toBe(10);
+    expect(packages.map((p) => planPrice(p.price))).toEqual([152, 179, 206, 224]);
+    for (const p of packages) {
+      for (const withRinse of [false, true]) {
+        const regular = totalFor(p, withRinse);
+        const plan = planPrice(regular);
+        expect(Number.isInteger(plan)).toBe(true);
+        expect(plan).toBeLessThanOrEqual(regular * 0.9);
+        expect(plan).toBeGreaterThan(regular * 0.9 - 1);
+        expect(planSaving(regular)).toBe(regular - plan);
+      }
+    }
+    expect(planPrice(250)).toBe(225);
+    expect(planPrice(rinse.price)).toBe(22);
+  });
+
+  it("sets the annual total from the plan price", () => {
+    expect(planAnnualTotal(planPrice(229), "6-months")).toBe(412);
+    expect(planAnnualTotal(planPrice(169), "3-months")).toBe(608);
   });
 });
 

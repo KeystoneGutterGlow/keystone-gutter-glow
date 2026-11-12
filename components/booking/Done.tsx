@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { legalPaths } from "@/content/legalPaths";
-import { planRules } from "@/content/plans";
+import { getPlanFrequency, planAnnualTotal, planFrequencies, planRules } from "@/content/plans";
 import { PlanDialog } from "@/components/plan/PlanDialog";
 import { stateForZip } from "@/content/area";
 import { bookingRules } from "@/content/booking";
-import { getPackage } from "@/content/pricing";
+import { getPackage, totalFor } from "@/content/pricing";
 import { site } from "@/content/site";
 import { formatLong } from "@/lib/booking/dates";
 import type { Notice } from "@/lib/notify/notice";
@@ -63,6 +63,13 @@ export function Done({
   planRequests: boolean;
 }) {
   const pkg = getPackage(booking.packageId);
+  // A plan booking's price is already the plan price (10% off). Older saved confirmations carry only the label.
+  const plan = booking.planLabel
+    ? (getPlanFrequency(booking.planFrequencyId ?? "") ?? planFrequencies.find((f) => f.label === booking.planLabel))
+    : undefined;
+  const regular = pkg ? totalFor(pkg, booking.rinse) : null;
+  const yearTotal = plan ? planAnnualTotal(booking.priceDollars, plan.id) : null;
+  const from = booking.priceIsEstimate ? "from " : "";
   const address = `${booking.address.street}, ${booking.address.city}, ${stateForZip(booking.address.zip)} ${booking.address.zip}`;
   const unsent = delivery.status === "failed" || delivery.status === "retrying";
   const Heading = headingLevel;
@@ -110,10 +117,28 @@ export function Done({
             {booking.rinse ? ", with a rinse" : ""}
           </dd>
         </div>
-        <div>
-          <dt>{booking.priceIsEstimate ? "Starting at" : "Total"}</dt>
-          <dd>${booking.priceDollars}, invoiced after</dd>
-        </div>
+        {plan && yearTotal !== null ? (
+          <>
+            <div>
+              <dt>{booking.priceIsEstimate ? "Starting at" : "Plan price"}</dt>
+              <dd>
+                ${booking.priceDollars} a cleaning, {planRules.discountPercent}% off
+                {regular !== null && regular > booking.priceDollars && ` $${regular}`}
+              </dd>
+            </div>
+            <div>
+              <dt>This year</dt>
+              <dd>
+                {from}${yearTotal}, paid up front after this first cleaning
+              </dd>
+            </div>
+          </>
+        ) : (
+          <div>
+            <dt>{booking.priceIsEstimate ? "Starting at" : "Total"}</dt>
+            <dd>${booking.priceDollars}, invoiced after</dd>
+          </div>
+        )}
       </dl>
       <h4 className={styles.nextTitle}>What happens now</h4>
       <ol className={styles.nextList}>
@@ -130,8 +155,9 @@ export function Done({
             <Link href={legalPaths.planTerms} className="textlink">
               Recurring Plan Terms
             </Link>{" "}
-            you agreed to. The year&rsquo;s total is due after this first cleaning, we text or email{" "}
-            {planRules.noticeHours.join(" and ")} hours before each visit, and it renews every year until you cancel.
+            you agreed to. Every cleaning is {planRules.discountPercent}% off. You pay for the whole year up front
+            {yearTotal !== null && ` (${from}$${yearTotal})`}, invoiced after this first cleaning. We text or email{" "}
+            {planRules.noticeHours.join(" and ")} hours before each visit, and the plan renews every year until you cancel.
           </li>
         )}
       </ol>
@@ -152,9 +178,9 @@ export function Done({
           <PlanDialog
             className="btn"
             initial={{ ...booking.address, name, phone, email: booking.email }}
-            price={{ perCleaning: booking.priceDollars, isFrom: booking.priceIsEstimate }}
+            price={{ regular: booking.priceDollars, isFrom: booking.priceIsEstimate }}
           >
-            Make it recurring
+            Make it recurring and save {planRules.discountPercent}%
           </PlanDialog>
         )}
         <Link href={anotherHref} className={styles.back}>

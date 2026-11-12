@@ -102,12 +102,20 @@ describe("a booking's notice", () => {
     expect(f.Booking).toContain(body.booking.ref);
     expect(f.Address).toBe("1 Test Ln, Jamison, PA 18929");
     expect(f.House).toBe("Two-story, with a rinse");
-    expect(f.Price).toContain("$");
+    // Two-story with a rinse is $254; on a plan it's 10% off, rounded down, and the year is 2 cleanings.
+    expect(f.Price).toBe("$228 a cleaning (plan price, 10% off $254). Year total $456, invoiced up front after this first cleaning");
     expect(f.Name).toBe("Pat Example");
     expect(f.Phone).toBe("(215) 555-0100");
     expect(f["Recurring plan"]).toContain("Every 6 months");
     expect(f["Recurring plan"]).toContain("Agreed to the Recurring Plan Terms (version");
+    expect(f["Recurring plan"]).toContain("10% off every cleaning, the year paid up front after the first cleaning");
     expect(f["Additional information"]).toBe("Side gate is unlocked");
+  });
+
+  it("gives the regular price when there's no plan", async () => {
+    const { body } = await book();
+    expect(body.notice!.fields.Price).toBe("$254, invoiced after the job");
+    expect(body.notice!.fields["Recurring plan"]).toBeUndefined();
   });
 
   it("is only handed out after the booking is saved, and the server never contacts FormSubmit", async () => {
@@ -183,6 +191,7 @@ describe("a recurring-plan request", () => {
     expect(notice.fields._subject).toBe("Recurring plan request: Every 6 months, Jamison");
     expect(notice.fields["How often"]).toBe("Every 6 months");
     expect(notice.fields.Request).toContain("Agreed to the Recurring Plan Terms (version");
+    expect(notice.fields.Request).toContain("10% off every cleaning");
     expect(notice.fields.Phone).toBe("(215) 555-0100");
     expect(notice.fields.email).toBe("pat@example.com");
     expect(notice.fields["Additional information"]).toBe("Enter through the gate");

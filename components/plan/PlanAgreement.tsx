@@ -1,7 +1,7 @@
 "use client";
 
 import { legalPaths } from "@/content/legalPaths";
-import { getPlanFrequency, planAnnualTotal, planCancellationFee, planRules } from "@/content/plans";
+import { getPlanFrequency, planAnnualTotal, planCancellationFee, planPrice, planRules } from "@/content/plans";
 import { site } from "@/content/site";
 import styles from "./PlanAgreement.module.css";
 
@@ -14,7 +14,7 @@ const money = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
 export function PlanAgreement({
   id,
   frequencyId,
-  pricePerCleaning,
+  regularPrice,
   priceIsFrom,
   checked,
   onChange,
@@ -22,8 +22,8 @@ export function PlanAgreement({
 }: {
   id: string;
   frequencyId: string;
-  /** Price of one cleaning, rinse included, or null if not known yet */
-  pricePerCleaning: number | null;
+  /** Regular price of one cleaning, rinse included, or null if not known yet. The plan price is 10% off it. */
+  regularPrice: number | null;
   /** "Starting at" pricing: the exact price is confirmed before the first cleaning */
   priceIsFrom?: boolean;
   checked: boolean;
@@ -32,7 +32,8 @@ export function PlanAgreement({
 }) {
   const plan = getPlanFrequency(frequencyId);
   if (!plan) return null;
-  const annual = pricePerCleaning !== null ? planAnnualTotal(pricePerCleaning, plan.id) : null;
+  const perCleaning = regularPrice !== null ? planPrice(regularPrice) : null;
+  const annual = perCleaning !== null ? planAnnualTotal(perCleaning, plan.id) : null;
   const from = priceIsFrom ? "from " : "";
   const [far, near] = planRules.noticeHours;
 
@@ -41,19 +42,28 @@ export function PlanAgreement({
       <p className={styles.title}>Recurring plan terms</p>
       <ul className={styles.list} id={`${id}-summary`}>
         <li>
-          <strong>{plan.label}:</strong> {plan.visits}.
-          {annual !== null && (
+          <strong>{plan.label}:</strong> {plan.visits}, each <strong>{planRules.discountPercent}% off</strong>
+          {perCleaning !== null ? (
             <>
-              {" "}
-              Annual total {from}
-              <strong>{money(annual)}</strong> ({plan.perYear} &times; {from}
-              {money(pricePerCleaning!)})
-              {priceIsFrom && ", confirmed with you before the first cleaning"}.
+              : {from}
+              {money(perCleaning)} a cleaning instead of {from}
+              {money(regularPrice!)}.
             </>
+          ) : (
+            "."
           )}
         </li>
         <li>
-          You pay the year <strong>in full after the first cleaning</strong>.
+          You pay for the <strong>whole year up front</strong>
+          {annual !== null && (
+            <>
+              , {from}
+              <strong>{money(annual)}</strong> ({plan.perYear} &times; {from}
+              {money(perCleaning!)})
+            </>
+          )}
+          , in one payment after the first cleaning
+          {priceIsFrom && ". The exact price is confirmed with you before the first cleaning"}.
         </li>
         <li>
           We show up on each scheduled date and text or email you {far} and {near} hours before. You don&rsquo;t need to be home.

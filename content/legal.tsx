@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { serviceRadius } from "./area";
 import { legalPaths } from "./legalPaths";
-import { getPlanFrequency, planAnnualTotal, planCancellationFee, planFrequencies, planRules } from "./plans";
+import { getPlanFrequency, planAnnualTotal, planCancellationFee, planFrequencies, planPrice, planRules } from "./plans";
 import { getPackage, rinse } from "./pricing";
 import { site } from "./site";
 
@@ -14,7 +14,7 @@ import { site } from "./site";
 // relying on them (see the README, "Legal pages"). When a rule changes, change it here, and bump
 // planRules.termsVersion in content/plans.ts if the Recurring Plan Terms change.
 
-export const LEGAL_UPDATED = "November 11, 2026";
+export const LEGAL_UPDATED = "November 12, 2026";
 
 export { legalPaths };
 
@@ -44,11 +44,13 @@ const Contact = () => (
 );
 
 const fee = `${planRules.cancellationFeePercent}%`;
+const off = `${planRules.discountPercent}%`;
 const [noticeFar, noticeNear] = planRules.noticeHours;
 // A worked example from the real prices: a two-story house every 6 months.
 const examplePkg = getPackage("two-story")!;
 const exampleFreq = getPlanFrequency("6-months")!;
-const exampleAnnual = planAnnualTotal(examplePkg.price, exampleFreq.id)!;
+const examplePlanPrice = planPrice(examplePkg.price);
+const exampleAnnual = planAnnualTotal(examplePlanPrice, exampleFreq.id)!;
 const frequencyList = planFrequencies
   .slice()
   .sort((a, b) => b.perYear - a.perYear)
@@ -62,7 +64,7 @@ export const planTerms: LegalDoc = {
   path: legalPaths.planTerms,
   title: "Recurring Plan Terms",
   description:
-    "How Keystone Gutter Glow's recurring gutter cleaning plans work: visits and notice, payment, automatic renewal, and how to cancel.",
+    "How Keystone Gutter Glow's recurring gutter cleaning plans work: the plan discount, visits and notice, paying for the year up front, automatic renewal, and how to cancel.",
   intro: (
     <>
       These terms apply to every recurring gutter cleaning plan with {site.legalName}, a Pennsylvania company owned by {site.owner}{" "}
@@ -78,11 +80,12 @@ export const planTerms: LegalDoc = {
       body: (
         <ul>
           <li>We clean your gutters on the schedule you pick: every 3, 4 or 6 months, or once a year.</li>
+          <li>Every cleaning on a plan is {off} off the regular price for your house.</li>
           <li>
             We show up on each scheduled date, and we tell you {noticeFar} hours and again {noticeNear} hours before every visit.
           </li>
           <li>You don&rsquo;t need to be home.</li>
-          <li>You pay the whole year in full after the year&rsquo;s first cleaning.</li>
+          <li>You pay for the whole year up front, in one payment after the year&rsquo;s first cleaning.</li>
           <li>The plan renews every year until you cancel.</li>
           <li>Cancelling costs {fee} of the plan&rsquo;s annual total.</li>
           <li>
@@ -137,18 +140,23 @@ export const planTerms: LegalDoc = {
       body: (
         <>
           <p>
-            Your annual total is the price per cleaning shown when you booked (including the {money(rinse.price)} rinse, if you chose
-            it), times the number of cleanings in a plan year. For example, a {examplePkg.name.toLowerCase()} house{" "}
-            {exampleFreq.label.toLowerCase()} is {exampleFreq.perYear} &times; {money(examplePkg.price)} ={" "}
+            <strong>Every cleaning on a plan is {off} off</strong> the regular price per cleaning for your house (including the{" "}
+            {money(rinse.price)} rinse, if you chose it), rounded down to the whole dollar. That plan price is the price shown when
+            you booked, and it applies to every cleaning in the plan, the first one included.
+          </p>
+          <p>
+            Your annual total is the plan price times the number of cleanings in a plan year. For example, a{" "}
+            {examplePkg.name.toLowerCase()} house is {money(examplePkg.price)} a cleaning, or {money(examplePlanPrice)} on a plan;{" "}
+            {exampleFreq.label.toLowerCase()} that is {exampleFreq.perYear} &times; {money(examplePlanPrice)} ={" "}
             {money(exampleAnnual)} for the year.
           </p>
           <p>
-            <strong>You pay the full annual total after the first cleaning of each plan year,</strong> by the invoice we send.
-            Nothing is charged when you book.
+            <strong>You pay for the whole plan year up front:</strong> the full annual total, in one payment, by the invoice we send
+            after the first cleaning of each plan year. Nothing is charged when you book.
           </p>
           <p>
-            If your house is priced &ldquo;starting at&rdquo;, we confirm the exact price per cleaning with you before the first
-            cleaning, and your annual total uses that price.
+            If your house is priced &ldquo;starting at&rdquo;, we confirm the exact regular price with you before the first
+            cleaning, and your plan price and annual total use that price.
           </p>
         </>
       ),
@@ -161,7 +169,7 @@ export const planTerms: LegalDoc = {
         <>
           <p>
             <strong>Your plan renews automatically at the end of each plan year and keeps renewing until you cancel.</strong> Each
-            renewal year is paid the same way: in full, after that year&rsquo;s first cleaning.
+            renewal year is paid the same way: up front, in one payment after that year&rsquo;s first cleaning, at the plan price.
           </p>
           <p>
             Your price per cleaning stays the same unless we tell you about a change in writing before your renewal year starts. If
@@ -303,7 +311,7 @@ export const terms: LegalDoc = {
         <p>
           Prices are shown on this website and confirmed when you book. For homes priced &ldquo;starting at&rdquo;, we confirm the exact
           price with you before the visit. Nothing is charged when you book. We send an invoice after the cleaning, and payment is due
-          when you receive it. Recurring plans are paid as described in the{" "}
+          when you receive it. On a recurring plan every cleaning is {off} off, and the year is paid up front, as described in the{" "}
           <Link href={legalPaths.planTerms}>Recurring Plan Terms</Link>.
         </p>
       ),

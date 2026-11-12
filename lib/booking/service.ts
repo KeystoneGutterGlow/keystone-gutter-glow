@@ -1,5 +1,5 @@
 import { bookingRules, type BookingRules } from "@/content/booking";
-import { getPlanFrequency, planRules } from "@/content/plans";
+import { getPlanFrequency, planAnnualTotal, planPrice, planRules } from "@/content/plans";
 import { getPackage, totalFor } from "@/content/pricing";
 import { bookingNotice, formSubmitEnabled } from "@/lib/notify/formsubmit";
 import type { Notice } from "@/lib/notify/notice";
@@ -69,6 +69,10 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
   }
 
   const plan = req.planFrequencyId ? getPlanFrequency(req.planFrequencyId) : undefined;
+  // A plan's cleanings are 10% off, this first one included. The server works the price out itself.
+  const regular = totalFor(pkg, req.rinse);
+  const price = plan ? planPrice(regular) : regular;
+  const from = pkg.needsQuote ? "from " : "";
   const store = getBookingStore();
   const attempt = (slotId: string) =>
     store.create(
@@ -78,13 +82,18 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
         slotId,
         packageId: pkg.id,
         rinse: req.rinse,
-        priceDollars: totalFor(pkg, req.rinse),
+        priceDollars: price,
         priceIsEstimate: pkg.needsQuote,
         customer: { name: req.name, email: req.email, phone: req.phone },
         address: { street: req.street, city: req.city, zip: req.zip },
         // The plan, and the version of the terms the customer agreed to, are kept with the booking as the record.
         notes: plan
-          ? [`Recurring plan: ${plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}).`, req.notes]
+          ? [
+              `Recurring plan: ${plan.label}, ${planRules.discountPercent}% off (${from}$${price} a cleaning instead of $${regular}; ` +
+                `${from}$${planAnnualTotal(price, plan.id)} for the year, paid up front after the first cleaning). ` +
+                `Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}).`,
+              req.notes,
+            ]
               .filter(Boolean)
               .join(" ")
           : req.notes,
@@ -110,7 +119,7 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
   if (result.ok) {
     // A repeat of the same request gets the notice too: the browser only sends one per booking,
     // and if the first answer was lost on the way, this is its only chance.
-    const notice = formSubmitEnabled() ? bookingNotice(result.booking, rules, { planLabel: plan?.label, notes: req.notes }) : null;
+    const notice = formSubmitEnabled() ? bookingNotice(result.booking, rules, { plan, notes: req.notes }) : null;
     return { ok: true, booking: result.booking, notice };
   }
 

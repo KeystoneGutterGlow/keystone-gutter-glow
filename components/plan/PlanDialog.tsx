@@ -3,7 +3,7 @@
 import { cloneElement, useId, useRef, useState } from "react";
 import { serviceZips, stateForZip } from "@/content/area";
 import { additionalInfo } from "@/content/booking";
-import { getPlanFrequency, planFrequencies, recommendedPlan, recommendedWhy } from "@/content/plans";
+import { getPlanFrequency, planFrequencies, planRules, recommendedPlan, recommendedWhy } from "@/content/plans";
 import { site } from "@/content/site";
 import { PlanAgreement } from "@/components/plan/PlanAgreement";
 import { formatPhone } from "@/lib/booking/validate";
@@ -41,8 +41,8 @@ export function PlanDialog({
 }: {
   className?: string;
   initial?: Partial<Contact>;
-  /** One cleaning's price for this house, so the agreement can show the annual total */
-  price?: { perCleaning: number; isFrom: boolean };
+  /** One cleaning's regular price for this house, so the agreement can show the plan price and annual total */
+  price?: { regular: number; isFrom: boolean };
   children: React.ReactNode;
 }) {
   const uid = useId();
@@ -179,6 +179,10 @@ export function PlanDialog({
               <h2 id={`${uid}-title`} ref={headingRef} tabIndex={-1}>
                 How often should we clean your gutters?
               </h2>
+              <p className={styles.deal}>
+                <strong>Every cleaning on a plan is {planRules.discountPercent}% off.</strong> You pay for the whole year up front, in
+                one payment after the first cleaning.
+              </p>
 
               <fieldset className={styles.options}>
                 <legend className="vh">Cleaning frequency</legend>
@@ -266,7 +270,7 @@ export function PlanDialog({
               <PlanAgreement
                 id={`${uid}-planTerms`}
                 frequencyId={form.frequencyId}
-                pricePerCleaning={price?.perCleaning ?? null}
+                regularPrice={price?.regular ?? null}
                 priceIsFrom={price?.isFrom}
                 checked={form.planTerms}
                 onChange={(v) => set("planTerms", v)}

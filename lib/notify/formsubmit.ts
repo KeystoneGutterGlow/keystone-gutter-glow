@@ -1,6 +1,6 @@
 import { stateForZip } from "@/content/area";
-import { planRules } from "@/content/plans";
-import { getPackage } from "@/content/pricing";
+import { planAnnualTotal, planRules, type PlanFrequency } from "@/content/plans";
+import { getPackage, totalFor } from "@/content/pricing";
 import { site } from "@/content/site";
 import type { BookingRules } from "@/content/booking";
 import { formatLong } from "@/lib/booking/dates";
@@ -55,9 +55,12 @@ function compact(fields: Record<string, string | undefined>): Record<string, str
 export function bookingNotice(
   b: BookingRecord,
   rules: BookingRules,
-  extra: { planLabel?: string; notes?: string } = {},
+  extra: { plan?: Pick<PlanFrequency, "id" | "label">; notes?: string } = {},
 ): Notice {
   const pkg = getPackage(b.packageId);
+  const from = b.priceIsEstimate ? "Starting at " : "";
+  const regular = pkg ? totalFor(pkg, b.rinse) : null;
+  const annual = extra.plan ? planAnnualTotal(b.priceDollars, extra.plan.id) : null;
   const when =
     rules.scheduleMode === "day-only"
       ? formatLong(b.date)
@@ -71,9 +74,12 @@ export function bookingNotice(
         When: when,
         Address: `${b.address.street}, ${b.address.city}, ${stateForZip(b.address.zip)} ${b.address.zip}`,
         House: `${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
-        Price: `${b.priceIsEstimate ? "Starting at " : ""}$${b.priceDollars}, invoiced after the job`,
-        "Recurring plan": extra.planLabel
-          ? `${extra.planLabel}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): paid in full after the first cleaning, renews yearly until cancelled, ${planRules.cancellationFeePercent}% of the annual total to cancel.`
+        Price: extra.plan
+          ? `${from}$${b.priceDollars} a cleaning (plan price, ${planRules.discountPercent}% off${regular !== null ? ` $${regular}` : ""}). ` +
+            `Year total ${from.toLowerCase()}$${annual}, invoiced up front after this first cleaning`
+          : `${from}$${b.priceDollars}, invoiced after the job`,
+        "Recurring plan": extra.plan
+          ? `${extra.plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): ${planRules.discountPercent}% off every cleaning, the year paid up front after the first cleaning, renews yearly until cancelled, ${planRules.cancellationFeePercent}% of the annual total to cancel.`
           : undefined,
         Name: b.customer.name,
         Phone: formatPhone(b.customer.phone),
@@ -103,7 +109,7 @@ export function planRequestNotice(r: PlanNoticeInput): Notice {
     fields: {
       ...settings(`Recurring plan request: ${r.frequency}, ${r.city}`, r.email),
       ...compact({
-        Request: `Recurring plan. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}). Confirm the dates with the customer.`,
+        Request: `Recurring plan, ${planRules.discountPercent}% off every cleaning. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}). Confirm the dates with the customer.`,
         "How often": r.frequency,
         Address: `${r.street}, ${r.city}, ${stateForZip(r.zip)} ${r.zip}`,
         Name: r.name,

@@ -31,7 +31,7 @@ export function GutterHome() {
       <a className="skip" href={`#${BOOK_ID}`}>
         Skip to booking
       </a>
-      <Rail items={homeSections} endId={BOOK_ID} endLabel="Book a cleaning" referLink />
+      <Rail items={homeSections} endId={BOOK_ID} endLabel="Book a cleaning" referLink planOffer />
       <MobileNav items={homeSections} endId={BOOK_ID} referLink firewoodHref={links?.firewoodHref} topSlot={links && <ModeSwitch links={links} current="gutter" />} />
       {links && <ModeSwitch links={links} current="gutter" floating />}
       <main id="main">

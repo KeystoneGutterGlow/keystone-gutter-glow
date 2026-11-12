@@ -155,7 +155,19 @@ No database change is needed: the app sends its cap with each booking, and the d
 
 ### Recurring plans
 
-There are two ways in, both offering Jimmy's four frequencies with every 6 months recommended (`content/plans.ts`). Nothing is scheduled or billed either way, as Addendum A1 requires.
+There are two ways in, both offering Jimmy's four frequencies with every 6 months recommended (`content/plans.ts`). Nothing is charged online either way; Jimmy invoices.
+
+**Plans are 10% off (Sam, 2026-11-12).** Every cleaning on a plan, the first included, costs `planPrice(regular)`: 10% off the regular price (house plus rinse), rounded down to the whole dollar. Rounding down keeps the saving at 10% or a little more, so the "10% off" ads are always true, and the booking database stores whole dollars. One-story $169 → $152, townhome $199 → $179, two-story $229 → $206, bigger houses from $249 → from $224. The server works the price out itself, so a plan booking is saved at the plan price and Jimmy's email shows both prices and the year's total. To change the discount, change `planRules.discountPercent` and bump `planRules.termsVersion`; every price, ad and the terms page follow.
+
+**Where the offer shows:**
+- the hero, under "Book a cleaning" ("10% off every cleaning on a recurring plan", which picks the recommended plan);
+- the desktop side rail, above the Book button, on every gutter page;
+- each house under Prices ("$206 on a plan"), and the plan box under them (`#plans`), with a worked example;
+- the booking form: the schedule picker ("Plans are 10% off", and what each plan saves a year for the chosen house), struck-through house prices once a plan is picked, the work order, the review step and the plan agreement;
+- the confirmation ("Make it recurring and save 10%") and the plan dialog;
+- the FAQ (cost, how often, schedule, when to pay), the footer link, and the page description for search results.
+
+**Paying for the year up front** is spelled out wherever a plan is sold: the plan box, the schedule picker, the work order ("The year, $412, is paid up front after the first cleaning"), the review step's year line and fine print, the agreement box, the confirmation, the FAQ and the terms. It's the same rule as before: the whole year in one payment, invoiced after the first cleaning.
 
 - **While booking.** The house step asks "Want this on a schedule?", defaulting to just this once. The choice goes in the booking's notes, so it reaches Jimmy with the booking and needs no database change.
 - **From Prices.** "Set up a recurring plan" and the four frequency buttons under Prices pick that plan in the booking form, jump to it, and say so at the top ("Every 3 months plan selected…"). The plan then travels with the booking, so these work on every deployment, with or without email (`BookLink`'s `plan` intent).
@@ -431,16 +443,17 @@ They're built from `content/` (prices, phone, email, policies), so they can't dr
 **Recurring plan rules** (`planRules` in `content/plans.ts`):
 - We show up on each scheduled date, and text or email 72 and 24 hours before.
 - The customer doesn't need to be home.
-- The year is paid in full after its first cleaning.
+- Every cleaning on a plan is 10% off the regular price (since 2026-11-12, terms version 2026-11-12).
+- The year is paid up front: the whole annual total in one payment, after the year's first cleaning.
 - The plan renews every year until cancelled.
 - Cancelling costs 30% of the annual total.
 - To cancel, call or text (214) 642-5081, or email Jimmy.
 
 **The agreement box** (`components/plan/PlanAgreement.tsx`) appears in two places: in the booking review step whenever a plan is chosen, and in the "Make it recurring" dialog.
-- **What it shows.** The key terms are in plain sight with the customer's own numbers: the annual total and the cancellation fee in dollars. Below them is the checkbox "I have read and agree to the Recurring Plan Terms, and I understand them".
+- **What it shows.** The key terms are in plain sight with the customer's own numbers: the plan price against the regular price, the annual total paid up front, and the cancellation fee in dollars. Below them is the checkbox "I have read and agree to the Recurring Plan Terms, and I understand them".
 - **How it behaves.** It's never pre-ticked. Changing the plan, house or rinse clears it.
 - **Enforced on the server.** `/api/bookings` and `/api/plan-requests` refuse a plan without `planTerms: true` (`lib/booking/validate.ts`, `lib/plan/validate.ts`).
-- **The record.** Each plan booking's notes record "Agreed to the Recurring Plan Terms (version 2026-11-11)", and Jimmy's notification email says the same. When the terms change, bump `planRules.termsVersion`, so every agreement says which version it was.
+- **The record.** Each plan booking's notes record the plan, its price against the regular price, the year's total and "Agreed to the Recurring Plan Terms (version 2026-11-12)", and Jimmy's notification email says the same. Bookings made before 2026-11-12 say version 2026-11-11, the terms without the discount. When the terms change, bump `planRules.termsVersion`, so every agreement says which version it was.
 
 **Not legal advice. Before relying on these pages, have a Pennsylvania attorney review them.** In particular:
 1. **Additions that need Jimmy's OK.** The plan terms include five fairness points that Sam's list didn't cover:
@@ -452,6 +465,8 @@ They're built from `content/` (prices, phone, email, policies), so they can't dr
 2. **Questions the terms don't answer yet:**
    - Does the 30% fee apply to someone who cancels before their renewal starts, that is, someone who just doesn't want another year?
    - When someone cancels partway through a year they've paid in full, what happens to the cleanings they've paid for but not received?
+   - If someone cancels mid-year, do they keep the 10% on the cleanings they've had, or owe the difference? The terms say nothing, so today they keep it.
+   - "Pay for the year up front" means the whole year in one invoice after the first cleaning, as before. If Sam meant before the first cleaning, the terms and every mention need changing, and the site has no way to take payment online.
 3. **Pennsylvania's Home Improvement Consumer Protection Act (HICPA)** requires many home-service contractors to register with the Attorney General and put specific terms in their contracts. Ask whether gutter cleaning is covered for Jimmy.
 4. **Jimmy is 16.** The LLC is the business that contracts with customers. Have the attorney confirm that's set up properly.
 5. **Federal online-renewal rules (ROSCA).** Plans sold online that renew automatically need clear terms, express consent and a simple way to cancel. The summary box, the checkbox and phone/text/email cancellation are meant to meet that; have the attorney confirm.

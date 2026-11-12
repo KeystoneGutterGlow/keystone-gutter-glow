@@ -40,7 +40,7 @@ export default function ReferredPage() {
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <Rail items={sections} endId="__none" endLabel="Book a cleaning" homeHref="/" bookHref="/#book" homeLink />
+      <Rail items={sections} endId="__none" endLabel="Book a cleaning" homeHref="/" bookHref="/#book" homeLink planOffer />
       <MobileNav items={sections} endId="__none" homeHref="/" bookHref="/#book" bookLabel="Book a cleaning" />
 
       <main id="main">
