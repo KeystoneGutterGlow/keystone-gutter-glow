@@ -784,6 +784,14 @@
   font-size: 0.875rem;
   color: rgb(255 255 255 / 0.78);
 }
+.footBase a {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.madeBy {
+  margin-left: auto;
+}
 
 /* ---------- The page Stripe sends people back to ---------- */
 

@@ -10,6 +10,7 @@ import { getSiteMode, modeLinks, type ModeLinks } from "@/content/season";
 import { site } from "@/content/site";
 import { firewoodJsonLd } from "@/lib/schema";
 import { HemlockBough } from "@/components/botanical/Botanical";
+import { MadeBy } from "@/components/footer/MadeBy";
 import { CordBand, CordDefs, cordDrawingWidth, CordStack } from "./CordStacks";
 import styles from "./Firewood.module.css";
 import { OrderForm } from "./OrderForm";
@@ -242,6 +243,7 @@ function FirewoodFooter({ links }: { links: ModeLinks | null }) {
           © {new Date().getFullYear()} {site.legalName}
         </span>
         <span>Firewood delivered and stacked, {site.county}, {site.state}</span>
+        <MadeBy className={styles.madeBy} />
       </div>
     </footer>
   );

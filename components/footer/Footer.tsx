@@ -6,6 +6,7 @@ import { planRules } from "@/content/plans";
 import { modeLinks } from "@/content/season";
 import { site } from "@/content/site";
 import styles from "./Footer.module.css";
+import { MadeBy } from "./MadeBy";
 
 export function Footer({ onHome = true }: { onHome?: boolean }) {
   const links = modeLinks();
@@ -61,6 +62,7 @@ export function Footer({ onHome = true }: { onHome?: boolean }) {
         <Link href={legalPaths.terms}>Terms of Service</Link>
         <Link href={legalPaths.privacy}>Privacy Policy</Link>
         <Link href={legalPaths.planTerms}>Recurring Plan Terms</Link>
+        <MadeBy className={styles.madeBy} />
       </div>
     </footer>
   );

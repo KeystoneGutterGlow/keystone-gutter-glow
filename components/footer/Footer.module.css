@@ -111,6 +111,10 @@
 .base a:hover {
   color: #fff;
 }
+/* The credit sits at the right end of the row, or starts a new line when it wraps */
+.madeBy {
+  margin-left: auto;
+}
 
 @media (max-width: 1239px) {
   .grid {
