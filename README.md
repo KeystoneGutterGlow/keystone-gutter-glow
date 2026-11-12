@@ -167,7 +167,7 @@ There are two ways in, both offering Jimmy's four frequencies with every 6 month
 - the confirmation ("Make it recurring and save 10%") and the plan dialog;
 - the FAQ (cost, how often, schedule, when to pay), the footer link, and the page description for search results.
 
-**Paying for the year up front** is spelled out wherever a plan is sold: the plan box, the schedule picker, the work order ("The year, $412, is paid up front after the first cleaning"), the review step's year line and fine print, the agreement box, the confirmation, the FAQ and the terms. It's the same rule as before: the whole year in one payment, invoiced after the first cleaning.
+**Paying for the year up front** is spelled out wherever a plan is sold: the plan box, the schedule picker, the work order ("The year, $412, is paid up front after the first cleaning"), the review step's year line and fine print, the agreement box, the confirmation, the FAQ and the terms. It's the same rule as before, confirmed by Sam on 2026-11-12: the whole year in one payment, invoiced after the first cleaning, not before it.
 
 - **While booking.** The house step asks "Want this on a schedule?", defaulting to just this once. The choice goes in the booking's notes, so it reaches Jimmy with the booking and needs no database change.
 - **From Prices.** "Set up a recurring plan" and the four frequency buttons under Prices pick that plan in the booking form, jump to it, and say so at the top ("Every 3 months plan selected…"). The plan then travels with the booking, so these work on every deployment, with or without email (`BookLink`'s `plan` intent).
@@ -466,7 +466,6 @@ They're built from `content/` (prices, phone, email, policies), so they can't dr
    - Does the 30% fee apply to someone who cancels before their renewal starts, that is, someone who just doesn't want another year?
    - When someone cancels partway through a year they've paid in full, what happens to the cleanings they've paid for but not received?
    - If someone cancels mid-year, do they keep the 10% on the cleanings they've had, or owe the difference? The terms say nothing, so today they keep it.
-   - "Pay for the year up front" means the whole year in one invoice after the first cleaning, as before. If Sam meant before the first cleaning, the terms and every mention need changing, and the site has no way to take payment online.
 3. **Pennsylvania's Home Improvement Consumer Protection Act (HICPA)** requires many home-service contractors to register with the Attorney General and put specific terms in their contracts. Ask whether gutter cleaning is covered for Jimmy.
 4. **Jimmy is 16.** The LLC is the business that contracts with customers. Have the attorney confirm that's set up properly.
 5. **Federal online-renewal rules (ROSCA).** Plans sold online that renew automatically need clear terms, express consent and a simple way to cancel. The summary box, the checkbox and phone/text/email cancellation are meant to meet that; have the attorney confirm.
