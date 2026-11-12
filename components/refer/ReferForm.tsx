@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { referralRewards, referralRules, type ReferralReward } from "@/content/referral";
+import { referralPaths, referralRewards, referralRules, type ReferralReward } from "@/content/referral";
 import { site } from "@/content/site";
 import { formatPhone } from "@/lib/booking/validate";
 import { sendNotice, type Notice } from "@/lib/notify/notice";
@@ -34,7 +34,7 @@ export function ReferForm() {
   const [errors, setErrors] = useState<ReferralFieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
-  const [sent, setSent] = useState<{ demo: boolean; friend: string; reward: ReferralReward } | null>(null);
+  const [sent, setSent] = useState<{ demo: boolean; friend: string; reward: ReferralReward; code?: string } | null>(null);
   const bannerRef = useRef<HTMLParagraphElement>(null);
   const sentRef = useRef<HTMLHeadingElement>(null);
 
@@ -72,6 +72,8 @@ export function ReferForm() {
       });
       const data = (await res.json().catch(() => ({}))) as {
         demo?: boolean;
+        /** Demo only: the friend's code, which Jimmy would normally send them */
+        code?: string;
         notice?: Notice;
         errors?: ReferralFieldErrors;
         error?: string;
@@ -84,7 +86,7 @@ export function ReferForm() {
             return;
           }
         }
-        setSent({ demo: data.demo === true, friend: form.friendName, reward: form.reward as ReferralReward });
+        setSent({ demo: data.demo === true, friend: form.friendName, reward: form.reward as ReferralReward, code: data.code });
         requestAnimationFrame(() => sentRef.current?.focus());
       } else if (res.status === 400 && data.errors) {
         setErrors(data.errors);
@@ -116,9 +118,17 @@ export function ReferForm() {
             {sent.demo ? "That’s how a referral works." : `Thanks, ${first(form.name)}. Jimmy has your referral.`}
           </h3>
           <p>
-            He&rsquo;ll get in touch with {friend} and send them our referral page, where their cleaning is $
-            {referralRules.friendDiscount} off.
+            He&rsquo;ll get in touch with {friend} and send them their own link, which takes ${referralRules.friendDiscount} off
+            their cleaning.
           </p>
+          {sent.demo && sent.code && (
+            <p className={styles.demo}>
+              The link Jimmy would send:{" "}
+              <a href={`${referralPaths.friend}/${sent.code}`} target="_blank" rel="noopener">
+                {referralPaths.friend}/{sent.code}
+              </a>
+            </p>
+          )}
           <p>
             {sent.reward === "plan"
               ? `Jimmy will call you to set up your $${referralRules.planCredit} off a recurring plan. It's yours once ${friend} has booked and we've cleaned their gutters.`

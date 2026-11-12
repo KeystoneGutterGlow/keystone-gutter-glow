@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { POST as bookingPost } from "@/app/api/bookings/route";
 import { POST as notifyTestPost } from "@/app/api/notify-test/route";
 import { POST as planPost } from "@/app/api/plan-requests/route";
+import { POST as referralPost } from "@/app/api/referrals/route";
 import { bookingRules } from "@/content/booking";
 import { site } from "@/content/site";
 import { today } from "@/lib/booking/service";
@@ -112,24 +113,59 @@ describe("a booking's notice", () => {
     expect(f["Additional information"]).toBe("Side gate is unlocked");
   });
 
-  it("on a referral, gives Jimmy the price after the $30 and who he owes a thank-you", async () => {
-    const { status, body } = await book({ planFrequencyId: "6-months", planTerms: true, referral: true, referredBy: "Pat Neighbor" });
+  it("on a referral, saves it, gives the friend a one-time link, and tells Jimmy who he owes", async () => {
+    // 1. The referral: saved in the database, and Jimmy's email has the friend's personal link.
+    const sent = await referralPost(
+      new Request("http://localhost/api/referrals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": `10.9.2.${++ip % 250}` },
+        body: JSON.stringify({
+          name: "Pat Neighbor",
+          phone: "2155550123",
+          reward: "plan",
+          friendName: "Pat Example",
+          friendPhone: "2155550100",
+          consent: true,
+        }),
+      }),
+    );
+    expect(sent.status).toBe(201);
+    const { notice, code } = (await sent.json()) as { notice: Notice; code?: string };
+    expect(code).toBeUndefined(); // the referrer never sees the friend's code
+    const link = notice.fields.Referral!.match(/https?:\/\/\S+\/referred\/([A-Z0-9]{8})$/);
+    expect(link).not.toBeNull();
+    const friendCode = link![1]!;
+    expect(notice.fields.Code).toContain(friendCode);
+    const saved = await db.query<{ reward: string; booking_ref: string | null }>("select reward, booking_ref from referrals where code = $1", [friendCode]);
+    expect(saved.rows).toEqual([{ reward: "plan", booking_ref: null }]);
+
+    // 2. The friend books with the code: $30 off the first cleaning, and the code is used up.
+    const { status, body } = await book({ planFrequencyId: "6-months", planTerms: true, referralCode: friendCode.toLowerCase() });
     expect(status).toBe(201);
     const f = body.notice!.fields;
     expect(f.Price).toBe(
       "$228 a cleaning (plan price, 10% off $254). Year total $426, invoiced up front after this first cleaning, after the $30 referral discount",
     );
     expect(f.Referral).toBe(
-      "Referred by Pat Neighbor: $30 off this cleaning. Pat Neighbor's thank-you ($25 cash or $50 off a plan, as chosen on their referral) is due once this house is fully cleaned.",
+      `Referred by Pat Neighbor (code ${friendCode}): $30 off this cleaning. Pat Neighbor chose $50 off a recurring plan, due once this house is fully cleaned.`,
     );
     const { rows } = await db.query<{ price_dollars: number; notes: string }>("select price_dollars, notes from public.bookings where ref = $1", [
       body.booking.ref,
     ]);
     expect(rows[0]!.price_dollars).toBe(198);
-    expect(rows[0]!.notes).toMatch(/^Referral: \$30 off this cleaning \(regular \$228\), referred by Pat Neighbor\./);
+    expect(rows[0]!.notes).toMatch(new RegExp(`^Referral ${friendCode}: \\$30 off this cleaning \\(regular \\$228\\), referred by Pat Neighbor, who chose \\$50 off a recurring plan\\.`));
+    const used = await db.query<{ booking_ref: string }>("select booking_ref from referrals where code = $1", [friendCode]);
+    expect(used.rows[0]!.booking_ref).toBe(body.booking.ref);
 
-    const once = await book({ referral: true, referredBy: "Pat Neighbor" });
-    expect(once.body.notice!.fields.Price).toBe("$224 after the $30 referral discount (regular $254), invoiced after the job");
+    // 3. The same link again: refused, and nothing booked.
+    const again = await book({ referralCode: friendCode });
+    expect(again.status).toBe(410);
+    expect((again.body as unknown as { error: string }).error).toMatch(/already been used/);
+
+    // 4. A made-up code: refused. No code: the regular price.
+    expect((await book({ referralCode: "ZZZZZZZZ" })).status).toBe(410);
+    expect((await book({ referralCode: "nope" })).status).toBe(400);
+    expect((await book({ referredBy: "Anyone" })).body.notice!.fields.Price).toBe("$254, invoiced after the job");
   });
 
   it("gives the regular price when there's no plan", async () => {

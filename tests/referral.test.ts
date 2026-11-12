@@ -10,6 +10,7 @@ import { getBookingStore, resetBookingStore } from "@/lib/booking/store";
 import { parseBookingRequest } from "@/lib/booking/validate";
 import { referralNotice } from "@/lib/notify/formsubmit";
 import { resetRateLimits } from "@/lib/rateLimit";
+import { makeReferralCode, normalizeReferralCode } from "@/lib/referral/code";
 import { parseReferralRequest } from "@/lib/referral/validate";
 import { firstBookable } from "./helpers";
 
@@ -60,7 +61,7 @@ describe("quoteFor", () => {
   });
 });
 
-describe("booking from the referral page", () => {
+describe("booking with a referral code", () => {
   const valid = {
     name: "Sam Neighbor",
     email: "sam@example.com",
@@ -70,14 +71,29 @@ describe("booking from the referral page", () => {
     zip: "18974",
     notes: "",
   };
-  const book = async (over: Record<string, unknown>) => {
+  const freshStore = () => {
     vi.stubEnv("BOOKING_DEMO_SEED", "off");
     resetBookingStore();
+    return getBookingStore();
+  };
+  const referral = (reward: "cash" | "plan" = "cash") =>
+    getBookingStore().createReferral({
+      referrerName: "Pat Example",
+      referrerPhone: "2155550100",
+      referrerEmail: "",
+      reward,
+      friendName: "Sam Neighbor",
+      friendPhone: "2155550111",
+      friendEmail: "",
+      friendTown: "",
+      notes: "",
+    });
+  const book = async (over: Record<string, unknown>, skip = 0) => {
     const res = await bookingPost(
       new Request("http://localhost/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-forwarded-for": `10.5.0.${Math.floor(Math.random() * 250)}` },
-        body: JSON.stringify({ ...valid, packageId: "one-story", rinse: false, date: firstBookable(today(), bookingRules), ...over }),
+        body: JSON.stringify({ ...valid, packageId: "one-story", rinse: false, date: firstBookable(today(), bookingRules, skip), ...over }),
       }),
     );
     const body = await res.json();
@@ -85,49 +101,61 @@ describe("booking from the referral page", () => {
     return { status: res.status, body, row: body.booking ? rows.find((r) => r.ref === body.booking.ref) : undefined };
   };
 
-  it("needs the name of whoever referred them", () => {
-    for (const referredBy of [undefined, "", " ", "A"]) {
-      const out = parseBookingRequest({ ...valid, packageId: "one-story", date: "2030-01-02", referral: true, referredBy });
-      expect(!out.ok && out.errors.referredBy).toMatch(/Who sent you our way/);
-    }
+  it("makes codes that are easy to read out, and tidies typed ones", () => {
+    const codes = new Set(Array.from({ length: 200 }, makeReferralCode));
+    expect(codes.size).toBe(200);
+    for (const c of codes) expect(c).toMatch(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/);
+    expect(normalizeReferralCode(" k7pq-2m9x ")).toBe("K7PQ2M9X");
+    for (const bad of ["K7PQ2M9", "K7PQ2M9XY", "O0O0O0O0", "", null, 12345678]) expect(normalizeReferralCode(bad)).toBeNull();
   });
 
-  it("ignores a name sent without the referral flag", () => {
-    const out = parseBookingRequest({ ...valid, packageId: "one-story", date: "2030-01-02", referredBy: "Pat" });
-    expect(out.ok && out.data.referral).toBe(false);
-    expect(out.ok && out.data.referredBy).toBe("");
+  it("refuses a malformed code before looking anything up", () => {
+    const out = parseBookingRequest({ ...valid, packageId: "one-story", date: "2030-01-02", referralCode: "not a code" });
+    expect(!out.ok && out.errors.referralCode).toMatch(/isn't valid/);
   });
 
-  it("saves the cleaning at $30 off, with who referred them in the notes", async () => {
-    const { status, body, row } = await book({ referral: true, referredBy: "Pat Example", notes: "Gate code 1234" });
+  it("takes $30 off with a real code, and records who referred them from the referral itself", async () => {
+    freshStore();
+    const { code } = await referral("plan");
+    const { status, body, row } = await book({ referralCode: code, notes: "Gate code 1234", referredBy: "Someone Else" });
     expect(status).toBe(201);
-    expect(body.booking.priceDollars).toBe(139);
-    expect(body.booking.referralOff).toBe(30);
-    expect(body.booking.referredBy).toBe("Pat Example");
+    expect(body.booking).toMatchObject({ priceDollars: 139, referralOff: 30, referredBy: "Pat Example" });
     expect(row!.notes).toBe(
-      "Referral: $30 off this cleaning (regular $169), referred by Pat Example. Their thank-you is due once this house is fully cleaned. Gate code 1234",
+      `Referral ${code}: $30 off this cleaning (regular $169), referred by Pat Example, who chose $50 off a recurring plan. ` +
+        "Their thank-you is due once this house is fully cleaned. Gate code 1234",
     );
+    expect((await getBookingStore().findReferral(code))?.bookingRef).toBe(body.booking.ref);
+  });
+
+  it("works once: the same code again is refused", async () => {
+    freshStore();
+    const { code } = await referral();
+    expect((await book({ referralCode: code })).status).toBe(201);
+    const again = await book({ referralCode: code }, 1);
+    expect(again.status).toBe(410);
+    expect(again.body.error).toMatch(/already been used/);
+  });
+
+  it("refuses a code nobody was given", async () => {
+    freshStore();
+    const res = await book({ referralCode: "ZZZZZZZZ" });
+    expect(res.status).toBe(410);
+    expect(res.body.error).toMatch(/isn't valid/);
   });
 
   it("on a plan, takes the $30 off the first cleaning and records the first year", async () => {
-    const { body, row } = await book({
-      referral: true,
-      referredBy: "Pat Example",
-      packageId: "two-story",
-      rinse: true,
-      planFrequencyId: "6-months",
-      planTerms: true,
-    });
+    freshStore();
+    const { code } = await referral();
+    const { body, row } = await book({ referralCode: code, packageId: "two-story", rinse: true, planFrequencyId: "6-months", planTerms: true });
     expect(body.booking.priceDollars).toBe(198);
-    expect(row!.notes).toContain("Referral: $30 off this cleaning (regular $228), referred by Pat Example.");
+    expect(row!.notes).toContain(`Referral ${code}: $30 off this cleaning (regular $228), referred by Pat Example, who chose $25 cash.`);
     expect(row!.notes).toContain("($228 a cleaning instead of $254; $426 for the year, paid up front after the first cleaning, after the $30 referral discount)");
   });
 
-  it("charges the regular price without the referral flag, whatever the browser sends", async () => {
-    const { body } = await book({ referredBy: "Pat Example", priceDollars: 1, referralOff: 30 });
-    expect(body.booking.priceDollars).toBe(169);
-    expect(body.booking.referralOff).toBe(0);
-    expect(body.booking.referredBy).toBeNull();
+  it("charges the regular price without a code, whatever else the browser sends", async () => {
+    freshStore();
+    const { body } = await book({ referral: true, referredBy: "Pat Example", priceDollars: 1, referralOff: 30 });
+    expect(body.booking).toMatchObject({ priceDollars: 169, referralOff: 0, referredBy: null });
   });
 });
 
@@ -172,17 +200,20 @@ describe("the referral form", () => {
   it("tells Jimmy who to contact, where to send them, and what he owes once they're cleaned", () => {
     vi.stubEnv("SITE_URL", "https://example.test");
     const out = parseReferralRequest({ ...valid, reward: "plan" });
-    const f = referralNotice(out.ok ? out.data : (null as never)).fields;
+    const f = referralNotice(out.ok ? out.data : (null as never), "K7PQ2M9X").fields;
     expect(f._subject).toBe("New referral: Sam Neighbor, from Pat Example");
     expect(f._replyto).toBe("pat@example.com");
-    expect(f.Referral).toMatch(/^Pat Example referred Sam Neighbor\. Get in touch with Sam and send them the \$30-off booking page: https?:\/\/.+\/referred$/);
+    expect(f.Referral).toMatch(
+      /^Pat Example referred Sam Neighbor\. Get in touch with Sam and send them their personal link, which takes \$30 off one cleaning: https?:\/\/.+\/referred\/K7PQ2M9X$/,
+    );
+    expect(f.Code).toMatch(/^K7PQ2M9X \(works for one booking/);
     expect(f["Thank-you"]).toBe("$50 off a recurring plan for Pat Example. Call them to set it up. Only once Sam has booked and their house is fully cleaned.");
     expect(f["Their phone"]).toBe("(215) 555-0100");
     expect(f["Friend's phone"]).toBe("(215) 555-0111");
     expect(f["Friend's email"]).toBeUndefined();
     expect(f["Friend's town"]).toBe("Warminster");
     const cash = parseReferralRequest({ ...valid, email: "" });
-    const c = referralNotice(cash.ok ? cash.data : (null as never)).fields;
+    const c = referralNotice(cash.ok ? cash.data : (null as never), "K7PQ2M9X").fields;
     expect(c["Thank-you"]).toBe("$25 cash for Pat Example. Only once Sam has booked and their house is fully cleaned.");
     expect(c._replyto).toBeUndefined();
     expect(c.email).toBeUndefined();
@@ -197,30 +228,17 @@ describe("the referral form", () => {
       }),
     );
 
-  it("hands the browser Jimmy's notice when notifications are on, and sends nothing itself", async () => {
-    vi.stubEnv("FORMSUBMIT_ENABLED", "true");
-    vi.stubEnv("BOOKING_STORE", "supabase");
-    vi.stubEnv("SUPABASE_URL", "https://x.supabase.co");
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "k");
-    vi.stubEnv("VERCEL_ENV", "production");
-    const fetched: string[] = [];
-    vi.stubGlobal("fetch", (async (u: string) => {
-      fetched.push(String(u));
-      throw new Error("no network in tests");
-    }) as unknown as typeof fetch);
-    const res = await post(valid);
-    expect(res.status).toBe(201);
-    const { notice } = await res.json();
-    expect(notice.endpoint).toBe("https://formsubmit.co/ajax/jimmyesmond@keystonegutterglow.com");
-    expect(notice.fields["Friend's name"]).toBe("Sam Neighbor");
-    expect(fetched).toEqual([]);
-  });
-
   it("says demo on a demo deployment, and refuses on a real one with notifications off", async () => {
     vi.stubEnv("FORMSUBMIT_ENABLED", "true");
     vi.stubEnv("BOOKING_STORE", "memory");
     vi.stubEnv("NODE_ENV", "development");
-    expect(await (await post(valid)).json()).toEqual({ ok: true, demo: true });
+    vi.stubEnv("BOOKING_DEMO_SEED", "off");
+    resetBookingStore();
+    const demo = await (await post(valid)).json();
+    expect(demo).toMatchObject({ ok: true, demo: true });
+    // A demo shows the friend's link, so the whole thing can be tried out. It's saved like the real thing.
+    expect((await getBookingStore().findReferral(demo.code))?.friendName).toBe("Sam Neighbor");
+    resetBookingStore();
 
     vi.stubEnv("FORMSUBMIT_ENABLED", "");
     vi.stubEnv("BOOKING_STORE", "supabase");

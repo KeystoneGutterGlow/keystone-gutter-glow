@@ -325,8 +325,8 @@ export const terms: LegalDoc = {
         <>
           <p>
             <strong>Referring someone.</strong> Tell us about someone on our <Link href={referralPaths.refer}>Refer a neighbor</Link>{" "}
-            page and we&rsquo;ll get in touch with them and send them our referral booking page. Only refer people who are happy to
-            hear from us; we use their details to contact them about a cleaning and for nothing else.
+            page and we&rsquo;ll get in touch with them and send them their own referral link. Only refer people who are happy to
+            hear from us; we use their details to contact them about a cleaning, and to know who to thank, and for nothing else.
           </p>
           <p>
             <strong>Your thank-you</strong> is your choice of ${referralRules.cashReward} cash or ${referralRules.planCredit} off a
@@ -335,8 +335,9 @@ export const terms: LegalDoc = {
             before. Nothing is owed for a referral that doesn&rsquo;t become a booking, or before the cleaning is done.
           </p>
           <p>
-            <strong>If you were referred,</strong> ${referralRules.friendDiscount} comes off the one cleaning you book on our referral
-            page, as long as you tell us who referred you. If that cleaning starts a recurring plan, the ${referralRules.friendDiscount}{" "}
+            <strong>If you were referred,</strong> ${referralRules.friendDiscount} comes off the one cleaning you book with the
+            personal link we send you. Each link works for one booking. If that cleaning starts a recurring plan, the $
+            {referralRules.friendDiscount}{" "}
             comes off the first cleaning, and so off the first year&rsquo;s payment. It isn&rsquo;t cash and can&rsquo;t be exchanged
             for cash.
           </p>
@@ -461,8 +462,8 @@ export const privacy: LegalDoc = {
           </li>
           <li>
             <strong>When you refer someone:</strong> your name, phone number and email address, the thank-you you chose, and the name,
-            phone number, email address and town you give us for the person you&rsquo;re referring. If you were referred, the name of
-            the person who referred you.
+            phone number, email address and town you give us for the person you&rsquo;re referring. We keep each referral in our
+            booking database, with the booking it leads to, so we know who to thank.
           </li>
           <li>
             <strong>When you use the ZIP check:</strong> nothing. It runs in your browser and isn&rsquo;t sent to us.
@@ -505,7 +506,7 @@ export const privacy: LegalDoc = {
               <strong>Vercel</strong> hosts this website.
             </li>
             <li>
-              <strong>Supabase</strong> stores bookings in a database in the United States.
+              <strong>Supabase</strong> stores bookings and referrals in a database in the United States.
             </li>
             <li>
               <strong>FormSubmit</strong> (formsubmit.co) delivers your booking, plan request or referral to {site.owner}&rsquo;s email,

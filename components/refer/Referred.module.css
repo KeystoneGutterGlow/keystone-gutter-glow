@@ -141,3 +141,19 @@
     font-size: 1.6rem;
   }
 }
+
+/* ---------- no usable link ---------- */
+
+.heroOnly {
+  min-height: 70vh;
+  padding-bottom: 72px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 26px;
+}
+.actions :global(.textlink) {
+  font-weight: 700;
+}

@@ -14,7 +14,7 @@ import { quoteFor } from "@/content/quote";
 import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
 import type { DayDetail, DaySummary } from "@/lib/booking/types";
-import { formatPhone, PLAN_TERMS_ERROR, validateContact, validateReferredBy, type FieldErrors } from "@/lib/booking/validate";
+import { formatPhone, PLAN_TERMS_ERROR, validateContact, type FieldErrors } from "@/lib/booking/validate";
 import { sendNotice } from "@/lib/notify/notice";
 import { fetchDay, fetchRange, submitBooking, type Meta } from "./api";
 import styles from "./Booking.module.css";
@@ -43,8 +43,6 @@ interface Draft {
   company: string;
   /** Agreed to the Recurring Plan Terms. Cleared whenever the plan, house or rinse changes. */
   planTerms: boolean;
-  /** Who referred them, on the referral page */
-  referredBy: string;
 }
 
 const EMPTY: Draft = {
@@ -62,17 +60,23 @@ const EMPTY: Draft = {
   notes: "",
   company: "",
   planTerms: false,
-  referredBy: "",
 };
 
 const slotLabel = (id: string | null) => bookingRules.slots.find((s) => s.id === id)?.label ?? "";
 
 
+/** A friend's personal referral, checked by the server when /referred/<code> loads */
+export interface ReferralLink {
+  code: string;
+  referrerName: string;
+}
+
 /**
- * The booking form. `referral` is the referral page's version (/referred): $30 off the cleaning
- * being booked, and a "Who referred you?" field so Jimmy knows who to thank.
+ * The booking form. With `referral` it's the referral page's version (/referred/<code>): $30 off
+ * the cleaning being booked. The code goes with the booking; the server checks it again and the
+ * database uses it up, so it only works once.
  */
-export function BookingApp({ referral = false }: { referral?: boolean }) {
+export function BookingApp({ referral }: { referral?: ReferralLink }) {
   const router = useRouter();
   const uid = useId();
   const [step, setStep] = useState<Step>(0);
@@ -228,7 +232,7 @@ export function BookingApp({ referral = false }: { referral?: boolean }) {
   const plan = getPlanFrequency(draft.plan);
   // A plan takes 10% off every cleaning, and a referral $30 off this one (content/quote.ts). `regular`
   // is the price with neither, `total` what this cleaning costs, `yearTotal` a plan's first year.
-  const q = pkg ? quoteFor(pkg, draft.rinse, draft.plan, referral) : null;
+  const q = pkg ? quoteFor(pkg, draft.rinse, draft.plan, !!referral) : null;
   const regular = q?.regular ?? null;
   const total = q?.thisCleaning ?? null;
   const yearTotal = q?.firstYear ?? null;
@@ -258,7 +262,7 @@ export function BookingApp({ referral = false }: { referral?: boolean }) {
       setErrors({});
       go(2);
     } else if (step === 2) {
-      const errs = { ...validateContact(draft), ...validateReferredBy({ referral, referredBy: draft.referredBy }) };
+      const errs = validateContact(draft);
       setErrors(errs);
       const first = Object.keys(errs)[0];
       if (first) {
@@ -296,8 +300,7 @@ export function BookingApp({ referral = false }: { referral?: boolean }) {
       zip: draft.zip,
       notes: draft.notes,
       company: draft.company,
-      referral,
-      referredBy: referral ? draft.referredBy : "",
+      referralCode: referral?.code,
     });
 
     if (result.kind === "ok") {
@@ -427,13 +430,13 @@ export function BookingApp({ referral = false }: { referral?: boolean }) {
                       </span>
                       <span className={styles.housePrice}>
                         {/* With a plan or a referral, the regular price struck through over what this cleaning costs */}
-                        {quoteFor(p, false, draft.plan, referral).thisCleaning !== p.price ? (
+                        {quoteFor(p, false, draft.plan, !!referral).thisCleaning !== p.price ? (
                           <>
                             <s className={styles.housePriceWas}>
                               <span className="vh">Regular price </span>${p.price}
                             </s>
                             <span className="vh">, this cleaning </span>
-                            {p.isFrom && <small>from </small>}${quoteFor(p, false, draft.plan, referral).thisCleaning}
+                            {p.isFrom && <small>from </small>}${quoteFor(p, false, draft.plan, !!referral).thisCleaning}
                           </>
                         ) : (
                           <>
@@ -671,17 +674,6 @@ export function BookingApp({ referral = false }: { referral?: boolean }) {
                       onChange={(e) => set("email", e.target.value)}
                     />
                   </Field>
-                  {referral && (
-                    <Field
-                      id={`${uid}-referredBy`}
-                      label="Who referred you?"
-                      error={errors.referredBy}
-                      note="Their name, so Jimmy can thank them."
-                      wide
-                    >
-                      <input autoComplete="off" value={draft.referredBy} onChange={(e) => set("referredBy", e.target.value)} />
-                    </Field>
-                  )}
                   <Field id={`${uid}-notes`} label={additionalInfo.label} note={additionalInfo.note} optional wide>
                     <textarea
                       rows={3}
@@ -760,10 +752,7 @@ export function BookingApp({ referral = false }: { referral?: boolean }) {
                   {referral && (
                     <div>
                       <dt>Referred by</dt>
-                      <dd>{draft.referredBy}</dd>
-                      <button type="button" className={styles.linkBtn} onClick={() => go(2)}>
-                        Change
-                      </button>
+                      <dd>{referral.referrerName}</dd>
                     </div>
                   )}
                   {draft.notes && (

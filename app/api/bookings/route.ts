@@ -38,6 +38,10 @@ export async function POST(request: Request) {
   try {
     const outcome = await createBooking(parsed.data);
     if (!outcome.ok) {
+      // A refused referral code has no schedule to show: the browser shows the message.
+      if (outcome.status === 410) {
+        return Response.json({ code: outcome.code, error: outcome.message }, { status: 410, headers: noStore });
+      }
       return Response.json(
         { code: outcome.code, message: outcome.message, day: outcome.day },
         { status: outcome.status, headers: noStore },
@@ -59,7 +63,7 @@ export async function POST(request: Request) {
           planLabel: parsed.data.planFrequencyId ? (getPlanFrequency(parsed.data.planFrequencyId)?.label ?? null) : null,
           planFrequencyId: parsed.data.planFrequencyId ? (getPlanFrequency(parsed.data.planFrequencyId)?.id ?? null) : null,
           referralOff: outcome.referralOff,
-          referredBy: parsed.data.referral ? parsed.data.referredBy : null,
+          referredBy: outcome.referredBy,
           demo: isDemoStorage(),
         },
         notice: outcome.notice,

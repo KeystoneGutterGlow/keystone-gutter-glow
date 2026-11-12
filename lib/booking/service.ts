@@ -2,7 +2,7 @@ import { bookingRules, type BookingRules } from "@/content/booking";
 import { getPlanFrequency, planRules } from "@/content/plans";
 import { getPackage } from "@/content/pricing";
 import { quoteFor } from "@/content/quote";
-import { referralRules } from "@/content/referral";
+import { referralRewards } from "@/content/referral";
 import { bookingNotice, formSubmitEnabled } from "@/lib/notify/formsubmit";
 import type { Notice } from "@/lib/notify/notice";
 import { checkDate, dayDetail, firstOpening, rangeSummary } from "./availability";
@@ -54,8 +54,30 @@ function makeRef(): string {
 
 export type CreateOutcome =
   /** `notice` is Jimmy's notification for the browser to send, or null when notices are off. */
-  | { ok: true; booking: BookingRecord; notice: Notice | null; /** The referral discount on this cleaning, 0 if none */ referralOff: number }
+  | {
+      ok: true;
+      booking: BookingRecord;
+      notice: Notice | null;
+      /** The referral discount on this cleaning, 0 if none */
+      referralOff: number;
+      /** Who referred them, from the referral the code belongs to */
+      referredBy: string | null;
+    }
+  /** The referral code doesn't exist, or another booking already used it */
+  | { ok: false; status: 410; code: "referral_invalid" | "referral_used"; message: string }
   | { ok: false; status: 409 | 422; code: "slot_taken" | "day_full" | "date_unavailable"; message: string; day: DayDetail };
+
+function referralRefused(code: "referral_invalid" | "referral_used"): CreateOutcome {
+  return {
+    ok: false,
+    status: 410,
+    code,
+    message:
+      code === "referral_used"
+        ? "This referral link has already been used for a booking, so it can't take $30 off again."
+        : "That referral link isn't valid.",
+  };
+}
 
 export async function createBooking(req: CleanBookingRequest, rules: BookingRules = bookingRules): Promise<CreateOutcome> {
   const pkg = getPackage(req.packageId)!;
@@ -71,12 +93,16 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
   }
 
   const plan = req.planFrequencyId ? getPlanFrequency(req.planFrequencyId) : undefined;
+  const store = getBookingStore();
+  // A referral code has to belong to a real referral; who referred them comes from that, not from
+  // the browser. Whether it's still unused is checked again by the store as it books (a retry of
+  // the booking that used it gets that booking back).
+  const referral = req.referralCode ? await store.findReferral(req.referralCode) : null;
+  if (req.referralCode && !referral) return referralRefused("referral_invalid");
   // A plan's cleanings are 10% off, this first one included, and a referral takes $30 off this
   // cleaning. The server works the price out itself (content/quote.ts).
-  const q = quoteFor(pkg, req.rinse, plan?.id, req.referral);
+  const q = quoteFor(pkg, req.rinse, plan?.id, !!referral);
   const from = pkg.needsQuote ? "from " : "";
-  const referredBy = req.referral ? req.referredBy : "";
-  const store = getBookingStore();
   const attempt = (slotId: string) =>
     store.create(
       {
@@ -92,9 +118,9 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
         // The plan, and the version of the terms the customer agreed to, are kept with the booking as the record.
         // So are a referral and who made it, since that's who Jimmy owes a thank-you once this house is cleaned.
         notes: [
-          referredBy
-            ? `Referral: $${q.referralOff} off this cleaning (regular ${from}$${q.perCleaning}), referred by ${referredBy}. ` +
-              `Their thank-you is due once this house is fully cleaned.`
+          referral
+            ? `Referral ${referral.code}: $${q.referralOff} off this cleaning (regular ${from}$${q.perCleaning}), referred by ${referral.referrerName}, ` +
+              `who chose ${referralRewards[referral.reward].label}. Their thank-you is due once this house is fully cleaned.`
             : "",
           plan
             ? `Recurring plan: ${plan.label}, ${planRules.discountPercent}% off (${from}$${q.perCleaning} a cleaning instead of $${q.regular}; ` +
@@ -108,6 +134,7 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
         idempotencyKey: req.idempotencyKey,
       },
       rules.maxJobsPerDay,
+      { referralCode: referral?.code },
     );
 
   let result: CreateResult;
@@ -117,9 +144,9 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
     result = { ok: false, reason: "day_full" };
     for (const slot of rules.slots) {
       result = await attempt(slot.id);
-      if (result.ok || result.reason === "day_full") break;
+      if (result.ok || result.reason !== "slot_taken") break;
     }
-    if (!result.ok) result = { ok: false, reason: "day_full" };
+    if (!result.ok && result.reason === "slot_taken") result = { ok: false, reason: "day_full" };
   } else {
     result = await attempt(req.slotId);
   }
@@ -131,11 +158,14 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
       ? bookingNotice(result.booking, rules, {
           plan,
           notes: req.notes,
-          referral: referredBy ? { by: referredBy, off: q.referralOff } : undefined,
+          referral: referral
+            ? { by: referral.referrerName, off: q.referralOff, code: referral.code, reward: referral.reward }
+            : undefined,
         })
       : null;
-    return { ok: true, booking: result.booking, notice, referralOff: q.referralOff };
+    return { ok: true, booking: result.booking, notice, referralOff: q.referralOff, referredBy: referral?.referrerName ?? null };
   }
+  if (result.reason === "referral_invalid" || result.reason === "referral_used") return referralRefused(result.reason);
 
   const slot = rules.slots.find((s) => s.id === req.slotId);
   return {

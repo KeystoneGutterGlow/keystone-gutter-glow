@@ -1,7 +1,7 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SupabaseBookingStore } from "@/lib/booking/store/supabase";
-import type { NewBooking } from "@/lib/booking/types";
+import type { NewBooking, NewReferral } from "@/lib/booking/types";
 import { SupabaseOrderStore } from "@/lib/firewood/store";
 import type { NewOrder } from "@/lib/firewood/types";
 import { freshDatabase, postgrestShim } from "./helpers";
@@ -104,9 +104,9 @@ describe("bookings table", () => {
 
   it("keeps row-level security on for every table", async () => {
     const { rows } = await db.query<{ relname: string; relrowsecurity: boolean }>(
-      "select relname, relrowsecurity from pg_class where relname in ('bookings', 'booking_settings', 'firewood_orders')",
+      "select relname, relrowsecurity from pg_class where relname in ('bookings', 'booking_settings', 'firewood_orders', 'referrals')",
     );
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
     expect(rows.every((r) => r.relrowsecurity)).toBe(true);
   });
 });
@@ -215,5 +215,80 @@ describe("Supabase adapters against the real migrations", () => {
 
   it("refuses a status the table doesn't know", async () => {
     await expect(db.query("update firewood_orders set status = 'refunded'")).rejects.toThrow(/check/i);
+  });
+
+  const newReferral = (over: Partial<NewReferral> = {}): NewReferral => ({
+    referrerName: "Pat Example",
+    referrerPhone: "2155550100",
+    referrerEmail: "",
+    reward: "cash",
+    friendName: "Sam Neighbor",
+    friendPhone: "2155550111",
+    friendEmail: "",
+    friendTown: "Warminster",
+    notes: "",
+    ...over,
+  });
+
+  it("saves a referral with a personal code, and finds it again", async () => {
+    const store = new SupabaseBookingStore("http://db.test", "service-key");
+    const made = await store.createReferral(newReferral({ reward: "plan", referrerEmail: "pat@example.com" }));
+    expect(made.code).toMatch(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/);
+    expect(made).toMatchObject({ referrerName: "Pat Example", reward: "plan", friendTown: "Warminster", bookingRef: null, thankedAt: null });
+    expect(await store.findReferral(made.code)).toEqual(made);
+    expect(await store.findReferral("ZZZZZZZZ")).toBeNull();
+  });
+
+  it("uses a code up with its booking, and refuses it for a second one", async () => {
+    const store = new SupabaseBookingStore("http://db.test", "service-key");
+    const { code } = await store.createReferral(newReferral());
+    const first = await store.create(newBooking({ date: "2026-11-23", priceDollars: 139 }), 4, { referralCode: code });
+    expect(first.ok).toBe(true);
+    const linked = await store.findReferral(code);
+    expect(linked?.bookingRef).toBe(first.ok ? first.booking.ref : "");
+    expect(linked?.bookedAt).not.toBeNull();
+
+    const before = await db.query<{ c: number }>("select count(*)::int as c from bookings");
+    expect(await store.create(newBooking({ date: "2026-11-24", priceDollars: 139 }), 4, { referralCode: code })).toEqual({
+      ok: false,
+      reason: "referral_used",
+    });
+    const after = await db.query<{ c: number }>("select count(*)::int as c from bookings");
+    expect(after.rows[0]!.c).toBe(before.rows[0]!.c);
+  });
+
+  it("refuses a code that doesn't exist, and books nothing", async () => {
+    const store = new SupabaseBookingStore("http://db.test", "service-key");
+    expect(await store.create(newBooking({ date: "2026-11-25" }), 4, { referralCode: "ZZZZZZZZ" })).toEqual({
+      ok: false,
+      reason: "referral_invalid",
+    });
+    expect(await store.listTaken("2026-11-25", "2026-11-25")).toEqual([]);
+  });
+
+  it("leaves the code unused when the booking itself fails", async () => {
+    const store = new SupabaseBookingStore("http://db.test", "service-key");
+    const { code } = await store.createReferral(newReferral());
+    expect((await store.create(newBooking({ date: "2026-11-26" }), 4)).ok).toBe(true);
+    expect(await store.create(newBooking({ date: "2026-11-26" }), 4, { referralCode: code })).toEqual({ ok: false, reason: "slot_taken" });
+    expect((await store.findReferral(code))?.bookingRef).toBeNull();
+    expect((await store.create(newBooking({ date: "2026-11-26", slotId: "10:00" }), 4, { referralCode: code })).ok).toBe(true);
+  });
+
+  it("gives a retried referral booking the booking it already made", async () => {
+    const store = new SupabaseBookingStore("http://db.test", "service-key");
+    const { code } = await store.createReferral(newReferral());
+    const once = await store.create(newBooking({ date: "2026-11-27", idempotencyKey: "ref-retry-1" }), 4, { referralCode: code });
+    const again = await store.create(newBooking({ date: "2026-11-27", idempotencyKey: "ref-retry-1" }), 4, { referralCode: code });
+    expect(once.ok && again.ok && again.duplicate && once.booking.ref === again.booking.ref).toBe(true);
+  });
+
+  it("only takes the two thank-yous, and only well-formed codes", async () => {
+    await expect(
+      db.query("insert into referrals (code, referrer_name, referrer_phone, reward, friend_name) values ('ABCDEFGH', 'A', '1', 'gift', 'B')"),
+    ).rejects.toThrow(/check/i);
+    await expect(
+      db.query("insert into referrals (code, referrer_name, referrer_phone, reward, friend_name) values ('abc', 'A', '1', 'cash', 'B')"),
+    ).rejects.toThrow(/check/i);
   });
 });

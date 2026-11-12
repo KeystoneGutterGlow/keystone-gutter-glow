@@ -1,7 +1,7 @@
 import { stateForZip } from "@/content/area";
 import { planAnnualTotal, planRules, type PlanFrequency } from "@/content/plans";
 import { getPackage, totalFor } from "@/content/pricing";
-import { referralPaths, referralRewards, referralRules } from "@/content/referral";
+import { referralPaths, referralRewards, referralRules, type ReferralReward } from "@/content/referral";
 import { site } from "@/content/site";
 import type { BookingRules } from "@/content/booking";
 import { formatLong } from "@/lib/booking/dates";
@@ -58,7 +58,11 @@ function compact(fields: Record<string, string | undefined>): Record<string, str
 export function bookingNotice(
   b: BookingRecord,
   rules: BookingRules,
-  extra: { plan?: Pick<PlanFrequency, "id" | "label">; notes?: string; referral?: { by: string; off: number } } = {},
+  extra: {
+    plan?: Pick<PlanFrequency, "id" | "label">;
+    notes?: string;
+    referral?: { by: string; off: number; code: string; reward: ReferralReward };
+  } = {},
 ): Notice {
   const pkg = getPackage(b.packageId);
   const from = b.priceIsEstimate ? "Starting at " : "";
@@ -88,7 +92,8 @@ export function bookingNotice(
             ? `${from}$${b.priceDollars} after the $${off} referral discount (regular ${from.toLowerCase()}$${perCleaning}), invoiced after the job`
             : `${from}$${b.priceDollars}, invoiced after the job`,
         Referral: extra.referral
-          ? `Referred by ${extra.referral.by}: $${off} off this cleaning. ${extra.referral.by}'s thank-you ($${referralRules.cashReward} cash or $${referralRules.planCredit} off a plan, as chosen on their referral) is due once this house is fully cleaned.`
+          ? `Referred by ${extra.referral.by} (code ${extra.referral.code}): $${off} off this cleaning. ` +
+            `${extra.referral.by} chose ${referralRewards[extra.referral.reward].label}, due once this house is fully cleaned.`
           : undefined,
         "Recurring plan": extra.plan
           ? `${extra.plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): ${planRules.discountPercent}% off every cleaning, the year paid up front after the first cleaning, renews yearly until cancelled, ${planRules.cancellationFeePercent}% of the annual total to cancel.`
@@ -133,8 +138,13 @@ export function planRequestNotice(r: PlanNoticeInput): Notice {
   };
 }
 
-/** The notice for a referral from /refer. The email is the only record of it. */
-export function referralNotice(r: CleanReferralRequest): Notice {
+/** The friend's personal booking page, on the live site's address. */
+export function referralLink(code: string): string {
+  return `${publicUrl}${referralPaths.friend}/${code}`;
+}
+
+/** The notice for a referral from /refer. The referral itself is saved in the database, with its code. */
+export function referralNotice(r: CleanReferralRequest, code: string): Notice {
   const first = r.friendName.split(/\s+/)[0];
   const reward =
     r.reward === "plan"
@@ -145,7 +155,8 @@ export function referralNotice(r: CleanReferralRequest): Notice {
     fields: {
       ...settings(`New referral: ${r.friendName}, from ${r.name}`, r.email || undefined),
       ...compact({
-        Referral: `${r.name} referred ${r.friendName}. Get in touch with ${first} and send them the $${referralRules.friendDiscount}-off booking page: ${publicUrl}${referralPaths.friend}`,
+        Referral: `${r.name} referred ${r.friendName}. Get in touch with ${first} and send them their personal link, which takes $${referralRules.friendDiscount} off one cleaning: ${referralLink(code)}`,
+        Code: `${code} (works for one booking; the referrals table in Supabase shows when it's used)`,
         "Thank-you": `${reward} Only once ${first} has booked and their house is fully cleaned.`,
         "Referred by": r.name,
         "Their phone": formatPhone(r.phone),

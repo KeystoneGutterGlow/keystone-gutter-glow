@@ -30,7 +30,7 @@ npm run build
 - `tests/sql.test.ts`: every migration on PGlite (real Postgres in WASM), plus the Supabase adapters run against those tables
 - `tests/firewood.test.ts`: prices, order validation, the payment gate, the seasonal switch, and the off switch
 - `tests/notify.test.ts`: FormSubmit notices. A booking through the real migrations hands back a notice with every detail, addressed to Jimmy's email. The fifth booking of a day is refused with no notice. Notices are off unless switched on, and never on previews or the demo store. The server never contacts FormSubmit. The browser only reports success when FormSubmit confirms.
-- `tests/referral.test.ts`: the referral program: $30 off on the referral page (alone and with a plan), who referred them recorded with the booking, the referral form's checks, and Jimmy's referral email
+- `tests/referral.test.ts`: the referral program: codes, $30 off with a real code (alone and with a plan), a used or unknown code refused, the referral form's checks, and Jimmy's referral email. `tests/sql.test.ts` checks the referrals table and the code handling in `create_booking()` on real Postgres, and `tests/notify.test.ts` runs a referral from form to booking on it.
 - `tests/plan.test.ts`: recurring plans, including that a plan can't be booked or requested without the Recurring Plan Terms box ticked, and that the agreed version is recorded
 - `tests/ads.test.ts`: the Google tag's IDs and setup script, production only, and the Purchase conversion firing once per booking with the booking number
 - `tests/stripe.test.ts`: checkout, webhook signatures, duplicate events. Signature checks use Stripe's real code. Session creation is a stand-in, so no network or key is needed.
@@ -177,7 +177,7 @@ There are two ways in, both offering Jimmy's four frequencies with every 6 month
 
 ## Database setup
 
-**Status (2026-11-05): done.** Supabase project `keystone-gutter-glow` (ref `rsmilcleohxlqzbgwmcl`, Free plan, US East) is connected to the Vercel project's Production environment only. All three migrations have been run. Row-level security is on for every table, and the public (anon) key can neither read the tables nor call `create_booking()`. Production has `BOOKING_STORE=supabase`. The booking rules were tested inside the database, then the test rows were deleted: a booking, a retried request returning the same booking, a taken spot and a full day all behaved correctly. Not tested yet: the site reaching the database with its server key over HTTPS, which first happens on the launch deploy. The first item under "Database" in the launch checklist covers it.
+**Status (2026-11-05): done.** Supabase project `keystone-gutter-glow` (ref `rsmilcleohxlqzbgwmcl`, Free plan, US East) is connected to the Vercel project's Production environment only. Migrations 001 to 003 have been run. **004_referrals.sql (2026-11-12) has to be run before the referral-code release goes live.** Row-level security is on for every table, and the public (anon) key can neither read the tables nor call `create_booking()`. Production has `BOOKING_STORE=supabase`. The booking rules were tested inside the database, then the test rows were deleted: a booking, a retried request returning the same booking, a taken spot and a full day all behaved correctly. Not tested yet: the site reaching the database with its server key over HTTPS, which first happens on the launch deploy. The first item under "Database" in the launch checklist covers it.
 
 To open it: Vercel, then Storage, then keystone-gutter-glow, then "Open in Supabase" (or `npx vercel integration open supabase keystone-gutter-glow`). It's reached through the Vercel login, not a separate Supabase account.
 
@@ -193,6 +193,7 @@ That asks you to accept Supabase's terms, then creates the project in US East (c
    1. `db/migrations/001_bookings.sql`: bookings, the cap trigger, `create_booking()`
    2. `db/migrations/002_booking_hardening.sql`: idempotency, the app-supplied cap, grants
    3. `db/migrations/003_firewood_orders.sql`: firewood orders
+   4. `db/migrations/004_referrals.sql`: referrals, and `create_booking()` using up a referral code with its booking
 2. Add `BOOKING_STORE=supabase` to Production: `npx vercel env add BOOKING_STORE production`, value `supabase`.
 3. It takes effect on the next production deploy, which is the launch merge. The production site running now doesn't see new variables until it's redeployed.
 
@@ -403,7 +404,8 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 - [ ] Google Ads shows the tag as active and records a Purchase conversion from a real booking (see "Google Ads")
 
 **Database**
-- [x] All three migrations run
+- [x] Migrations 001 to 003 run
+- [ ] Migration 004 (referrals) run
 - [ ] After the launch deploy, a test booking made on the site appears in the `bookings` table (then delete it)
 - [ ] Two people booking the last spot at once on the deployed site gives one booking and one "just taken" message (`BASE=<url> npm run test:booking` does this, but it writes bookings, so delete them afterward)
 
@@ -431,41 +433,52 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 **The rules (Sam, 2026-11-12, in `content/referral.ts`):**
 - The person who refers gets their choice of **$25 cash or $50 off a recurring plan**. If they pick the plan, Jimmy calls them to set it up.
 - The person they refer gets **$30 off a cleaning**.
-- To refer someone, the customer fills in a form with their own details and their friend's. Jimmy gets in touch with the friend and sends them the $30-off booking page.
+- To refer someone, the customer fills in a form with their own details and their friend's. Jimmy gets in touch with the friend and sends them their own link to book with $30 off.
 - The thank-you is paid **after the friend's house is fully cleaned**, and a referral only counts when it's an actual booking.
 
-**The two pages:**
-- **`/refer`, "Refer a neighbor".** This is where every "Refer a neighbor" link goes: the rail, the phone menu, the footer, the band above booking, and the booking confirmation. It has the rewards, the four steps, the form and questions.
-  - **The form** (`components/refer/ReferForm.tsx`) asks for:
-    - the customer's name, phone and optional email;
-    - their thank-you, $25 cash or $50 off a plan. Picking the plan shows "Jimmy will call you…";
-    - the friend's name, phone and/or email, and town;
-    - a required box confirming the friend is happy to hear from Jimmy.
-  - **What happens next.** `/api/referrals` checks the form and the browser sends Jimmy a FormSubmit email. That email, "New referral: …", is the only record. It has the friend's details, the link to send them, and what Jimmy owes and when.
-  - **When FormSubmit is off.** Like plan requests, the form needs FormSubmit on. A real deployment with it off shows "call or text Jimmy" instead.
-- **`/referred`, the $30-off booking page.** This is the page Jimmy sends people.
-  - It has the four prices with $30 off, what a cleaning includes, and the normal booking form in referral mode (`<Booking referral />`).
-  - The form adds a required "Who referred you?" field, and every price on it shows the $30 off.
-  - It isn't a personal link, so anyone with the URL gets the discount. It's `noindex` and left out of the sitemap so only people Jimmy sends will find it.
+**How it works:**
+1. **`/refer`, "Refer a neighbor".** Every "Refer a neighbor" link goes here: the rail, the phone menu, the footer, the band above booking, and the booking confirmation.
+   - **The form** (`components/refer/ReferForm.tsx`) asks for:
+     - the customer's name, phone and optional email;
+     - their thank-you. Picking the plan shows "Jimmy will call you…";
+     - the friend's name, phone and/or email, and town;
+     - a required box confirming the friend is happy to hear from Jimmy.
+   - **What `/api/referrals` does.** It checks the form, then **saves the referral in the `referrals` table with a personal code**, like `K7PQ2M9X`. The browser then emails Jimmy through FormSubmit, "New referral: …". The email has the friend's details, their personal link (`/referred/K7PQ2M9X`), and what Jimmy owes and when.
+   - **The customer never sees the code.** Jimmy sends it to the friend.
+2. **Jimmy texts or emails the friend their link.**
+3. **`/referred/<code>`, the friend's page.** It looks the code up on every visit.
+   - **Real and unused:** the page shows "Referred by Pat", the four prices with $30 off and the booking form with $30 off.
+   - **Used:** the page says the link has been used and offers the regular price or a call.
+   - **Unknown, or plain `/referred`:** the page explains that the discount comes with a personal link from Jimmy.
+   - These pages are `noindex` and left out of the sitemap.
+4. **When the friend books.** The code goes with the booking.
+   - **The server looks the referral up.** Who referred them comes from the referral, not from anything typed.
+   - **Then `create_booking()` in the database checks the code again.** It refuses a code that doesn't exist or was already used. If the code is good, it links the referral to the new booking **in the same transaction**. So a link works for exactly one booking, even with two tries at the same moment. A booking that fails (day full, slot taken) leaves the code unused. A retried request gets its own booking back.
+   - **A used or fake code** gets "This referral link has already been used…" or "…isn't valid", and nothing is booked.
+   - **Without a code**, the price is the regular one, whatever the browser sends.
 
-**Prices (`content/quote.ts`, used by the form and the server alike):**
+**Prices (`content/quote.ts`, the same in the form and on the server):**
 - **One cleaning:** $30 off. One-story $169 becomes $139, two-story $229 becomes $199, bigger houses go from $249 to from $219.
-- **With a recurring plan:** the 10% plan discount applies, and the $30 comes off the first cleaning. So it comes off the first year's up-front payment, too. For a two-story with rinse every 6 months: $228 a cleaning, $456 a year, so the first cleaning is $198 and the first year $426.
-- **What's saved.** The booking is saved at the discounted price. Its notes start with "Referral: $30 off this cleaning (regular $X), referred by NAME. Their thank-you is due once this house is fully cleaned."
-- **Jimmy's email** gets a "Referral" line saying who he owes a thank-you. The referrer's choice of thank-you is in the earlier referral email.
+- **With a recurring plan:** the 10% plan discount applies, and the $30 comes off the first cleaning, and so off the first year's up-front payment. For a two-story with rinse every 6 months: $228 a cleaning, $456 a year, so the first cleaning is $198 and the first year $426.
+- **What's saved.** The booking is saved at the discounted price. Its notes start with "Referral CODE: $30 off this cleaning (regular $X), referred by NAME, who chose $25 cash. Their thank-you is due once this house is fully cleaned." Jimmy's booking email says the same.
 
-**Paying out is up to Jimmy.** Nothing on the site tracks referrals or pays anyone. To pay out:
-1. When a booking says "referred by NAME", match it to that person's referral email.
-2. After the cleaning, pay the $25 or call them about the $50.
+**Jimmy's referral list is the `referrals` table in Supabase** (Vercel, then Storage, then "Open in Supabase", then Table editor, then `referrals`):
+- `booking_ref` and `booked_at` fill in when the friend books.
+- After that house is cleaned, Jimmy pays the thank-you (`reward` is `cash` or `plan`) and fills in `thanked_at`.
+- So "who do I owe?" means rows with a `booking_ref`, a finished cleaning, and no `thanked_at`.
+- To let a friend use their link again, for example after a cancelled booking, clear `booking_ref` and `booked_at`.
+- If FormSubmit didn't deliver an email, the referral is still in the table. If the customer then sent it again, there may be two rows for one friend; only one link will be used.
+
+**The database change:** `db/migrations/004_referrals.sql` adds the `referrals` table (row-level security on, closed to the public key). It also replaces `create_booking()` with the version that handles codes, and otherwise behaves exactly the same. **Run it in Supabase's SQL editor before deploying this code.** Without it, referrals can't be saved and referral links show "can't check your link". Normal bookings keep working either way.
 
 **Not decided, so the site doesn't promise them:**
 - whether the $30 combines with the plan discount (the site says it does, on the first cleaning);
 - how the $50 plan credit is applied (Jimmy sets it up on the call);
 - limits per person or household;
 - whether existing customers can be referred;
-- how long a referral stays valid.
+- how long a link stays valid (today, until it's used).
 
-The Terms of Service has a "Referrals" section with these rules. One sentence in it is my addition and needs Jimmy's OK: "We may change or end the referral program; referrals made before a change keep their terms". The Privacy Policy now covers the friend's details too.
+The Terms of Service has a "Referrals" section with these rules. One sentence in it is my addition and needs Jimmy's OK: "We may change or end the referral program; referrals made before a change keep their terms". The Privacy Policy covers the friend's details and says referrals are kept in the booking database.
 
 ## Legal pages and recurring plans
 

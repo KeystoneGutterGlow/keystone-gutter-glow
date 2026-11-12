@@ -1,5 +1,6 @@
 import type { PackageId } from "@/content/pricing";
-import type { BookingRecord, BookingStore, CreateResult, ISODate, NewBooking, TakenSlot } from "../types";
+import { makeReferralCode } from "@/lib/referral/code";
+import type { BookingRecord, BookingStore, CreateResult, ISODate, NewBooking, NewReferral, ReferralRecord, TakenSlot } from "../types";
 
 /**
  * Supabase / Postgres store, talking to PostgREST over fetch (no client library needed).
@@ -74,6 +75,58 @@ function fromRow(r: Row): BookingRecord {
   };
 }
 
+interface ReferralRow {
+  code: string;
+  created_at: string;
+  referrer_name: string;
+  referrer_phone: string;
+  referrer_email: string;
+  reward: "cash" | "plan";
+  friend_name: string;
+  friend_phone: string;
+  friend_email: string;
+  friend_town: string;
+  notes: string;
+  booking_ref: string | null;
+  booked_at: string | null;
+  thanked_at: string | null;
+}
+
+function toReferralRow(r: NewReferral, code: string) {
+  return {
+    code,
+    referrer_name: r.referrerName,
+    referrer_phone: r.referrerPhone,
+    referrer_email: r.referrerEmail,
+    reward: r.reward,
+    friend_name: r.friendName,
+    friend_phone: r.friendPhone,
+    friend_email: r.friendEmail,
+    friend_town: r.friendTown,
+    notes: r.notes,
+  };
+}
+
+function fromReferralRow(r: ReferralRow): ReferralRecord {
+  const iso = (v: unknown) => (v == null ? null : v instanceof Date ? v.toISOString() : String(v));
+  return {
+    code: r.code,
+    createdAt: iso(r.created_at)!,
+    referrerName: r.referrer_name,
+    referrerPhone: r.referrer_phone,
+    referrerEmail: r.referrer_email,
+    reward: r.reward,
+    friendName: r.friend_name,
+    friendPhone: r.friend_phone,
+    friendEmail: r.friend_email,
+    friendTown: r.friend_town,
+    notes: r.notes,
+    bookingRef: r.booking_ref,
+    bookedAt: iso(r.booked_at),
+    thankedAt: iso(r.thanked_at),
+  };
+}
+
 export class SupabaseBookingStore implements BookingStore {
   constructor(
     private readonly url: string,
@@ -102,18 +155,53 @@ export class SupabaseBookingStore implements BookingStore {
     return rows.map((r) => ({ date: r.service_date, slotId: r.slot_id }));
   }
 
-  // The database applies the lower of `maxPerDay` and booking_settings.max_jobs_per_day.
-  async create(input: NewBooking, maxPerDay: number): Promise<CreateResult> {
+  // The database applies the lower of `maxPerDay` and booking_settings.max_jobs_per_day, and uses
+  // up a referral code in the same transaction (db/migrations/004_referrals.sql).
+  async create(input: NewBooking, maxPerDay: number, opts: { referralCode?: string } = {}): Promise<CreateResult> {
     const res = await fetch(`${this.url}/rest/v1/rpc/create_booking`, {
       method: "POST",
       headers: this.headers(),
-      body: JSON.stringify({ p: { ...toRow(input), max_jobs_per_day: maxPerDay } }),
+      body: JSON.stringify({
+        p: { ...toRow(input), max_jobs_per_day: maxPerDay, ...(opts.referralCode ? { referral_code: opts.referralCode } : {}) },
+      }),
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`Supabase create_booking failed (${res.status})`);
     const out = (await res.json()) as { ok: boolean; reason?: string; booking?: Row; duplicate?: boolean };
     if (out.ok && out.booking) return { ok: true, booking: fromRow(out.booking), duplicate: out.duplicate };
-    return { ok: false, reason: out.reason === "day_full" ? "day_full" : "slot_taken" };
+    const reasons = ["day_full", "referral_invalid", "referral_used"] as const;
+    const reason = reasons.find((r) => r === out.reason) ?? "slot_taken";
+    return { ok: false, reason };
+  }
+
+  async createReferral(input: NewReferral): Promise<ReferralRecord> {
+    // A code clash is about one in 650 billion, but try again rather than fail if it happens.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await fetch(`${this.url}/rest/v1/referrals`, {
+        method: "POST",
+        headers: { ...this.headers(), Prefer: "return=representation" },
+        body: JSON.stringify(toReferralRow(input, makeReferralCode())),
+        cache: "no-store",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (res.status === 409) continue;
+      if (!res.ok) throw new Error(`Supabase createReferral failed (${res.status})`);
+      const rows = (await res.json()) as ReferralRow[];
+      return fromReferralRow(rows[0]!);
+    }
+    throw new Error("Supabase createReferral: no free code");
+  }
+
+  async findReferral(code: string): Promise<ReferralRecord | null> {
+    const q = new URLSearchParams({ select: "*", code: `eq.${code}` });
+    const res = await fetch(`${this.url}/rest/v1/referrals?${q}`, {
+      headers: this.headers(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Supabase findReferral failed (${res.status})`);
+    const rows = (await res.json()) as ReferralRow[];
+    return rows[0] ? fromReferralRow(rows[0]) : null;
   }
 }

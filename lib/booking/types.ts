@@ -29,7 +29,33 @@ export type NewBooking = Omit<BookingRecord, "id" | "status" | "createdAt">;
 
 export type CreateResult =
   | { ok: true; booking: BookingRecord; duplicate?: boolean }
-  | { ok: false; reason: "slot_taken" | "day_full" };
+  /** referral_invalid / referral_used: the referral code doesn't exist, or another booking already used it */
+  | { ok: false; reason: "slot_taken" | "day_full" | "referral_invalid" | "referral_used" };
+
+/** A referral from the /refer form (db/migrations/004_referrals.sql) */
+export interface NewReferral {
+  referrerName: string;
+  referrerPhone: string;
+  /** "" when they didn't give one */
+  referrerEmail: string;
+  reward: "cash" | "plan";
+  friendName: string;
+  friendPhone: string;
+  friendEmail: string;
+  friendTown: string;
+  notes: string;
+}
+
+export interface ReferralRecord extends NewReferral {
+  /** The friend's personal code: /referred/<code>. Works for one booking. */
+  code: string;
+  createdAt: string;
+  /** The booking that used the code, once the friend books */
+  bookingRef: string | null;
+  bookedAt: string | null;
+  /** Set by Jimmy once he's paid the thank-you */
+  thankedAt: string | null;
+}
 
 export interface TakenSlot {
   date: ISODate;
@@ -46,9 +72,15 @@ export interface BookingStore {
   /**
    * Create a booking or refuse it. MUST be atomic with respect to other creates: the
    * implementation itself guarantees one booking per (date, slot) and at most
-   * `maxPerDay` per date, even under concurrent requests.
+   * `maxPerDay` per date, even under concurrent requests. With a referral code, it also
+   * refuses a code that doesn't exist or was already used, and links the code to the new
+   * booking in the same step, so one code can never pay for two bookings.
    */
-  create(input: NewBooking, maxPerDay: number): Promise<CreateResult>;
+  create(input: NewBooking, maxPerDay: number, opts?: { referralCode?: string }): Promise<CreateResult>;
+  /** Save a referral with a new, unique code. */
+  createReferral(input: NewReferral): Promise<ReferralRecord>;
+  /** The referral with this code, or null. */
+  findReferral(code: string): Promise<ReferralRecord | null>;
 }
 
 export type SlotState = "open" | "taken" | "day_full" | "closed";
