@@ -7,6 +7,7 @@ import { PlanDialog } from "@/components/plan/PlanDialog";
 import { stateForZip } from "@/content/area";
 import { bookingRules } from "@/content/booking";
 import { getPackage, totalFor } from "@/content/pricing";
+import { referralPaths, referralRules } from "@/content/referral";
 import { site } from "@/content/site";
 import { formatLong } from "@/lib/booking/dates";
 import type { Notice } from "@/lib/notify/notice";
@@ -68,7 +69,10 @@ export function Done({
     ? (getPlanFrequency(booking.planFrequencyId ?? "") ?? planFrequencies.find((f) => f.label === booking.planLabel))
     : undefined;
   const regular = pkg ? totalFor(pkg, booking.rinse) : null;
-  const yearTotal = plan ? planAnnualTotal(booking.priceDollars, plan.id) : null;
+  // The saved price is this cleaning's, after any referral discount.
+  const off = booking.referralOff ?? 0;
+  const perCleaning = booking.priceDollars + off;
+  const yearTotal = plan ? (planAnnualTotal(perCleaning, plan.id) ?? 0) - off : null;
   const from = booking.priceIsEstimate ? "from " : "";
   const address = `${booking.address.street}, ${booking.address.city}, ${stateForZip(booking.address.zip)} ${booking.address.zip}`;
   const unsent = delivery.status === "failed" || delivery.status === "retrying";
@@ -122,10 +126,16 @@ export function Done({
             <div>
               <dt>{booking.priceIsEstimate ? "Starting at" : "Plan price"}</dt>
               <dd>
-                ${booking.priceDollars} a cleaning, {planRules.discountPercent}% off
-                {regular !== null && regular > booking.priceDollars && ` $${regular}`}
+                ${perCleaning} a cleaning, {planRules.discountPercent}% off
+                {regular !== null && regular > perCleaning && ` $${regular}`}
               </dd>
             </div>
+            {off > 0 && (
+              <div>
+                <dt>Referral</dt>
+                <dd>${off} off this first cleaning</dd>
+              </div>
+            )}
             <div>
               <dt>This year</dt>
               <dd>
@@ -136,7 +146,10 @@ export function Done({
         ) : (
           <div>
             <dt>{booking.priceIsEstimate ? "Starting at" : "Total"}</dt>
-            <dd>${booking.priceDollars}, invoiced after</dd>
+            <dd>
+              ${booking.priceDollars}
+              {off > 0 && ` after your $${off} referral discount`}, invoiced after
+            </dd>
           </div>
         )}
       </dl>
@@ -178,7 +191,7 @@ export function Done({
           <PlanDialog
             className="btn"
             initial={{ ...booking.address, name, phone, email: booking.email }}
-            price={{ regular: booking.priceDollars, isFrom: booking.priceIsEstimate }}
+            price={{ regular: regular ?? perCleaning, isFrom: booking.priceIsEstimate }}
           >
             Make it recurring and save {planRules.discountPercent}%
           </PlanDialog>
@@ -189,9 +202,10 @@ export function Done({
       </div>
       <p className={styles.doneFoot}>
         Need to change something? Call or text {site.phone.display}.{" "}
-        <Link href="/referred" className="textlink">
+        <Link href={referralPaths.refer} className="textlink">
           Send a neighbor our way
         </Link>
+        : they get ${referralRules.friendDiscount} off, and you get ${referralRules.cashReward} cash or ${referralRules.planCredit} off a plan.
       </p>
     </div>
   );

@@ -26,6 +26,10 @@ export interface BookingRequest {
   planFrequencyId?: string;
   /** Ticked "I agree to the Recurring Plan Terms". Required whenever there's a plan. */
   planTerms?: boolean;
+  /** Booked from the referral page (/referred): $30 off this cleaning (content/referral.ts) */
+  referral?: boolean;
+  /** Who referred them. Required with `referral`, so Jimmy knows who to thank. */
+  referredBy?: string;
 }
 
 export interface CleanBookingRequest extends Omit<BookingRequest, "packageId" | "company"> {
@@ -35,6 +39,12 @@ export interface CleanBookingRequest extends Omit<BookingRequest, "packageId" | 
 export type FieldErrors = Partial<Record<keyof BookingRequest, string>>;
 
 export const PLAN_TERMS_ERROR = "Tick the box to agree to the recurring plan terms, or choose Just this once.";
+export const REFERRED_BY_ERROR = "Who sent you our way? Their name is how we thank them.";
+
+/** A referral booking has to say who referred them. */
+export function validateReferredBy(input: Pick<BookingRequest, "referral" | "referredBy">): FieldErrors {
+  return input.referral && (input.referredBy ?? "").trim().length < 2 ? { referredBy: REFERRED_BY_ERROR } : {};
+}
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const IDEMPOTENCY_RE = /^[\w-]{8,80}$/;
@@ -105,9 +115,12 @@ export function parseBookingRequest(
     // Anything unknown just means no plan.
     planFrequencyId: getPlanFrequency(cleanText(b.planFrequencyId, 20))?.id,
     planTerms: b.planTerms === true,
+    referral: b.referral === true,
   };
+  // A name only counts on a referral booking.
+  req.referredBy = req.referral ? cleanText(b.referredBy, 120) : "";
 
-  const errors: FieldErrors = validateContact(req);
+  const errors: FieldErrors = { ...validateContact(req), ...validateReferredBy(req) };
   if (!getPackage(req.packageId)) errors.packageId = "Pick the house type that fits best.";
   if (!isISODate(req.date)) errors.date = "Pick a day.";
   // In day-only mode the server chooses the slot, so anything the client sends is ignored.

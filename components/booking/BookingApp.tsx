@@ -8,21 +8,13 @@ import { House } from "@/components/pricing/Houses";
 import { areaPlaces, serviceZips, stateForZip } from "@/content/area";
 import { additionalInfo, bookingRules } from "@/content/booking";
 import { legalPaths } from "@/content/legalPaths";
-import {
-  getPlanFrequency,
-  planAnnualTotal,
-  planFrequencies,
-  planPrice,
-  planRules,
-  planSaving,
-  recommendedPlan,
-  recommendedWhy,
-} from "@/content/plans";
-import { getPackage, packages, rinse, totalFor, type PackageId } from "@/content/pricing";
+import { getPlanFrequency, planFrequencies, planRules, planSaving, recommendedPlan, recommendedWhy } from "@/content/plans";
+import { getPackage, packages, rinse, type PackageId } from "@/content/pricing";
+import { quoteFor } from "@/content/quote";
 import { site } from "@/content/site";
 import { addDays, addMonths, formatLong, formatShort, monthStart } from "@/lib/booking/dates";
 import type { DayDetail, DaySummary } from "@/lib/booking/types";
-import { formatPhone, PLAN_TERMS_ERROR, validateContact, type FieldErrors } from "@/lib/booking/validate";
+import { formatPhone, PLAN_TERMS_ERROR, validateContact, validateReferredBy, type FieldErrors } from "@/lib/booking/validate";
 import { sendNotice } from "@/lib/notify/notice";
 import { fetchDay, fetchRange, submitBooking, type Meta } from "./api";
 import styles from "./Booking.module.css";
@@ -51,6 +43,8 @@ interface Draft {
   company: string;
   /** Agreed to the Recurring Plan Terms. Cleared whenever the plan, house or rinse changes. */
   planTerms: boolean;
+  /** Who referred them, on the referral page */
+  referredBy: string;
 }
 
 const EMPTY: Draft = {
@@ -68,12 +62,17 @@ const EMPTY: Draft = {
   notes: "",
   company: "",
   planTerms: false,
+  referredBy: "",
 };
 
 const slotLabel = (id: string | null) => bookingRules.slots.find((s) => s.id === id)?.label ?? "";
 
 
-export function BookingApp() {
+/**
+ * The booking form. `referral` is the referral page's version (/referred): $30 off the cleaning
+ * being booked, and a "Who referred you?" field so Jimmy knows who to thank.
+ */
+export function BookingApp({ referral = false }: { referral?: boolean }) {
   const router = useRouter();
   const uid = useId();
   const [step, setStep] = useState<Step>(0);
@@ -227,10 +226,13 @@ export function BookingApp() {
 
   const pkg = draft.packageId ? getPackage(draft.packageId) : undefined;
   const plan = getPlanFrequency(draft.plan);
-  // A plan takes 10% off every cleaning. `regular` is the price without a plan, `total` what this cleaning costs.
-  const regular = pkg ? totalFor(pkg, draft.rinse) : null;
-  const total = regular !== null && plan ? planPrice(regular) : regular;
-  const yearTotal = total !== null && plan ? planAnnualTotal(total, plan.id) : null;
+  // A plan takes 10% off every cleaning, and a referral $30 off this one (content/quote.ts). `regular`
+  // is the price with neither, `total` what this cleaning costs, `yearTotal` a plan's first year.
+  const q = pkg ? quoteFor(pkg, draft.rinse, draft.plan, referral) : null;
+  const regular = q?.regular ?? null;
+  const total = q?.thisCleaning ?? null;
+  const yearTotal = q?.firstYear ?? null;
+  const off = q?.referralOff ?? 0;
   const from = pkg?.needsQuote ? "from " : "";
 
   // ---- Step transitions with validation ----
@@ -256,7 +258,7 @@ export function BookingApp() {
       setErrors({});
       go(2);
     } else if (step === 2) {
-      const errs = validateContact(draft);
+      const errs = { ...validateContact(draft), ...validateReferredBy({ referral, referredBy: draft.referredBy }) };
       setErrors(errs);
       const first = Object.keys(errs)[0];
       if (first) {
@@ -294,6 +296,8 @@ export function BookingApp() {
       zip: draft.zip,
       notes: draft.notes,
       company: draft.company,
+      referral,
+      referredBy: referral ? draft.referredBy : "",
     });
 
     if (result.kind === "ok") {
@@ -422,13 +426,14 @@ export function BookingApp() {
                         <span className={styles.houseFits}>{p.fits}</span>
                       </span>
                       <span className={styles.housePrice}>
-                        {plan ? (
+                        {/* With a plan or a referral, the regular price struck through over what this cleaning costs */}
+                        {quoteFor(p, false, draft.plan, referral).thisCleaning !== p.price ? (
                           <>
                             <s className={styles.housePriceWas}>
                               <span className="vh">Regular price </span>${p.price}
                             </s>
-                            <span className="vh">, on your plan </span>
-                            {p.isFrom && <small>from </small>}${planPrice(p.price)}
+                            <span className="vh">, this cleaning </span>
+                            {p.isFrom && <small>from </small>}${quoteFor(p, false, draft.plan, referral).thisCleaning}
                           </>
                         ) : (
                           <>
@@ -666,6 +671,17 @@ export function BookingApp() {
                       onChange={(e) => set("email", e.target.value)}
                     />
                   </Field>
+                  {referral && (
+                    <Field
+                      id={`${uid}-referredBy`}
+                      label="Who referred you?"
+                      error={errors.referredBy}
+                      note="Their name, so Jimmy can thank them."
+                      wide
+                    >
+                      <input autoComplete="off" value={draft.referredBy} onChange={(e) => set("referredBy", e.target.value)} />
+                    </Field>
+                  )}
                   <Field id={`${uid}-notes`} label={additionalInfo.label} note={additionalInfo.note} optional wide>
                     <textarea
                       rows={3}
@@ -741,6 +757,15 @@ export function BookingApp() {
                       Change
                     </button>
                   </div>
+                  {referral && (
+                    <div>
+                      <dt>Referred by</dt>
+                      <dd>{draft.referredBy}</dd>
+                      <button type="button" className={styles.linkBtn} onClick={() => go(2)}>
+                        Change
+                      </button>
+                    </div>
+                  )}
                   {draft.notes && (
                     <div>
                       <dt>Additional info</dt>
@@ -748,7 +773,7 @@ export function BookingApp() {
                     </div>
                   )}
                 </dl>
-                {plan && yearTotal !== null ? (
+                {plan && q && yearTotal !== null ? (
                   <>
                     <p className={styles.totalLine}>
                       <span>
@@ -758,12 +783,19 @@ export function BookingApp() {
                         <s className={styles.totalWas}>
                           <span className="vh">Regular price </span>${regular}
                         </s>{" "}
-                        <span className="vh">Plan price </span>${total}
+                        <span className="vh">Plan price </span>${q.perCleaning}
                       </strong>
                     </p>
+                    {off > 0 && (
+                      <p className={styles.yearLine}>
+                        <span>Your referral discount, on this first cleaning</span>
+                        <strong>&minus;${off}</strong>
+                      </p>
+                    )}
                     <p className={styles.yearLine}>
                       <span>
-                        The year, paid up front after the first cleaning ({plan.perYear} &times; ${total})
+                        The year, paid up front after the first cleaning ({plan.perYear} &times; ${q.perCleaning}
+                        {off > 0 && ` − $${off}`})
                       </span>
                       <strong>
                         {from}${yearTotal}
@@ -772,8 +804,21 @@ export function BookingApp() {
                   </>
                 ) : (
                   <p className={styles.totalLine}>
-                    <span>{pkg.needsQuote ? "Starting at" : "Total"}</span>
-                    <strong>${total}</strong>
+                    <span>
+                      {pkg.needsQuote ? "Starting at" : "Total"}
+                      {off > 0 && `, $${off} off for your referral`}
+                    </span>
+                    <strong>
+                      {off > 0 && (
+                        <>
+                          <s className={styles.totalWas}>
+                            <span className="vh">Regular price </span>${regular}
+                          </s>{" "}
+                          <span className="vh">Your price </span>
+                        </>
+                      )}
+                      ${total}
+                    </strong>
                   </p>
                 )}
                 {draft.plan && (
@@ -781,6 +826,7 @@ export function BookingApp() {
                     id={`${uid}-planterms`}
                     frequencyId={draft.plan}
                     regularPrice={regular}
+                    referralOff={off}
                     priceIsFrom={pkg.needsQuote}
                     checked={draft.planTerms}
                     onChange={(v) => set("planTerms", v)}
@@ -876,6 +922,13 @@ export function BookingApp() {
                 <dd className={styles.amt}>{regular !== null ? `−$${planSaving(regular)}` : ""}</dd>
               </div>
             )}
+            {referral && (
+              <div>
+                <dt>Referral</dt>
+                <dd>{plan ? "$30 off the first cleaning" : "$30 off"}</dd>
+                <dd className={styles.amt}>{pkg ? `−$${off}` : ""}</dd>
+              </div>
+            )}
             <div>
               <dt>Day</dt>
               <dd>{draft.date ? formatShort(draft.date) : "—"}</dd>
@@ -892,7 +945,10 @@ export function BookingApp() {
             </div>
           </dl>
           <p className={styles.ticketTotal}>
-            <span>{plan ? (pkg?.needsQuote ? "From, a cleaning" : "A cleaning") : pkg?.needsQuote ? "From" : "Total"}</span>
+            <span>
+              {plan ? (referral ? "This cleaning" : "A cleaning") : "Total"}
+              {pkg?.needsQuote && ", from"}
+            </span>
             <strong>{total !== null ? `$${total}` : "—"}</strong>
           </p>
           <p className={styles.ticketNote}>

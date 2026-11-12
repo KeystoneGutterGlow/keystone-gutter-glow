@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { NavItem } from "@/content/nav";
+import { referralPaths } from "@/content/referral";
 import { site } from "@/content/site";
 import styles from "./MobileRail.module.css";
 import { useSectionProgress, type SectionProgress } from "./useSectionProgress";
@@ -256,7 +257,7 @@ export function MobileRail({ items, endId, homeHref, bookHref, bookText, dockHid
           {(referLink || firewoodHref) && (
             <div className={styles.extras}>
               {referLink && (
-                <Link href="/referred" className={styles.extra}>
+                <Link href={referralPaths.refer} className={styles.extra}>
                   Refer a neighbor
                 </Link>
               )}

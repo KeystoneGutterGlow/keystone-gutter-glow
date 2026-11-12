@@ -1,12 +1,15 @@
 import { stateForZip } from "@/content/area";
 import { planAnnualTotal, planRules, type PlanFrequency } from "@/content/plans";
 import { getPackage, totalFor } from "@/content/pricing";
+import { referralPaths, referralRewards, referralRules } from "@/content/referral";
 import { site } from "@/content/site";
 import type { BookingRules } from "@/content/booking";
 import { formatLong } from "@/lib/booking/dates";
 import type { BookingRecord } from "@/lib/booking/types";
 import { formatPhone } from "@/lib/booking/validate";
 import { isDemoStorage } from "@/lib/storage";
+import { publicUrl } from "@/lib/env";
+import type { CleanReferralRequest } from "@/lib/referral/validate";
 import { FORMSUBMIT_AJAX, type Notice } from "./notice";
 
 // Writes the FormSubmit notices for Jimmy. Server only: the API routes hand the result to the
@@ -34,11 +37,11 @@ export function formSubmitEndpoint(): string {
 }
 
 /** FormSubmit settings shared by every notice. */
-function settings(subject: string, customerEmail: string): Record<string, string> {
+function settings(subject: string, customerEmail?: string): Record<string, string> {
   return {
     _subject: subject,
-    // Reply goes straight to the customer.
-    _replyto: customerEmail,
+    // Reply goes straight to the customer, when there's an email to reply to.
+    ...(customerEmail ? { _replyto: customerEmail } : {}),
     _template: "table",
     // AJAX submissions can't show FormSubmit's reCAPTCHA. Our own checks run first (see README).
     _captcha: "false",
@@ -55,12 +58,15 @@ function compact(fields: Record<string, string | undefined>): Record<string, str
 export function bookingNotice(
   b: BookingRecord,
   rules: BookingRules,
-  extra: { plan?: Pick<PlanFrequency, "id" | "label">; notes?: string } = {},
+  extra: { plan?: Pick<PlanFrequency, "id" | "label">; notes?: string; referral?: { by: string; off: number } } = {},
 ): Notice {
   const pkg = getPackage(b.packageId);
   const from = b.priceIsEstimate ? "Starting at " : "";
   const regular = pkg ? totalFor(pkg, b.rinse) : null;
-  const annual = extra.plan ? planAnnualTotal(b.priceDollars, extra.plan.id) : null;
+  // The saved price is this cleaning's, after any referral discount.
+  const off = extra.referral?.off ?? 0;
+  const perCleaning = b.priceDollars + off;
+  const annual = extra.plan ? (planAnnualTotal(perCleaning, extra.plan.id) ?? 0) - off : null;
   const when =
     rules.scheduleMode === "day-only"
       ? formatLong(b.date)
@@ -75,9 +81,15 @@ export function bookingNotice(
         Address: `${b.address.street}, ${b.address.city}, ${stateForZip(b.address.zip)} ${b.address.zip}`,
         House: `${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
         Price: extra.plan
-          ? `${from}$${b.priceDollars} a cleaning (plan price, ${planRules.discountPercent}% off${regular !== null ? ` $${regular}` : ""}). ` +
-            `Year total ${from.toLowerCase()}$${annual}, invoiced up front after this first cleaning`
-          : `${from}$${b.priceDollars}, invoiced after the job`,
+          ? `${from}$${perCleaning} a cleaning (plan price, ${planRules.discountPercent}% off${regular !== null ? ` $${regular}` : ""}). ` +
+            `Year total ${from.toLowerCase()}$${annual}, invoiced up front after this first cleaning` +
+            (off ? `, after the $${off} referral discount` : "")
+          : off
+            ? `${from}$${b.priceDollars} after the $${off} referral discount (regular ${from.toLowerCase()}$${perCleaning}), invoiced after the job`
+            : `${from}$${b.priceDollars}, invoiced after the job`,
+        Referral: extra.referral
+          ? `Referred by ${extra.referral.by}: $${off} off this cleaning. ${extra.referral.by}'s thank-you ($${referralRules.cashReward} cash or $${referralRules.planCredit} off a plan, as chosen on their referral) is due once this house is fully cleaned.`
+          : undefined,
         "Recurring plan": extra.plan
           ? `${extra.plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): ${planRules.discountPercent}% off every cleaning, the year paid up front after the first cleaning, renews yearly until cancelled, ${planRules.cancellationFeePercent}% of the annual total to cancel.`
           : undefined,
@@ -116,6 +128,33 @@ export function planRequestNotice(r: PlanNoticeInput): Notice {
         Phone: formatPhone(r.phone),
         email: r.email,
         "Additional information": r.notes,
+      }),
+    },
+  };
+}
+
+/** The notice for a referral from /refer. The email is the only record of it. */
+export function referralNotice(r: CleanReferralRequest): Notice {
+  const first = r.friendName.split(/\s+/)[0];
+  const reward =
+    r.reward === "plan"
+      ? `${referralRewards.plan.label} for ${r.name}. Call them to set it up.`
+      : `${referralRewards.cash.label} for ${r.name}.`;
+  return {
+    endpoint: formSubmitEndpoint(),
+    fields: {
+      ...settings(`New referral: ${r.friendName}, from ${r.name}`, r.email || undefined),
+      ...compact({
+        Referral: `${r.name} referred ${r.friendName}. Get in touch with ${first} and send them the $${referralRules.friendDiscount}-off booking page: ${publicUrl}${referralPaths.friend}`,
+        "Thank-you": `${reward} Only once ${first} has booked and their house is fully cleaned.`,
+        "Referred by": r.name,
+        "Their phone": formatPhone(r.phone),
+        email: r.email || undefined,
+        "Friend's name": r.friendName,
+        "Friend's phone": r.friendPhone ? formatPhone(r.friendPhone) : undefined,
+        "Friend's email": r.friendEmail || undefined,
+        "Friend's town": r.friendTown || undefined,
+        "Additional information": r.notes || undefined,
       }),
     },
   };

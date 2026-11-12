@@ -1,6 +1,8 @@
 import { bookingRules, type BookingRules } from "@/content/booking";
-import { getPlanFrequency, planAnnualTotal, planPrice, planRules } from "@/content/plans";
-import { getPackage, totalFor } from "@/content/pricing";
+import { getPlanFrequency, planRules } from "@/content/plans";
+import { getPackage } from "@/content/pricing";
+import { quoteFor } from "@/content/quote";
+import { referralRules } from "@/content/referral";
 import { bookingNotice, formSubmitEnabled } from "@/lib/notify/formsubmit";
 import type { Notice } from "@/lib/notify/notice";
 import { checkDate, dayDetail, firstOpening, rangeSummary } from "./availability";
@@ -52,7 +54,7 @@ function makeRef(): string {
 
 export type CreateOutcome =
   /** `notice` is Jimmy's notification for the browser to send, or null when notices are off. */
-  | { ok: true; booking: BookingRecord; notice: Notice | null }
+  | { ok: true; booking: BookingRecord; notice: Notice | null; /** The referral discount on this cleaning, 0 if none */ referralOff: number }
   | { ok: false; status: 409 | 422; code: "slot_taken" | "day_full" | "date_unavailable"; message: string; day: DayDetail };
 
 export async function createBooking(req: CleanBookingRequest, rules: BookingRules = bookingRules): Promise<CreateOutcome> {
@@ -69,10 +71,11 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
   }
 
   const plan = req.planFrequencyId ? getPlanFrequency(req.planFrequencyId) : undefined;
-  // A plan's cleanings are 10% off, this first one included. The server works the price out itself.
-  const regular = totalFor(pkg, req.rinse);
-  const price = plan ? planPrice(regular) : regular;
+  // A plan's cleanings are 10% off, this first one included, and a referral takes $30 off this
+  // cleaning. The server works the price out itself (content/quote.ts).
+  const q = quoteFor(pkg, req.rinse, plan?.id, req.referral);
   const from = pkg.needsQuote ? "from " : "";
+  const referredBy = req.referral ? req.referredBy : "";
   const store = getBookingStore();
   const attempt = (slotId: string) =>
     store.create(
@@ -82,21 +85,26 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
         slotId,
         packageId: pkg.id,
         rinse: req.rinse,
-        priceDollars: price,
+        priceDollars: q.thisCleaning,
         priceIsEstimate: pkg.needsQuote,
         customer: { name: req.name, email: req.email, phone: req.phone },
         address: { street: req.street, city: req.city, zip: req.zip },
         // The plan, and the version of the terms the customer agreed to, are kept with the booking as the record.
-        notes: plan
-          ? [
-              `Recurring plan: ${plan.label}, ${planRules.discountPercent}% off (${from}$${price} a cleaning instead of $${regular}; ` +
-                `${from}$${planAnnualTotal(price, plan.id)} for the year, paid up front after the first cleaning). ` +
-                `Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}).`,
-              req.notes,
-            ]
-              .filter(Boolean)
-              .join(" ")
-          : req.notes,
+        // So are a referral and who made it, since that's who Jimmy owes a thank-you once this house is cleaned.
+        notes: [
+          referredBy
+            ? `Referral: $${q.referralOff} off this cleaning (regular ${from}$${q.perCleaning}), referred by ${referredBy}. ` +
+              `Their thank-you is due once this house is fully cleaned.`
+            : "",
+          plan
+            ? `Recurring plan: ${plan.label}, ${planRules.discountPercent}% off (${from}$${q.perCleaning} a cleaning instead of $${q.regular}; ` +
+              `${from}$${q.firstYear} for the year, paid up front after the first cleaning${q.referralOff ? `, after the $${q.referralOff} referral discount` : ""}). ` +
+              `Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}).`
+            : "",
+          req.notes,
+        ]
+          .filter(Boolean)
+          .join(" "),
         idempotencyKey: req.idempotencyKey,
       },
       rules.maxJobsPerDay,
@@ -119,8 +127,14 @@ export async function createBooking(req: CleanBookingRequest, rules: BookingRule
   if (result.ok) {
     // A repeat of the same request gets the notice too: the browser only sends one per booking,
     // and if the first answer was lost on the way, this is its only chance.
-    const notice = formSubmitEnabled() ? bookingNotice(result.booking, rules, { plan, notes: req.notes }) : null;
-    return { ok: true, booking: result.booking, notice };
+    const notice = formSubmitEnabled()
+      ? bookingNotice(result.booking, rules, {
+          plan,
+          notes: req.notes,
+          referral: referredBy ? { by: referredBy, off: q.referralOff } : undefined,
+        })
+      : null;
+    return { ok: true, booking: result.booking, notice, referralOff: q.referralOff };
   }
 
   const slot = rules.slots.find((s) => s.id === req.slotId);

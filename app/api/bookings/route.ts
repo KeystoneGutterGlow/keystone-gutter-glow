@@ -58,6 +58,8 @@ export async function POST(request: Request) {
           address: b.address,
           planLabel: parsed.data.planFrequencyId ? (getPlanFrequency(parsed.data.planFrequencyId)?.label ?? null) : null,
           planFrequencyId: parsed.data.planFrequencyId ? (getPlanFrequency(parsed.data.planFrequencyId)?.id ?? null) : null,
+          referralOff: outcome.referralOff,
+          referredBy: parsed.data.referral ? parsed.data.referredBy : null,
           demo: isDemoStorage(),
         },
         notice: outcome.notice,

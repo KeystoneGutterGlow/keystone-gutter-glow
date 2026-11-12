@@ -4,6 +4,7 @@ import { serviceRadius } from "./area";
 import { legalPaths } from "./legalPaths";
 import { getPlanFrequency, planAnnualTotal, planCancellationFee, planFrequencies, planPrice, planRules } from "./plans";
 import { getPackage, rinse } from "./pricing";
+import { referralPaths, referralRules } from "./referral";
 import { site } from "./site";
 
 // The legal pages: Terms of Service, Privacy Policy and Recurring Plan Terms. Drafted 2026-11-11 from
@@ -317,6 +318,35 @@ export const terms: LegalDoc = {
       ),
     },
     {
+      id: "referrals",
+      nav: "Referrals",
+      title: "Referrals",
+      body: (
+        <>
+          <p>
+            <strong>Referring someone.</strong> Tell us about someone on our <Link href={referralPaths.refer}>Refer a neighbor</Link>{" "}
+            page and we&rsquo;ll get in touch with them and send them our referral booking page. Only refer people who are happy to
+            hear from us; we use their details to contact them about a cleaning and for nothing else.
+          </p>
+          <p>
+            <strong>Your thank-you</strong> is your choice of ${referralRules.cashReward} cash or ${referralRules.planCredit} off a
+            recurring plan. If you choose the plan, we&rsquo;ll call you to set it up. A referral only counts when the person you
+            referred books a cleaning and we&rsquo;ve fully cleaned their house, and your thank-you is paid after that cleaning, not
+            before. Nothing is owed for a referral that doesn&rsquo;t become a booking, or before the cleaning is done.
+          </p>
+          <p>
+            <strong>If you were referred,</strong> ${referralRules.friendDiscount} comes off the one cleaning you book on our referral
+            page, as long as you tell us who referred you. If that cleaning starts a recurring plan, the ${referralRules.friendDiscount}{" "}
+            comes off the first cleaning, and so off the first year&rsquo;s payment. It isn&rsquo;t cash and can&rsquo;t be exchanged
+            for cash.
+          </p>
+          <p>
+            We may change or end the referral program. Referrals made before a change keep the terms they were made under.
+          </p>
+        </>
+      ),
+    },
+    {
       id: "cancelling",
       nav: "Cancelling",
       title: "Rescheduling and cancelling",
@@ -430,6 +460,11 @@ export const privacy: LegalDoc = {
             house type, the day you picked, any notes you add, the plan you chose, and that you agreed to our terms.
           </li>
           <li>
+            <strong>When you refer someone:</strong> your name, phone number and email address, the thank-you you chose, and the name,
+            phone number, email address and town you give us for the person you&rsquo;re referring. If you were referred, the name of
+            the person who referred you.
+          </li>
+          <li>
             <strong>When you use the ZIP check:</strong> nothing. It runs in your browser and isn&rsquo;t sent to us.
           </li>
           <li>
@@ -451,7 +486,8 @@ export const privacy: LegalDoc = {
         <>
           <p>
             To schedule and do the work, tell you before visits, send invoices, answer your questions, keep business and tax records,
-            run and improve this website, and measure whether our advertising works.
+            run and improve this website, and measure whether our advertising works. If someone referred you, we use their details to
+            get in touch with you about a cleaning, and to thank the person who referred you once it&rsquo;s done.
           </p>
           <p>We don&rsquo;t sell your personal information, and we don&rsquo;t share it for anyone else&rsquo;s marketing.</p>
         </>
@@ -472,8 +508,8 @@ export const privacy: LegalDoc = {
               <strong>Supabase</strong> stores bookings in a database in the United States.
             </li>
             <li>
-              <strong>FormSubmit</strong> (formsubmit.co) delivers your booking or plan request to {site.owner}&rsquo;s email, and keeps a
-              copy for up to 30 days. Our email provider stores the emails we receive and send.
+              <strong>FormSubmit</strong> (formsubmit.co) delivers your booking, plan request or referral to {site.owner}&rsquo;s email,
+              and keeps a copy for up to 30 days. Our email provider stores the emails we receive and send.
             </li>
             <li>
               <strong>Google</strong> receives information about visits through the Google tag (see below).

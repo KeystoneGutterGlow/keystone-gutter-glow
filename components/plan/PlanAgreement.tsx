@@ -15,6 +15,7 @@ export function PlanAgreement({
   id,
   frequencyId,
   regularPrice,
+  referralOff = 0,
   priceIsFrom,
   checked,
   onChange,
@@ -24,6 +25,8 @@ export function PlanAgreement({
   frequencyId: string;
   /** Regular price of one cleaning, rinse included, or null if not known yet. The plan price is 10% off it. */
   regularPrice: number | null;
+  /** A referral discount on the first cleaning, which comes off the first year's payment */
+  referralOff?: number;
   /** "Starting at" pricing: the exact price is confirmed before the first cleaning */
   priceIsFrom?: boolean;
   checked: boolean;
@@ -60,6 +63,12 @@ export function PlanAgreement({
               , {from}
               <strong>{money(annual)}</strong> ({plan.perYear} &times; {from}
               {money(perCleaning!)})
+              {referralOff > 0 && (
+                <>
+                  , less your {money(referralOff)} referral discount the first year: {from}
+                  <strong>{money(annual - referralOff)}</strong>
+                </>
+              )}
             </>
           )}
           , in one payment after the first cleaning

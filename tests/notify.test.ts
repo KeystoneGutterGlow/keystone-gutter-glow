@@ -112,6 +112,26 @@ describe("a booking's notice", () => {
     expect(f["Additional information"]).toBe("Side gate is unlocked");
   });
 
+  it("on a referral, gives Jimmy the price after the $30 and who he owes a thank-you", async () => {
+    const { status, body } = await book({ planFrequencyId: "6-months", planTerms: true, referral: true, referredBy: "Pat Neighbor" });
+    expect(status).toBe(201);
+    const f = body.notice!.fields;
+    expect(f.Price).toBe(
+      "$228 a cleaning (plan price, 10% off $254). Year total $426, invoiced up front after this first cleaning, after the $30 referral discount",
+    );
+    expect(f.Referral).toBe(
+      "Referred by Pat Neighbor: $30 off this cleaning. Pat Neighbor's thank-you ($25 cash or $50 off a plan, as chosen on their referral) is due once this house is fully cleaned.",
+    );
+    const { rows } = await db.query<{ price_dollars: number; notes: string }>("select price_dollars, notes from public.bookings where ref = $1", [
+      body.booking.ref,
+    ]);
+    expect(rows[0]!.price_dollars).toBe(198);
+    expect(rows[0]!.notes).toMatch(/^Referral: \$30 off this cleaning \(regular \$228\), referred by Pat Neighbor\./);
+
+    const once = await book({ referral: true, referredBy: "Pat Neighbor" });
+    expect(once.body.notice!.fields.Price).toBe("$224 after the $30 referral discount (regular $254), invoiced after the job");
+  });
+
   it("gives the regular price when there's no plan", async () => {
     const { body } = await book();
     expect(body.notice!.fields.Price).toBe("$254, invoiced after the job");

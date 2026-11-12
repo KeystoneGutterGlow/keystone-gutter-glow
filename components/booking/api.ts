@@ -43,6 +43,9 @@ export interface Confirmation {
   /** The recurring plan they asked for, if any */
   planLabel?: string | null;
   planFrequencyId?: string | null;
+  /** $30 when booked from the referral page; `priceDollars` is already after it */
+  referralOff?: number;
+  referredBy?: string | null;
 }
 
 export type SubmitResult =

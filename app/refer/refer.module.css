@@ -1,0 +1,198 @@
+/* ---------- hero ---------- */
+
+.hero {
+  position: relative;
+  background: var(--enamel);
+  padding: 0 0 56px;
+}
+.gutter {
+  height: 54px;
+  margin-top: 74px;
+  margin-bottom: 64px;
+}
+.back {
+  display: inline-block;
+  margin-bottom: 26px;
+  font-weight: 700;
+}
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.title {
+  font-size: clamp(2.6rem, 1.4rem + 4.4vw, 5.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.015em;
+  max-width: 14ch;
+  margin-bottom: 22px;
+}
+.intro {
+  max-width: 38rem;
+  margin-bottom: 26px;
+  font-size: 1.1875rem;
+}
+
+/* ---------- reward ---------- */
+
+.reward {
+  background: #fff;
+  border-block: 1px solid var(--alu-2);
+}
+.rewardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+}
+.rewardItem {
+  padding: 44px 32px 44px 0;
+}
+.rewardItem + .rewardItem {
+  padding-left: 32px;
+  border-left: 1px solid var(--alu-2);
+}
+.rewardWho {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: var(--sky-ink);
+}
+.rewardValue {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 1.2rem + 2vw, 3rem);
+  line-height: 1.12;
+}
+.rewardOr {
+  font-family: var(--font-body, inherit);
+  font-weight: 400;
+  font-size: 0.55em;
+  color: var(--muted);
+}
+.rewardHint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+/* ---------- steps ---------- */
+
+.steps {
+  padding: 64px 0;
+}
+.steps h2,
+.questions h2 {
+  font-size: clamp(2rem, 1.4rem + 1.8vw, 2.8rem);
+  margin-bottom: 24px;
+}
+.stepList {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 28px;
+  border-top: 2px solid var(--navy);
+  padding-top: 22px;
+}
+.stepList li {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 14px;
+}
+.stepList h3 {
+  font-size: 1.25rem;
+  margin-bottom: 6px;
+}
+.stepList p {
+  margin-bottom: 8px;
+}
+
+/* ---------- refer ---------- */
+
+.refer {
+  background: var(--navy);
+  color: #fff;
+  padding: 72px 0;
+  scroll-margin-top: 0;
+}
+.referGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: clamp(32px, 5vw, 72px);
+  align-items: start;
+}
+.refer h2 {
+  font-size: clamp(2.2rem, 1.4rem + 2.4vw, 3.4rem);
+  margin-bottom: 14px;
+}
+.referIntro {
+  color: rgb(255 255 255 / 0.85);
+  max-width: 30rem;
+  margin-bottom: 16px;
+}
+.referIntro a,
+.referSmall a,
+.closed a {
+  color: #fff;
+  font-weight: 700;
+}
+.referSmall {
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 0.7);
+}
+.closed {
+  padding: 22px;
+  border: 1.5px dashed rgb(255 255 255 / 0.45);
+}
+
+/* ---------- questions ---------- */
+
+.questions {
+  padding: 56px 0 72px;
+}
+.qList {
+  max-width: 760px;
+  border-top: 2px solid var(--navy);
+}
+.qList details {
+  border-bottom: 1px solid var(--alu-2);
+}
+.qList summary {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+.qList p {
+  margin: 0;
+  padding: 0 0 16px;
+}
+
+@media (max-width: 1099px) {
+  .gutter {
+    margin-top: 0;
+    margin-bottom: 40px;
+  }
+  .stepList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .rewardGrid,
+  .referGrid,
+  .stepList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rewardItem,
+  .rewardItem + .rewardItem {
+    padding: 28px 0;
+    border-left: 0;
+  }
+  .rewardItem + .rewardItem {
+    border-top: 1px solid var(--alu-2);
+  }
+}

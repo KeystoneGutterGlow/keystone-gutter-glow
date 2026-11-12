@@ -30,6 +30,7 @@ npm run build
 - `tests/sql.test.ts`: every migration on PGlite (real Postgres in WASM), plus the Supabase adapters run against those tables
 - `tests/firewood.test.ts`: prices, order validation, the payment gate, the seasonal switch, and the off switch
 - `tests/notify.test.ts`: FormSubmit notices. A booking through the real migrations hands back a notice with every detail, addressed to Jimmy's email. The fifth booking of a day is refused with no notice. Notices are off unless switched on, and never on previews or the demo store. The server never contacts FormSubmit. The browser only reports success when FormSubmit confirms.
+- `tests/referral.test.ts`: the referral program: $30 off on the referral page (alone and with a plan), who referred them recorded with the booking, the referral form's checks, and Jimmy's referral email
 - `tests/plan.test.ts`: recurring plans, including that a plan can't be booked or requested without the Recurring Plan Terms box ticked, and that the agreed version is recorded
 - `tests/ads.test.ts`: the Google tag's IDs and setup script, production only, and the Purchase conversion firing once per booking with the booking number
 - `tests/stripe.test.ts`: checkout, webhook signatures, duplicate events. Signature checks use Stripe's real code. Session creation is a stand-in, so no network or key is needed.
@@ -83,7 +84,7 @@ All business content lives in `content/`. The pages, the APIs and the SEO markup
 | `content/faqs.ts` | FAQ. Also generates the FAQPage schema. |
 | `content/area.ts` | Towns, ZIPs (for the "do we come to you?" check), map coordinates |
 | `content/owner.ts` | Jimmy's section. Every field is a `draft: true` placeholder until his bio arrives. |
-| `content/referral.ts` | `/referred` page. All placeholders, plus `live` and `indexable` switches. |
+| `content/referral.ts` | The referral program's rules and amounts ($25 cash or $50 off a plan, $30 off for the friend) and its two pages, `/refer` and `/referred`. |
 | `content/nav.ts` | The sections in each left rail |
 
 Commit the change and push. Vercel redeploys on its own.
@@ -350,7 +351,7 @@ The service-area map uses Leaflet with OpenStreetMap's public tiles (`components
   - `areaServed` lists the counties the service area covers: Bucks, Montgomery and Philadelphia.
   - Not included, because none of them are confirmed: street address, coordinates, opening hours, ratings and reviews. `tests/seo.test.ts` fails if any of them appear.
   - The FAQ markup is valid, but Google currently shows FAQ rich results only for government and health sites, so don't expect them.
-- **Crawling.** `robots.txt` and `sitemap.xml` are generated. When indexing is on, robots.txt allows everything except `/api/` and `/firewood/order`, and points at the sitemap. The sitemap lists `/`, plus `/firewood` whenever firewood is public (or `/gutters` in firewood mode). `/referred` stays `noindex` and out of the sitemap until `referral.indexable` is true, because its content is still placeholder. `/firewood/order` is `noindex`.
+- **Crawling.** `robots.txt` and `sitemap.xml` are generated. When indexing is on, robots.txt allows everything except `/api/` and `/firewood/order`, and points at the sitemap. The sitemap lists `/`, plus `/firewood` whenever firewood is public (or `/gutters` in firewood mode). The sitemap also lists `/refer`. `/referred`, the $30-off booking page, is always `noindex` and left out of the sitemap, since only people Jimmy sends there should find it. `/firewood/order` is `noindex`.
 - **Local content.** The "Where we work" section names the counties inside the circle and lists every town by county (in a closed "Every town inside the circle" list), from the same ZIP data the ZIP check uses. The FAQ answers cost, how often and which towns, built from `content/` so the answers can't drift.
 
 **Indexing is currently OFF on production (2026-11-09).** `ALLOW_INDEXING` isn't set, so every page is `noindex` and robots.txt blocks crawling. It stays off until these are sorted, because indexing brings real customers:
@@ -425,6 +426,47 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 - [ ] One real low-value order placed and refunded
 - [ ] `SITE_MODE=firewood` set, and the site redeployed
 
+## Referral program
+
+**The rules (Sam, 2026-11-12, in `content/referral.ts`):**
+- The person who refers gets their choice of **$25 cash or $50 off a recurring plan**. If they pick the plan, Jimmy calls them to set it up.
+- The person they refer gets **$30 off a cleaning**.
+- To refer someone, the customer fills in a form with their own details and their friend's. Jimmy gets in touch with the friend and sends them the $30-off booking page.
+- The thank-you is paid **after the friend's house is fully cleaned**, and a referral only counts when it's an actual booking.
+
+**The two pages:**
+- **`/refer`, "Refer a neighbor".** This is where every "Refer a neighbor" link goes: the rail, the phone menu, the footer, the band above booking, and the booking confirmation. It has the rewards, the four steps, the form and questions.
+  - **The form** (`components/refer/ReferForm.tsx`) asks for:
+    - the customer's name, phone and optional email;
+    - their thank-you, $25 cash or $50 off a plan. Picking the plan shows "Jimmy will call you…";
+    - the friend's name, phone and/or email, and town;
+    - a required box confirming the friend is happy to hear from Jimmy.
+  - **What happens next.** `/api/referrals` checks the form and the browser sends Jimmy a FormSubmit email. That email, "New referral: …", is the only record. It has the friend's details, the link to send them, and what Jimmy owes and when.
+  - **When FormSubmit is off.** Like plan requests, the form needs FormSubmit on. A real deployment with it off shows "call or text Jimmy" instead.
+- **`/referred`, the $30-off booking page.** This is the page Jimmy sends people.
+  - It has the four prices with $30 off, what a cleaning includes, and the normal booking form in referral mode (`<Booking referral />`).
+  - The form adds a required "Who referred you?" field, and every price on it shows the $30 off.
+  - It isn't a personal link, so anyone with the URL gets the discount. It's `noindex` and left out of the sitemap so only people Jimmy sends will find it.
+
+**Prices (`content/quote.ts`, used by the form and the server alike):**
+- **One cleaning:** $30 off. One-story $169 becomes $139, two-story $229 becomes $199, bigger houses go from $249 to from $219.
+- **With a recurring plan:** the 10% plan discount applies, and the $30 comes off the first cleaning. So it comes off the first year's up-front payment, too. For a two-story with rinse every 6 months: $228 a cleaning, $456 a year, so the first cleaning is $198 and the first year $426.
+- **What's saved.** The booking is saved at the discounted price. Its notes start with "Referral: $30 off this cleaning (regular $X), referred by NAME. Their thank-you is due once this house is fully cleaned."
+- **Jimmy's email** gets a "Referral" line saying who he owes a thank-you. The referrer's choice of thank-you is in the earlier referral email.
+
+**Paying out is up to Jimmy.** Nothing on the site tracks referrals or pays anyone. To pay out:
+1. When a booking says "referred by NAME", match it to that person's referral email.
+2. After the cleaning, pay the $25 or call them about the $50.
+
+**Not decided, so the site doesn't promise them:**
+- whether the $30 combines with the plan discount (the site says it does, on the first cleaning);
+- how the $50 plan credit is applied (Jimmy sets it up on the call);
+- limits per person or household;
+- whether existing customers can be referred;
+- how long a referral stays valid.
+
+The Terms of Service has a "Referrals" section with these rules. One sentence in it is my addition and needs Jimmy's OK: "We may change or end the referral program; referrals made before a change keep their terms". The Privacy Policy now covers the friend's details too.
+
 ## Legal pages and recurring plans
 
 **Pages** (drafted 2026-11-11, text in `content/legal.tsx`, layout in `components/legal/`):
@@ -496,7 +538,7 @@ Everything factual came from the current site or the agreement. These items were
 | Requirement | Status |
 |---|---|
 | A1 No italics, polished buttons and layout | Done |
-| A1 Referral page easier to reach | Band above booking, plus buttons or links in the rail, phone menu and footer. The page's content is still placeholders. |
+| A1 Referral page easier to reach | Band above booking, plus buttons or links in the rail, phone menu, footer and booking confirmation. The program went live 2026-11-12 (see "Referral program"). |
 | A1 Alt text and accessible controls | Automated accessibility checks are clean. Client photos are still to come. |
 | A1 No time slots, arrival explanation | Done |
 | A1 Three jobs a day | Built, still set to four until Jimmy confirms |

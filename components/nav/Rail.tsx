@@ -6,6 +6,7 @@ import { useCallback, useRef } from "react";
 import { BookLink } from "@/components/BookLink";
 import type { NavItem } from "@/content/nav";
 import { planRules, recommendedPlan } from "@/content/plans";
+import { referralPaths } from "@/content/referral";
 import { site } from "@/content/site";
 import styles from "./Rail.module.css";
 import { useSectionProgress, type SectionProgress } from "./useSectionProgress";
@@ -129,7 +130,7 @@ export function Rail({ items, endId, endLabel, homeHref = "#top", bookHref, refe
           </Link>
         )}
         {referLink && (
-          <Link href="/referred" className={styles.refer}>
+          <Link href={referralPaths.refer} className={styles.refer}>
             Refer a neighbor
           </Link>
         )}

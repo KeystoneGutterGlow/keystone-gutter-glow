@@ -3,6 +3,7 @@ import Link from "next/link";
 import { IvyRun } from "@/components/botanical/Botanical";
 import { legalPaths } from "@/content/legalPaths";
 import { planRules } from "@/content/plans";
+import { referralPaths } from "@/content/referral";
 import { modeLinks } from "@/content/season";
 import { site } from "@/content/site";
 import styles from "./Footer.module.css";
@@ -40,7 +41,7 @@ export function Footer({ onHome = true }: { onHome?: boolean }) {
           <a href={h("prices")}>Prices</a>
           <a href={h("plans")}>Recurring plans, {planRules.discountPercent}% off</a>
           <a href={h("faq")}>Questions</a>
-          <Link href="/referred">Refer a neighbor</Link>
+          <Link href={referralPaths.refer}>Refer a neighbor</Link>
           {links && (
             <Link href={links.firewoodHref} prefetch={false} className={styles.fire}>
               Firewood delivery

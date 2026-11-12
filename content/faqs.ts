@@ -5,6 +5,7 @@
 import { areaZips, serviceRadius } from "./area";
 import { planAnnualTotal, planPrice, planRules, recommendedWhy } from "./plans";
 import { getPackage, rinse } from "./pricing";
+import { referralRules } from "./referral";
 
 export interface Faq {
   q: string;
@@ -68,6 +69,10 @@ export const faqs: Faq[] = [
   {
     q: "Can I cancel or reschedule?",
     a: "Yes, free with at least 24 hours' notice. Call, text or email. Inside 24 hours a cancellation fee may apply, and we'll tell you what it is before charging anything.",
+  },
+  {
+    q: "Do you have a referral program?",
+    a: `Yes. Refer a neighbor from the Refer a neighbor page and Jimmy will get in touch with them: they get $${referralRules.friendDiscount} off a cleaning, and you get $${referralRules.cashReward} cash or $${referralRules.planCredit} off a recurring plan, paid once we've cleaned their gutters.`,
   },
   {
     q: "What if I'm not happy with it?",

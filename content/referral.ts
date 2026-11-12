@@ -1,27 +1,43 @@
-// /referred page content. The referral program isn't designed yet, so nothing here
-// commits to a mechanic. Every `draft: true` item renders as a visible placeholder.
-// When the program is decided: fill these in, flip `live` to true, and wire the form.
+// The referral program (Sam, for Jimmy, 2026-11-12):
+//  - A customer refers someone on /refer by giving their own details and their friend's.
+//  - Jimmy gets in touch with the friend and sends them /referred, where a cleaning is $30 off.
+//  - The customer's thank-you is their choice of $25 cash or $50 off a recurring plan. If they
+//    pick the plan, Jimmy calls them to set it up.
+//  - The thank-you is paid only AFTER the friend's house is fully cleaned, and a referral only
+//    counts when it becomes an actual booking.
+// The Terms of Service has the same rules in its "Referrals" section (content/legal.tsx).
 
-export const referral = {
-  live: false,
-  /** Keep the page out of search results until the program is real */
-  indexable: false,
-  headline: "Send a neighbor our way.",
-  intro:
-    "We're setting up a thank-you for customers who send people to us. The details aren't final, so the reward, the steps and the fine print on this page are placeholders for now.",
-  rewards: [
-    { who: "You get", value: "Reward to be decided", hint: "A credit, cash, a free rinse? Pick one.", draft: true },
-    { who: "Your neighbor gets", value: "Discount to be decided", hint: "Usually a set amount off the first cleaning.", draft: true },
-  ],
-  steps: [
-    { title: "You pass it on", body: "How sharing works: a personal link, a code, or just your name at booking.", draft: true },
-    { title: "They book a cleaning", body: "What counts as a referral, and how long the referral stays valid.", draft: true },
-    { title: "You get thanked", body: "When the reward is paid out, and how: after their cleaning, by mail, on your next invoice.", draft: true },
-  ],
-  faqs: [
-    { q: "Is there a limit to how many people I can refer?", a: "To be decided.", draft: true },
-    { q: "Does my neighbor have to be in your service area?", a: "To be decided. Probably yes.", draft: true },
-    { q: "When do I get my reward?", a: "To be decided.", draft: true },
-    { q: "Can I combine it with other offers?", a: "To be decided.", draft: true },
-  ],
+export const referralPaths = {
+  /** Where customers refer someone */
+  refer: "/refer",
+  /** The page Jimmy sends referred friends: booking with $30 off */
+  friend: "/referred",
+} as const;
+
+export const referralRules = {
+  /** Off the one cleaning a referred friend books from the referral page, in dollars */
+  friendDiscount: 30,
+  /** The referrer's thank-you, their choice */
+  cashReward: 25,
+  planCredit: 50,
 };
+
+export type ReferralReward = "cash" | "plan";
+
+export const referralRewards: Record<ReferralReward, { label: string; detail: string }> = {
+  cash: {
+    label: `$${referralRules.cashReward} cash`,
+    detail: "Paid to you after their gutters are cleaned.",
+  },
+  plan: {
+    label: `$${referralRules.planCredit} off a recurring plan`,
+    detail: "Jimmy will call you to set it up.",
+  },
+};
+
+export function isReferralReward(v: unknown): v is ReferralReward {
+  return v === "cash" || v === "plan";
+}
+
+/** The one-line offer, for the home page strip, the footer of the confirmation and the FAQ */
+export const referralOffer = `They get $${referralRules.friendDiscount} off a cleaning. You get $${referralRules.cashReward} cash, or $${referralRules.planCredit} off a recurring plan.`;

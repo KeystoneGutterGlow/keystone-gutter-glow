@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { referral } from "@/content/referral";
+import { referralPaths } from "@/content/referral";
 import { getSiteMode, isFirewoodVisible } from "@/content/season";
 import { publicUrl } from "@/lib/env";
 
@@ -14,9 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   } else if (isFirewoodVisible()) {
     pages.push({ url: `${publicUrl}/firewood`, changeFrequency: "monthly", priority: 0.7 });
   }
-  // The referral page stays out until the program is real (see content/referral.ts).
-  if (referral.indexable) {
-    pages.push({ url: `${publicUrl}/referred`, changeFrequency: "monthly", priority: 0.4 });
-  }
+  // Refer a neighbor. The $30-off booking page (/referred) stays out: Jimmy sends people there.
+  pages.push({ url: `${publicUrl}${referralPaths.refer}`, changeFrequency: "monthly", priority: 0.4 });
   return pages;
 }
