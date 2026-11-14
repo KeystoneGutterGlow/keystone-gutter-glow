@@ -81,7 +81,9 @@ export function PlanAgreement({
           It <strong>renews automatically every year until you cancel</strong>.
         </li>
         <li>
-          You can cancel any time, and <strong>there&rsquo;s no fee to cancel</strong>. To cancel, call or text <a href={site.phone.href}>{site.phone.display}</a> or email{" "}
+          You can cancel any time, and <strong>there&rsquo;s no fee to cancel</strong>, but{" "}
+          <strong>payments already made aren&rsquo;t refunded</strong>, including for cleanings you haven&rsquo;t had yet. To cancel,
+          call or text <a href={site.phone.href}>{site.phone.display}</a> or email{" "}
           <a href={`mailto:${site.email}`}>{site.email}</a>.
         </li>
       </ul>

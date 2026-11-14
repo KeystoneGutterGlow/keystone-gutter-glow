@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Keystone } from "@/components/Keystone";
 import { site } from "@/content/site";
-import { formSubmitEnabled } from "@/lib/notify/formsubmit";
+import { notFound } from "next/navigation";
+import { formSubmitEnabled, notifyTestEnabled } from "@/lib/notify/formsubmit";
 import { NotifyTest } from "./NotifyTest";
 import styles from "./notify-test.module.css";
 
@@ -18,6 +19,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default function NotifyTestPage() {
+  // Off unless NOTIFY_TEST_ENABLED=true (README, "Notifications to Jimmy").
+  if (!notifyTestEnabled()) notFound();
   const enabled = formSubmitEnabled();
   return (
     <main id="main" className={styles.page}>

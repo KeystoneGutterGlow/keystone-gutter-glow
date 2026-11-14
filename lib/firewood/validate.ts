@@ -62,7 +62,7 @@ export function validateOrder(draft: OrderDraft, today: string, config: Firewood
 
   if (draft.name.trim().length < 2) errors.name = "Who should we ask for?";
   if (!isUsPhone(draft.phone)) errors.phone = "A 10-digit phone number, in case the driver needs you.";
-  if (!EMAIL_RE.test(draft.email.trim())) errors.email = "That email doesn't look right. Your confirmation goes here.";
+  if (!EMAIL_RE.test(draft.email.trim())) errors.email = "That email doesn't look right. We use it to reach you about your order.";
   if (draft.instructions.trim().length < 8) {
     errors.instructions = "Tell us where the wood should go, so the driver doesn't have to guess.";
   }

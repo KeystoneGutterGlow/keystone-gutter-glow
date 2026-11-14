@@ -283,6 +283,32 @@ describe("Supabase adapters against the real migrations", () => {
     expect(once.ok && again.ok && again.duplicate && once.booking.ref === again.booking.ref).toBe(true);
   });
 
+  it("finds a booking, changes its price and notes, and finds the referral it used", async () => {
+    const store = new SupabaseBookingStore("http://db.test", "service-key");
+    const { code } = await store.createReferral(newReferral({ referrerPhone: "2155550188" }));
+    const made = await store.create(newBooking({ date: "2026-11-30", priceDollars: 199 }), 4, { referralCode: code });
+    const ref = made.ok ? made.booking.ref : "";
+    expect((await store.findBooking(ref))?.priceDollars).toBe(199);
+    expect(await store.findBooking("KGG-NONE0")).toBeNull();
+    const updated = await store.updateBooking(ref, { priceDollars: 176, notes: "Recurring plan: Every 6 months, 10% off. Gate code 1234" });
+    expect(updated).toMatchObject({ ref, priceDollars: 176, notes: "Recurring plan: Every 6 months, 10% off. Gate code 1234" });
+    expect((await store.findReferralByBooking(ref))?.code).toBe(code);
+    expect(await store.findReferralByBooking("KGG-NONE0")).toBeNull();
+    // A cancelled booking can't be changed
+    await db.query("update bookings set status = 'cancelled' where ref = $1", [ref]);
+    expect(await store.updateBooking(ref, { priceDollars: 1, notes: "" })).toBeNull();
+  });
+
+  it("reuses an unused referral sent again by the same person for the same friend", async () => {
+    const store = new SupabaseBookingStore("http://db.test", "service-key");
+    const first = await store.createReferral(newReferral({ referrerPhone: "2155550199", friendPhone: "2155550198" }));
+    const again = await store.createReferral(newReferral({ referrerPhone: "2155550199", friendPhone: "2155550198", reward: "plan", notes: "again" }));
+    expect(again.code).toBe(first.code);
+    expect(again).toMatchObject({ reward: "plan", notes: "again" });
+    const { rows } = await db.query<{ c: number }>("select count(*)::int as c from referrals where referrer_phone = '2155550199'");
+    expect(rows[0]!.c).toBe(1);
+  });
+
   it("only takes the two thank-yous, and only well-formed codes", async () => {
     await expect(
       db.query("insert into referrals (code, referrer_name, referrer_phone, reward, friend_name) values ('ABCDEFGH', 'A', '1', 'gift', 'B')"),

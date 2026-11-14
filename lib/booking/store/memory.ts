@@ -1,4 +1,4 @@
-import { makeReferralCode } from "@/lib/referral/code";
+import { makeReferralCode, sameReferral } from "@/lib/referral/code";
 import type { BookingRecord, BookingStore, CreateResult, ISODate, NewBooking, NewReferral, ReferralRecord, TakenSlot } from "../types";
 
 /**
@@ -60,7 +60,34 @@ export class MemoryBookingStore implements BookingStore {
     return result;
   }
 
+  async findBooking(ref: string): Promise<BookingRecord | null> {
+    const b = this.rows.find((r) => r.ref === ref);
+    return b ? { ...b } : null;
+  }
+
+  updateBooking(ref: string, patch: { priceDollars: number; notes: string }): Promise<BookingRecord | null> {
+    const run = async () => {
+      const b = this.rows.find((r) => r.ref === ref && r.status === "confirmed");
+      if (!b) return null;
+      Object.assign(b, patch);
+      return { ...b };
+    };
+    const result = this.queue.then(run, run);
+    this.queue = result.catch(() => undefined);
+    return result;
+  }
+
+  async findReferralByBooking(ref: string): Promise<ReferralRecord | null> {
+    const r = this.referrals.find((x) => x.bookingRef === ref);
+    return r ? { ...r } : null;
+  }
+
   async createReferral(input: NewReferral): Promise<ReferralRecord> {
+    const again = this.referrals.find((r) => !r.bookingRef && sameReferral(r, input));
+    if (again) {
+      Object.assign(again, input);
+      return { ...again };
+    }
     let code = makeReferralCode();
     while (this.referrals.some((r) => r.code === code)) code = makeReferralCode();
     const record: ReferralRecord = { ...input, code, createdAt: new Date().toISOString(), bookingRef: null, bookedAt: null, thankedAt: null };

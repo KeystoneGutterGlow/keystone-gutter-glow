@@ -271,7 +271,14 @@ describe("a recurring-plan request", () => {
 describe("/api/notify-test", () => {
   const post = () => notifyTestPost(new Request("http://localhost/api/notify-test", { method: "POST", headers: { "x-forwarded-for": "10.9.2.1" } }));
 
+  it("is switched off unless NOTIFY_TEST_ENABLED is true", async () => {
+    expect((await post()).status).toBe(404);
+    vi.stubEnv("NOTIFY_TEST_ENABLED", "yes");
+    expect((await post()).status).toBe(404);
+  });
+
   it("hands out a clearly marked test notice when notices are on", async () => {
+    vi.stubEnv("NOTIFY_TEST_ENABLED", "true");
     const res = await post();
     expect(res.status).toBe(201);
     const { notice } = (await res.json()) as { notice: Notice };
@@ -280,6 +287,7 @@ describe("/api/notify-test", () => {
   });
 
   it("refuses when they're off, and limits how often it can be used", async () => {
+    vi.stubEnv("NOTIFY_TEST_ENABLED", "true");
     vi.stubEnv("FORMSUBMIT_ENABLED", "");
     expect((await post()).status).toBe(409);
     vi.stubEnv("FORMSUBMIT_ENABLED", "true");

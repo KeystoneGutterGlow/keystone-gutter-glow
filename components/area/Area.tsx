@@ -31,7 +31,7 @@ export function Area() {
           </div>
           <p className={styles.mapNote}>
             The dashed circle is {serviceRadius.miles} miles from our base in Jamison. The part across the river is New Jersey,
-            which we don&rsquo;t serve. Near the edge, check your ZIP.
+            which we don&rsquo;t serve. Near the edge, check your ZIP: only the ZIPs inside the circle can book.
           </p>
           <h3 className={styles.townsTitle}>Counties we cover</h3>
           <p className={styles.counties}>{countyList()} Counties, Pennsylvania</p>

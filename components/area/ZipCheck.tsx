@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { BookLink } from "@/components/BookLink";
-import { lookupArea } from "@/content/area";
+import { lookupArea, serviceRadius } from "@/content/area";
 import { site } from "@/content/site";
 import styles from "./Area.module.css";
 
@@ -44,14 +44,8 @@ export function ZipCheck() {
             <BookLink className="textlink">Pick a day</BookLink>
           </>
         )}
-        {result?.status === "ask" && (
-          <>
-            That&rsquo;s outside our usual area, but ask anyway. Call or text{" "}
-            <a href={site.phone.href} className="textlink">
-              {site.phone.display}
-            </a>
-            .
-          </>
+        {result?.status === "outside" && (
+          <>Sorry, that&rsquo;s outside our area. We only work within {serviceRadius.miles} miles of Jamison.</>
         )}
         {result?.status === "outOfState" && (
           <>We only work in Pennsylvania, so we can&rsquo;t come to {result.state === "NJ" ? "New Jersey" : "addresses outside the state"}.</>

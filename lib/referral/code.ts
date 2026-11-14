@@ -16,6 +16,15 @@ export function makeReferralCode(): string {
   return code;
 }
 
+/** The same person referring the same friend (by the friend's phone or email): a repeat, not a new referral. */
+export function sameReferral(
+  a: { referrerPhone: string; friendPhone: string; friendEmail: string },
+  b: { referrerPhone: string; friendPhone: string; friendEmail: string },
+): boolean {
+  if (a.referrerPhone !== b.referrerPhone) return false;
+  return (!!a.friendPhone && a.friendPhone === b.friendPhone) || (!!a.friendEmail && a.friendEmail === b.friendEmail);
+}
+
 /** Tidies a code someone typed or pasted (case, spaces, dashes). Returns null if it can't be a code. */
 export function normalizeReferralCode(raw: unknown): string | null {
   if (typeof raw !== "string") return null;

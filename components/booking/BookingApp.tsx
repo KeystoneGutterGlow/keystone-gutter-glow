@@ -5,7 +5,7 @@ import { cloneElement, useCallback, useEffect, useId, useRef, useState } from "r
 import { BOOK_EVENT, type BookIntent } from "@/components/BookLink";
 import { PlanAgreement } from "@/components/plan/PlanAgreement";
 import { House } from "@/components/pricing/Houses";
-import { areaPlaces, serviceZips, stateForZip } from "@/content/area";
+import { areaPlaces } from "@/content/area";
 import { additionalInfo, bookingRules } from "@/content/booking";
 import { legalPaths } from "@/content/legalPaths";
 import { getPlanFrequency, planFrequencies, planRules, planSaving, recommendedPlan, recommendedWhy } from "@/content/plans";
@@ -97,7 +97,9 @@ export function BookingApp({ referral }: { referral?: ReferralLink }) {
   const [loadError, setLoadError] = useState(false);
   const [retry, setRetry] = useState(0);
   // One key per attempt to book, so a retried request can't create a second booking.
-  const attemptKey = useRef<string | null>(null);
+  // The key goes with exactly one request: change anything (the day, the house, the address) and the
+  // next try gets a new key, so a retry can't come back with an earlier booking for a different day.
+  const attemptKey = useRef<{ key: string; fingerprint: string } | null>(null);
   // Until the customer picks a month, skip past any with nothing open (late in the month, say).
   const seekOpenMonth = useRef(true);
 
@@ -237,6 +239,10 @@ export function BookingApp({ referral }: { referral?: ReferralLink }) {
   const total = q?.thisCleaning ?? null;
   const yearTotal = q?.firstYear ?? null;
   const off = q?.referralOff ?? 0;
+  const cardPrice = (p: (typeof packages)[number]) => {
+    const pq = quoteFor(p, false, draft.plan, !!referral);
+    return plan ? pq.perCleaning : pq.thisCleaning;
+  };
   const from = pkg?.needsQuote ? "from " : "";
 
   // ---- Step transitions with validation ----
@@ -283,9 +289,7 @@ export function BookingApp({ referral }: { referral?: ReferralLink }) {
     setSubmitting(true);
     setSubmitStage("saving");
     setBanner(null);
-    attemptKey.current ??= crypto.randomUUID();
-    const result = await submitBooking({
-      idempotencyKey: attemptKey.current,
+    const request = {
       packageId: draft.packageId,
       rinse: draft.rinse,
       planFrequencyId: draft.plan,
@@ -301,7 +305,10 @@ export function BookingApp({ referral }: { referral?: ReferralLink }) {
       notes: draft.notes,
       company: draft.company,
       referralCode: referral?.code,
-    });
+    };
+    const fingerprint = JSON.stringify(request);
+    if (attemptKey.current?.fingerprint !== fingerprint) attemptKey.current = { key: crypto.randomUUID(), fingerprint };
+    const result = await submitBooking({ idempotencyKey: attemptKey.current.key, ...request });
 
     if (result.kind === "ok") {
       attemptKey.current = null;
@@ -357,8 +364,6 @@ export function BookingApp({ referral }: { referral?: ReferralLink }) {
 
   const minMonth = meta ? monthStart(addDays(meta.today, meta.minLeadDays)) : null;
   const maxMonth = meta ? monthStart(addDays(meta.today, meta.horizonDays)) : null;
-  // A Pennsylvania ZIP past the edge can still book; anything outside Pennsylvania gets a field error instead.
-  const zipOutside = /^\d{5}$/.test(draft.zip) && !serviceZips.has(draft.zip) && stateForZip(draft.zip) === "PA";
 
   return (
     <div className={styles.app}>
@@ -429,14 +434,16 @@ export function BookingApp({ referral }: { referral?: ReferralLink }) {
                         <span className={styles.houseFits}>{p.fits}</span>
                       </span>
                       <span className={styles.housePrice}>
-                        {/* With a plan or a referral, the regular price struck through over what this cleaning costs */}
-                        {quoteFor(p, false, draft.plan, !!referral).thisCleaning !== p.price ? (
+                        {/* With a plan, the regular price struck through over the plan price for every cleaning.
+                            The referral's $30 is for one cleaning, so it only shows here without a plan; with a
+                            plan it's in the work order and the review step. */}
+                        {cardPrice(p) !== p.price ? (
                           <>
                             <s className={styles.housePriceWas}>
                               <span className="vh">Regular price </span>${p.price}
                             </s>
-                            <span className="vh">, this cleaning </span>
-                            {p.isFrom && <small>from </small>}${quoteFor(p, false, draft.plan, !!referral).thisCleaning}
+                            <span className="vh">{plan ? ", each cleaning on your plan " : ", this cleaning "}</span>
+                            {p.isFrom && <small>from </small>}${cardPrice(p)}
                           </>
                         ) : (
                           <>
@@ -642,7 +649,6 @@ export function BookingApp({ referral }: { referral?: ReferralLink }) {
                     id={`${uid}-zip`}
                     label="ZIP"
                     error={errors.zip}
-                    note={zipOutside ? "That's outside our usual area. Book anyway and we'll confirm we can make it." : undefined}
                   >
                     <input
                       autoComplete="postal-code"
@@ -665,7 +671,7 @@ export function BookingApp({ referral }: { referral?: ReferralLink }) {
                       onBlur={(e) => set("phone", formatPhone(e.target.value))}
                     />
                   </Field>
-                  <Field id={`${uid}-email`} label="Email" error={errors.email} note="Your confirmation goes here.">
+                  <Field id={`${uid}-email`} label="Email" error={errors.email} note="So Jimmy can reach you about your booking.">
                     <input
                       type="email"
                       autoComplete="email"

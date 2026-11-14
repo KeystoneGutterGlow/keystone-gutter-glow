@@ -1,5 +1,5 @@
 import type { PackageId } from "@/content/pricing";
-import { makeReferralCode } from "@/lib/referral/code";
+import { makeReferralCode, sameReferral } from "@/lib/referral/code";
 import type { BookingRecord, BookingStore, CreateResult, ISODate, NewBooking, NewReferral, ReferralRecord, TakenSlot } from "../types";
 
 /**
@@ -175,7 +175,66 @@ export class SupabaseBookingStore implements BookingStore {
     return { ok: false, reason };
   }
 
+  async findBooking(ref: string): Promise<BookingRecord | null> {
+    const q = new URLSearchParams({ select: "*", ref: `eq.${ref}` });
+    const res = await fetch(`${this.url}/rest/v1/bookings?${q}`, {
+      headers: this.headers(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Supabase findBooking failed (${res.status})`);
+    const rows = (await res.json()) as Row[];
+    return rows[0] ? fromRow(rows[0]) : null;
+  }
+
+  async updateBooking(ref: string, patch: { priceDollars: number; notes: string }): Promise<BookingRecord | null> {
+    const q = new URLSearchParams({ ref: `eq.${ref}`, status: "eq.confirmed" });
+    const res = await fetch(`${this.url}/rest/v1/bookings?${q}`, {
+      method: "PATCH",
+      headers: { ...this.headers(), Prefer: "return=representation" },
+      body: JSON.stringify({ price_dollars: patch.priceDollars, notes: patch.notes }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Supabase updateBooking failed (${res.status})`);
+    const rows = (await res.json()) as Row[];
+    return rows[0] ? fromRow(rows[0]) : null;
+  }
+
+  async findReferralByBooking(ref: string): Promise<ReferralRecord | null> {
+    const q = new URLSearchParams({ select: "*", booking_ref: `eq.${ref}` });
+    const res = await fetch(`${this.url}/rest/v1/referrals?${q}`, {
+      headers: this.headers(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Supabase findReferralByBooking failed (${res.status})`);
+    const rows = (await res.json()) as ReferralRow[];
+    return rows[0] ? fromReferralRow(rows[0]) : null;
+  }
+
   async createReferral(input: NewReferral): Promise<ReferralRecord> {
+    // The same referral sent again (say, after the email to Jimmy failed) updates the unused one.
+    const q = new URLSearchParams({ select: "*", referrer_phone: `eq.${input.referrerPhone}`, booking_ref: "is.null" });
+    const found = await fetch(`${this.url}/rest/v1/referrals?${q}`, {
+      headers: this.headers(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!found.ok) throw new Error(`Supabase createReferral lookup failed (${found.status})`);
+    const again = ((await found.json()) as ReferralRow[]).map(fromReferralRow).find((r) => sameReferral(r, input));
+    if (again) {
+      const res = await fetch(`${this.url}/rest/v1/referrals?${new URLSearchParams({ code: `eq.${again.code}` })}`, {
+        method: "PATCH",
+        headers: { ...this.headers(), Prefer: "return=representation" },
+        body: JSON.stringify((({ code: _c, ...row }) => row)(toReferralRow(input, again.code))),
+        cache: "no-store",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(`Supabase createReferral update failed (${res.status})`);
+      const rows = (await res.json()) as ReferralRow[];
+      return fromReferralRow(rows[0]!);
+    }
     // A code clash is about one in 650 billion, but try again rather than fail if it happens.
     for (let attempt = 0; attempt < 3; attempt++) {
       const res = await fetch(`${this.url}/rest/v1/referrals`, {

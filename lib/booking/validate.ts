@@ -1,4 +1,4 @@
-import { stateForZip } from "@/content/area";
+import { serviceRadius, serviceZips, stateForZip } from "@/content/area";
 import { bookingRules, type BookingRules } from "@/content/booking";
 import { getPlanFrequency } from "@/content/plans";
 import { getPackage, type PackageId } from "@/content/pricing";
@@ -43,6 +43,8 @@ export type FieldErrors = Partial<Record<keyof BookingRequest, string>>;
 export const PLAN_TERMS_ERROR = "Tick the box to agree to the recurring plan terms, or choose Just this once.";
 export const REFERRAL_LINK_ERROR = "That referral link isn't valid. Use the link Jimmy sent you, or call or text him.";
 
+export const OUTSIDE_AREA_ERROR = `That ZIP is outside our area. We only work within ${serviceRadius.miles} miles of Jamison, in Pennsylvania.`;
+
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const IDEMPOTENCY_RE = /^[\w-]{8,80}$/;
 
@@ -81,9 +83,11 @@ export function validateContact(input: Pick<BookingRequest, "name" | "email" | "
   if (!/^\d{5}$/.test(input.zip.trim())) errors.zip = "Five-digit ZIP, please.";
   // Jimmy can only do business in Pennsylvania (content/area.ts).
   else if (stateForZip(input.zip.trim()) !== "PA") errors.zip = "We only work in Pennsylvania, so we can't take this address.";
+  // Only addresses inside the service area can book: the ZIPs in content/area.ts.
+  else if (!serviceZips.has(input.zip.trim())) errors.zip = OUTSIDE_AREA_ERROR;
   if (input.name.trim().length < 2) errors.name = "Who should we ask for?";
   if (!isUsPhone(input.phone)) errors.phone = "A 10-digit phone number, in case we need to reach you on the day.";
-  if (!EMAIL_RE.test(input.email.trim())) errors.email = "That email doesn't look right. The confirmation goes here.";
+  if (!EMAIL_RE.test(input.email.trim())) errors.email = "That email doesn't look right. Jimmy uses it to reach you about your booking.";
   return errors;
 }
 

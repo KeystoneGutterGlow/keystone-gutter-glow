@@ -86,6 +86,15 @@ export function BookingConfirmed({ planRequests, measure }: { planRequests: bool
       headingRef={headingRef}
       headingLevel="h1"
       planRequests={planRequests}
+      onPlanAdded={(update) => {
+        // The booking is on the plan now: show its plan price and plan, here and after a reload.
+        const next: StoredConfirmation = {
+          ...saved,
+          booking: { ...saved.booking, priceDollars: update.priceDollars, planLabel: update.planLabel, planFrequencyId: update.planFrequencyId },
+        };
+        saveConfirmation(next);
+        setSaved(next);
+      }}
     />
   );
 }

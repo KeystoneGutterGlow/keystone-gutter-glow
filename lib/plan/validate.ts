@@ -14,6 +14,8 @@ export interface PlanRequest {
   notes: string;
   /** Ticked "I agree to the Recurring Plan Terms". Required. */
   planTerms: boolean;
+  /** The booking the plan starts with ("Make it recurring" on its confirmation) */
+  bookingRef?: string;
 }
 
 export interface CleanPlanRequest extends Omit<PlanRequest, "frequencyId"> {
@@ -46,6 +48,7 @@ export function parsePlanRequest(
     zip: cleanText(b.zip, 10),
     notes: cleanText(b.notes, 1000, true),
     planTerms: b.planTerms === true,
+    bookingRef: /^KGG-[A-Z0-9]{5}$/.test(cleanText(b.bookingRef, 20).toUpperCase()) ? cleanText(b.bookingRef, 20).toUpperCase() : undefined,
   };
 
   const errors = validatePlan(req);

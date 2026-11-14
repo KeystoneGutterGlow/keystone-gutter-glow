@@ -56,7 +56,8 @@ export function ReferredPage({ state }: { state: ReferredState }) {
             <h1 className={styles.title}>${off} off your gutter cleaning.</h1>
             <p className={styles.intro}>
               {first} sent you our way. Book here and ${off} comes off your cleaning, and {first} gets a thank-you from us once
-              your gutters are done. This link is yours and works for one booking.
+              your gutters are done. This link is yours and works for one booking: book with the mobile number or email {first}{" "}
+              gave us for you.
             </p>
             <a href="#book" className="btn">
               Book with ${off} off

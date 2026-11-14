@@ -1,0 +1,75 @@
+/* Jimmy's "Check it's real" page: plain, readable on a phone */
+
+.page {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 40px var(--gutter) 72px;
+}
+.home {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
+  color: var(--navy);
+  font-weight: 700;
+  text-decoration: none;
+}
+.logo {
+  flex: none;
+}
+.page h1 {
+  margin: 0 0 14px;
+  font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.3rem);
+  line-height: 1.1;
+}
+.page p {
+  line-height: 1.6;
+}
+.tag {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 2px 9px 3px;
+  background: var(--sky);
+  color: var(--navy-deep);
+  font-weight: 800;
+  font-size: 0.875rem;
+}
+.good {
+  border-top: 5px solid var(--sky);
+  padding-top: 18px;
+}
+.bad {
+  border-top: 5px solid var(--err);
+  padding-top: 18px;
+}
+.warn {
+  padding: 8px 12px;
+  background: var(--err-pale);
+  color: var(--err);
+  font-weight: 700;
+}
+.facts {
+  margin: 18px 0 0;
+  border-top: 2px solid var(--navy);
+}
+.facts > div {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--alu-2);
+}
+.facts dt {
+  font-weight: 700;
+  color: var(--muted);
+}
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 559px) {
+  .facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

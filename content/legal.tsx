@@ -90,6 +90,7 @@ export const planTerms: LegalDoc = {
           <li>
             You can cancel any time, with no cancellation fee. To cancel, <Contact />.
           </li>
+          <li>If you cancel, payments already made aren&rsquo;t refunded, including for cleanings you haven&rsquo;t had yet.</li>
         </ul>
       ),
     },
@@ -189,6 +190,11 @@ export const planTerms: LegalDoc = {
           </p>
           <p>
             <strong>There&rsquo;s no cancellation fee.</strong>
+          </p>
+          <p>
+            <strong>Payments already made aren&rsquo;t refunded.</strong> If you cancel partway through a plan year you&rsquo;ve
+            paid for, we don&rsquo;t refund that payment or any part of it, including for cleanings in that year you haven&rsquo;t
+            had yet. Your plan doesn&rsquo;t renew after you cancel.
           </p>
         </>
       ),

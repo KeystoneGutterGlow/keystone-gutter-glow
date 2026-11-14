@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bookingRules, type BookingRules } from "@/content/booking";
 import { checkDate, dayDetail, firstOpening, rangeSummary } from "@/lib/booking/availability";
 import { addDays, addMonths, daysInMonth, diffDays, formatLong, isISODate, todayIn, weekday } from "@/lib/booking/dates";
-import { isUsPhone, normalizePhone, parseBookingRequest, validateContact } from "@/lib/booking/validate";
+import { isUsPhone, normalizePhone, OUTSIDE_AREA_ERROR, parseBookingRequest, validateContact } from "@/lib/booking/validate";
 import { areaCounties, areaZips, lookupArea, serviceRadius, stateForZip } from "@/content/area";
 
 const rules: BookingRules = bookingRules;
@@ -161,10 +161,11 @@ describe("booking request validation", () => {
 });
 
 describe("service area lookup", () => {
-  it("knows a ZIP and a town, and asks about anything else", () => {
+  it("knows a ZIP and a town, and says no to anything outside the area", () => {
     expect(lookupArea("18929")).toEqual({ status: "yes", town: "Jamison" });
     expect(lookupArea("Doylestown, PA")).toEqual({ status: "yes", town: "Doylestown" });
-    expect(lookupArea("19464")).toEqual({ status: "ask" }); // Pottstown, PA: past the edge
+    expect(lookupArea("19464")).toEqual({ status: "outside" }); // Pottstown, PA: past the edge
+    expect(lookupArea("15213")).toEqual({ status: "outside" }); // Pittsburgh
     expect(lookupArea("123")).toEqual({ status: "invalid" });
   });
 
@@ -179,8 +180,8 @@ describe("service area lookup", () => {
     expect(areaZips).toHaveLength(116);
     expect(areaZips.filter((z) => z.miles <= 10)).toHaveLength(33);
     expect(new Set(areaZips.map((z) => z.zip)).size).toBe(areaZips.length);
-    // Just past 20 miles, still Pennsylvania: told to ask
-    for (const zip of ["18930", "19131", "19103", "19464"]) expect(lookupArea(zip)).toEqual({ status: "ask" });
+    // Just past 20 miles, still Pennsylvania: outside the area
+    for (const zip of ["18930", "19131", "19103", "19464"]) expect(lookupArea(zip)).toEqual({ status: "outside" });
     expect(lookupArea("Yardley")).toEqual({ status: "yes", town: "Yardley" });
     expect(lookupArea("King of Prussia")).toEqual({ status: "yes", town: "King of Prussia" });
   });
@@ -197,8 +198,9 @@ describe("service area lookup", () => {
     const contact = { name: "Pat", email: "pat@example.com", phone: "2155550100", street: "1 Test Ln", city: "Lambertville" };
     expect(validateContact({ ...contact, zip: "08530" }).zip).toMatch(/only work in Pennsylvania/);
     expect(validateContact({ ...contact, zip: "18929" }).zip).toBeUndefined();
-    // A Pennsylvania ZIP past the edge can still book; Jimmy confirms it
-    expect(validateContact({ ...contact, zip: "19464" }).zip).toBeUndefined();
+    // Only the ZIPs inside the 20-mile circle can book: just past the edge, or across the state, is refused
+    for (const zip of ["19464", "15213", "16501", "19103"]) expect(validateContact({ ...contact, zip }).zip).toBe(OUTSIDE_AREA_ERROR);
+    expect(OUTSIDE_AREA_ERROR).toBe("That ZIP is outside our area. We only work within 20 miles of Jamison, in Pennsylvania.");
   });
 
   it("knows each address's state from its ZIP", () => {

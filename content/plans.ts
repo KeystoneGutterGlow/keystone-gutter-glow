@@ -33,7 +33,7 @@ export function getPlanFrequency(id: string) {
 /** The plan rules every customer agrees to. Change them here and on the terms page together. */
 export const planRules = {
   /** Bump this whenever the Recurring Plan Terms change, so each agreement records which version it was. */
-  termsVersion: "2026-11-14",
+  termsVersion: "2026-11-14.2",
   /** Every cleaning on a plan is this much off the regular price */
   discountPercent: 10,
   /** Notice before every visit, in hours */
@@ -44,6 +44,8 @@ export const planRules = {
   autoRenews: true,
   /** Cancelling is free: no cancellation fee (Sam, 2026-11-14) */
   cancellationFee: false,
+  /** What's already been paid isn't refunded on cancelling, unused cleanings included (Sam, 2026-11-14) */
+  refundOnCancel: false,
 };
 
 /**

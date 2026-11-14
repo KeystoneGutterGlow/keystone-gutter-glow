@@ -229,7 +229,7 @@ for (const z of areaZips) {
  */
 export function lookupArea(
   input: string,
-): { status: "yes"; town: string } | { status: "ask" } | { status: "outOfState"; state: string } | { status: "unknown" } | { status: "invalid" } {
+): { status: "yes"; town: string } | { status: "outside" } | { status: "outOfState"; state: string } | { status: "unknown" } | { status: "invalid" } {
   const raw = input.trim();
   if (!raw) return { status: "invalid" };
   const zip = raw.match(/^(\d{5})(-\d{4})?$/)?.[1];
@@ -237,7 +237,8 @@ export function lookupArea(
     const town = serviceZips.get(zip);
     if (town) return { status: "yes", town };
     const state = stateForZip(zip);
-    return state === "PA" ? { status: "ask" } : { status: "outOfState", state };
+    // Only the ZIPs listed above can book (Sam, 2026-11-14): inside the circle and in Pennsylvania.
+    return state === "PA" ? { status: "outside" } : { status: "outOfState", state };
   }
   if (/^[\d\s-]+$/.test(raw)) return { status: "invalid" };
   const town = byName.get(clean(raw));

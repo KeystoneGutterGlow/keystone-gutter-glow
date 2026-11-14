@@ -9,6 +9,7 @@ import type { BookingRecord } from "@/lib/booking/types";
 import { formatPhone } from "@/lib/booking/validate";
 import { isDemoStorage } from "@/lib/storage";
 import { publicUrl } from "@/lib/env";
+import { checkLink } from "./check";
 import type { CleanReferralRequest } from "@/lib/referral/validate";
 import { FORMSUBMIT_AJAX, type Notice } from "./notice";
 
@@ -30,6 +31,14 @@ export function formSubmitEnabled(env: Env = process.env): boolean {
   if (env.FORMSUBMIT_ENABLED !== "true") return false;
   if (env.VERCEL_ENV === "preview") return false;
   return !isDemoStorage(env);
+}
+
+/**
+ * /notify-test sends Jimmy a test email. It's off unless NOTIFY_TEST_ENABLED=true, so a stranger
+ * can't use it to fill his inbox. Turn it on in Vercel when you want to test, then off again.
+ */
+export function notifyTestEnabled(env: Env = process.env): boolean {
+  return env.NOTIFY_TEST_ENABLED === "true";
 }
 
 export function formSubmitEndpoint(): string {
@@ -81,6 +90,7 @@ export function bookingNotice(
       ...settings(`New booking ${b.ref}: ${when}`, b.customer.email),
       ...compact({
         Booking: `${b.ref} (saved in the booking database)`,
+        "Check it's real": checkLink("booking", b.ref),
         When: when,
         Address: `${b.address.street}, ${b.address.city}, ${stateForZip(b.address.zip)} ${b.address.zip}`,
         House: `${pkg?.name ?? b.packageId}${b.rinse ? ", with a rinse" : ""}`,
@@ -96,7 +106,7 @@ export function bookingNotice(
             `${extra.referral.by} chose ${referralRewards[extra.referral.reward].label}, due once this house is fully cleaned.`
           : undefined,
         "Recurring plan": extra.plan
-          ? `${extra.plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): ${planRules.discountPercent}% off every cleaning, the year paid up front after the first cleaning, renews yearly until cancelled, no fee to cancel.`
+          ? `${extra.plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): ${planRules.discountPercent}% off every cleaning, the year paid up front after the first cleaning, renews yearly until cancelled, no fee to cancel, no refunds of payments already made.`
           : undefined,
         Name: b.customer.name,
         Phone: formatPhone(b.customer.phone),
@@ -109,6 +119,8 @@ export function bookingNotice(
 }
 
 export interface PlanNoticeInput {
+  /** Set when the plan was added to a booking: what changed on it */
+  booking?: { ref: string; date: string; priceBefore: number; priceNow: number; firstYear: number | null; estimate: boolean };
   frequency: string;
   name: string;
   email: string;
@@ -124,9 +136,17 @@ export function planRequestNotice(r: PlanNoticeInput): Notice {
   return {
     endpoint: formSubmitEndpoint(),
     fields: {
-      ...settings(`Recurring plan request: ${r.frequency}, ${r.city}`, r.email),
+      ...settings(
+        r.booking ? `Recurring plan added to booking ${r.booking.ref}: ${r.frequency}, ${r.city}` : `Recurring plan request: ${r.frequency}, ${r.city}`,
+        r.email,
+      ),
       ...compact({
         Request: `Recurring plan, ${planRules.discountPercent}% off every cleaning. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}). Confirm the dates with the customer.`,
+        Booking: r.booking
+          ? `${r.booking.ref}, ${formatLong(r.booking.date)}: the plan starts with this cleaning. Its price is now ${r.booking.estimate ? "from " : ""}$${r.booking.priceNow} (was $${r.booking.priceBefore}), already changed in the booking database.` +
+            (r.booking.firstYear !== null ? ` The year, ${r.booking.estimate ? "from " : ""}$${r.booking.firstYear}, is invoiced up front after this cleaning.` : "")
+          : undefined,
+        "Check it's real": r.booking ? checkLink("booking", r.booking.ref) : undefined,
         "How often": r.frequency,
         Address: `${r.street}, ${r.city}, ${stateForZip(r.zip)} ${r.zip}`,
         Name: r.name,
@@ -157,6 +177,7 @@ export function referralNotice(r: CleanReferralRequest, code: string): Notice {
       ...compact({
         Referral: `${r.name} referred ${r.friendName}. Get in touch with ${first} and send them their personal link, which takes $${referralRules.friendDiscount} off one cleaning: ${referralLink(code)}`,
         Code: `${code} (works for one booking; the referrals table in Supabase shows when it's used)`,
+        "Check it's real": checkLink("referral", code),
         "Thank-you": `${reward} Only once ${first} has booked and their house is fully cleaned.`,
         "Referred by": r.name,
         "Their phone": formatPhone(r.phone),

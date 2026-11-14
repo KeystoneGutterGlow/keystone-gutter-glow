@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { legalPaths } from "@/content/legalPaths";
 import { getPlanFrequency, planAnnualTotal, planFrequencies, planRules } from "@/content/plans";
-import { PlanDialog } from "@/components/plan/PlanDialog";
+import { PlanDialog, type PlanAdded } from "@/components/plan/PlanDialog";
 import { stateForZip } from "@/content/area";
 import { bookingRules } from "@/content/booking";
 import { getPackage, totalFor } from "@/content/pricing";
@@ -50,6 +50,7 @@ export function Done({
   headingRef,
   headingLevel = "h3",
   planRequests,
+  onPlanAdded,
 }: {
   booking: Confirmation;
   delivery: Delivery;
@@ -62,6 +63,8 @@ export function Done({
   /** h1 when the confirmation is the page */
   headingLevel?: "h1" | "h3";
   planRequests: boolean;
+  /** "Make it recurring" put this booking on a plan: its new price and plan */
+  onPlanAdded?: (update: PlanAdded) => void;
 }) {
   const pkg = getPackage(booking.packageId);
   // A plan booking's price is already the plan price (10% off). Older saved confirmations carry only the label.
@@ -192,6 +195,8 @@ export function Done({
             className="btn"
             initial={{ ...booking.address, name, phone, email: booking.email }}
             price={{ regular: regular ?? perCleaning, isFrom: booking.priceIsEstimate }}
+            booking={{ ref: booking.ref, date: booking.date }}
+            onPlanAdded={onPlanAdded}
           >
             Make it recurring and save {planRules.discountPercent}%
           </PlanDialog>

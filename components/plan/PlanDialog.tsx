@@ -1,11 +1,11 @@
 "use client";
 
 import { cloneElement, useId, useRef, useState } from "react";
-import { serviceZips, stateForZip } from "@/content/area";
 import { additionalInfo } from "@/content/booking";
 import { getPlanFrequency, planFrequencies, planRules, recommendedPlan, recommendedWhy } from "@/content/plans";
 import { site } from "@/content/site";
 import { PlanAgreement } from "@/components/plan/PlanAgreement";
+import { formatLong } from "@/lib/booking/dates";
 import { formatPhone } from "@/lib/booking/validate";
 import { sendNotice, type Notice } from "@/lib/notify/notice";
 import { validatePlan, type PlanFieldErrors, type PlanRequest } from "@/lib/plan/validate";
@@ -17,7 +17,15 @@ import styles from "./PlanDialog.module.css";
 // same as when booking a plan. Sending emails Jimmy (the server checks it, then this sends it through
 // FormSubmit), and he confirms the dates. It only says "sent" once FormSubmit confirms it.
 
-type Contact = Omit<PlanRequest, "frequencyId" | "notes" | "planTerms">;
+type Contact = Omit<PlanRequest, "frequencyId" | "notes" | "planTerms" | "bookingRef">;
+
+/** What changed on the booking when a plan was added to it */
+export interface PlanAdded {
+  ref: string;
+  priceDollars: number;
+  planLabel: string;
+  planFrequencyId: string;
+}
 
 const EMPTY: PlanRequest = {
   frequencyId: recommendedPlan,
@@ -37,12 +45,18 @@ export function PlanDialog({
   className,
   initial,
   price,
+  booking,
+  onPlanAdded,
   children,
 }: {
   className?: string;
   initial?: Partial<Contact>;
   /** One cleaning's regular price for this house, so the agreement can show the plan price and annual total */
   price?: { regular: number; isFrom: boolean };
+  /** The booking the plan starts with. The server moves it to the plan price. */
+  booking?: { ref: string; date: string };
+  /** Called when the dialog closes after the plan was added, with the booking's new price */
+  onPlanAdded?: (update: PlanAdded) => void;
   children: React.ReactNode;
 }) {
   const uid = useId();
@@ -54,7 +68,7 @@ export function PlanDialog({
   const [errors, setErrors] = useState<PlanFieldErrors>({});
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState<{ demo: boolean } | null>(null);
+  const [sent, setSent] = useState<{ demo: boolean; booking?: PlanAdded } | null>(null);
 
   const set = <K extends keyof PlanRequest>(key: K, value: PlanRequest[K]) => {
     // A different frequency means different terms to agree to.
@@ -74,6 +88,7 @@ export function PlanDialog({
   // Runs on the X, Escape and the backdrop alike. A sent form starts over next time.
   function onClosed() {
     if (!sent) return;
+    if (sent.booking) onPlanAdded?.(sent.booking);
     setSent(null);
     setForm({ ...EMPTY, ...initial });
   }
@@ -104,9 +119,15 @@ export function PlanDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: AbortSignal.timeout(20_000),
-        body: JSON.stringify({ ...form, company }),
+        body: JSON.stringify({ ...form, company, bookingRef: booking?.ref }),
       });
-      const data = (await res.json().catch(() => ({}))) as { demo?: boolean; notice?: Notice; errors?: PlanFieldErrors; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        demo?: boolean;
+        notice?: Notice;
+        booking?: PlanAdded;
+        errors?: PlanFieldErrors;
+        error?: string;
+      };
       if (res.ok) {
         if (data.notice) {
           const delivered = await sendNotice(data.notice);
@@ -115,7 +136,7 @@ export function PlanDialog({
             return;
           }
         }
-        setSent({ demo: data.demo === true });
+        setSent({ demo: data.demo === true, booking: data.booking });
         requestAnimationFrame(() => headingRef.current?.focus());
       } else if (res.status === 400 && data.errors) {
         setErrors(data.errors);
@@ -130,7 +151,6 @@ export function PlanDialog({
     }
   }
 
-  const zipOutside = /^\d{5}$/.test(form.zip) && !serviceZips.has(form.zip) && stateForZip(form.zip) === "PA";
   const chosen = getPlanFrequency(form.frequencyId);
 
   return (
@@ -157,11 +177,18 @@ export function PlanDialog({
             <div className={styles.sent}>
               {sent.demo && <p className={styles.demo}>Demo only. This request didn&rsquo;t go anywhere, and nobody was told about it.</p>}
               <h2 id={`${uid}-title`} ref={headingRef} tabIndex={-1}>
-                {sent.demo ? "That’s how a plan request works." : "Your plan request is with Jimmy."}
+                {sent.demo ? "That’s how a plan request works." : sent.booking ? "Your plan is set up." : "Your plan request is with Jimmy."}
               </h2>
-              <p>
-                {chosen?.label}, at {form.street}, {form.city}. He&rsquo;ll be in touch to confirm your dates.
-              </p>
+              {sent.booking && booking ? (
+                <p>
+                  {chosen?.label}, starting with your cleaning on {formatLong(booking.date)}, which is now{" "}
+                  <strong>${sent.booking.priceDollars}</strong>. Jimmy will be in touch to confirm the later dates.
+                </p>
+              ) : (
+                <p>
+                  {chosen?.label}, at {form.street}, {form.city}. He&rsquo;ll be in touch to confirm your dates.
+                </p>
+              )}
               <p>Your plan follows the Recurring Plan Terms you agreed to.</p>
               <button type="button" className="btn" onClick={close}>
                 Done
@@ -225,7 +252,6 @@ export function PlanDialog({
                   id={`${uid}-zip`}
                   label="ZIP"
                   error={errors.zip}
-                  note={zipOutside ? "That's outside our usual area. Send it anyway and we'll tell you if we can make it." : undefined}
                 >
                   <input
                     autoComplete="postal-code"

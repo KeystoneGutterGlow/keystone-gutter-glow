@@ -48,7 +48,7 @@ export const faqs: Faq[] = [
   },
   {
     q: "Can I put it on a schedule?",
-    a: `Yes, and every cleaning on a plan is ${pct}% off. Pick every 3, 4 or 6 months, or once a year, when you book or from the Prices section. We recommend every 6 months, to catch spring seeds and fall leaves: for a two-story home that's $${planPrice(twoStory)} a cleaning instead of $${twoStory}, or $${planAnnualTotal(planPrice(twoStory), "6-months")} for the year. You pay for the whole year up front, in one payment after the first cleaning. We show up on each date and text or email ${planRules.noticeHours.join(" and ")} hours before; you don't need to be home. The plan renews every year until you cancel, and there's no fee to cancel. The Recurring Plan Terms have the details.`,
+    a: `Yes, and every cleaning on a plan is ${pct}% off. Pick every 3, 4 or 6 months, or once a year, when you book or from the Prices section. We recommend every 6 months, to catch spring seeds and fall leaves: for a two-story home that's $${planPrice(twoStory)} a cleaning instead of $${twoStory}, or $${planAnnualTotal(planPrice(twoStory), "6-months")} for the year. You pay for the whole year up front, in one payment after the first cleaning. We show up on each date and text or email ${planRules.noticeHours.join(" and ")} hours before; you don't need to be home. The plan renews every year until you cancel. There's no fee to cancel, but payments already made aren't refunded, including for cleanings you haven't had yet. The Recurring Plan Terms have the details.`,
   },
   {
     q: "What's the rinse, and do I need it?",

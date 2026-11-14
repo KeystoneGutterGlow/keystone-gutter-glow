@@ -77,7 +77,17 @@ export interface BookingStore {
    * booking in the same step, so one code can never pay for two bookings.
    */
   create(input: NewBooking, maxPerDay: number, opts?: { referralCode?: string }): Promise<CreateResult>;
-  /** Save a referral with a new, unique code. */
+  /** The booking with this reference, or null. */
+  findBooking(ref: string): Promise<BookingRecord | null>;
+  /** Change a confirmed booking's price and notes. Returns the updated booking, or null if there's none to change. */
+  updateBooking(ref: string, patch: { priceDollars: number; notes: string }): Promise<BookingRecord | null>;
+  /** The referral a booking used, or null. */
+  findReferralByBooking(ref: string): Promise<ReferralRecord | null>;
+  /**
+   * Save a referral with a new, unique code. If the same person already referred the same friend and
+   * that code hasn't been used yet (they sent the form again), that referral is updated and returned
+   * instead, so the friend never ends up with two codes.
+   */
   createReferral(input: NewReferral): Promise<ReferralRecord>;
   /** The referral with this code, or null. */
   findReferral(code: string): Promise<ReferralRecord | null>;

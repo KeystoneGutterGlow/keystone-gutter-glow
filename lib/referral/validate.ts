@@ -58,6 +58,9 @@ export function validateReferral(input: ReferralRequest): ReferralFieldErrors {
   if (friendPhone && isUsPhone(friendPhone) && isUsPhone(input.phone) && normalizePhone(friendPhone) === normalizePhone(input.phone)) {
     errors.friendPhone = "That's your own number. Give us theirs.";
   }
+  if (friendEmail && input.email.trim() && friendEmail.toLowerCase() === input.email.trim().toLowerCase()) {
+    errors.friendEmail = "That's your own email. Give us theirs.";
+  }
   if (!input.consent) errors.consent = "Tick the box to confirm they're happy to hear from Jimmy.";
   return errors;
 }
