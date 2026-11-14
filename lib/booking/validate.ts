@@ -123,7 +123,7 @@ export function parseBookingRequest(
   // In day-only mode the server chooses the slot, so anything the client sends is ignored.
   if (rules.scheduleMode === "day-only") req.slotId = "";
   else if (!rules.slots.some((s) => s.id === req.slotId)) errors.slotId = "Pick a start time.";
-  // A plan renews and has a cancellation fee, so it needs the customer's explicit agreement.
+  // A plan renews automatically and is paid a year up front, so it needs the customer's explicit agreement.
   if (req.planFrequencyId && !req.planTerms) errors.planTerms = PLAN_TERMS_ERROR;
 
   if (Object.keys(errors).length) return { ok: false, errors };

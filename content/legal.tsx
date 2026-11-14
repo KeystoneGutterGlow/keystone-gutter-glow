@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { serviceRadius } from "./area";
 import { legalPaths } from "./legalPaths";
-import { getPlanFrequency, planAnnualTotal, planCancellationFee, planFrequencies, planPrice, planRules } from "./plans";
+import { getPlanFrequency, planAnnualTotal, planFrequencies, planPrice, planRules } from "./plans";
 import { getPackage, rinse } from "./pricing";
 import { referralPaths, referralRules } from "./referral";
 import { site } from "./site";
@@ -15,7 +15,7 @@ import { site } from "./site";
 // relying on them (see the README, "Legal pages"). When a rule changes, change it here, and bump
 // planRules.termsVersion in content/plans.ts if the Recurring Plan Terms change.
 
-export const LEGAL_UPDATED = "November 12, 2026";
+export const LEGAL_UPDATED = "November 14, 2026";
 
 export { legalPaths };
 
@@ -44,7 +44,6 @@ const Contact = () => (
   </>
 );
 
-const fee = `${planRules.cancellationFeePercent}%`;
 const off = `${planRules.discountPercent}%`;
 const [noticeFar, noticeNear] = planRules.noticeHours;
 // A worked example from the real prices: a two-story house every 6 months.
@@ -88,9 +87,8 @@ export const planTerms: LegalDoc = {
           <li>You don&rsquo;t need to be home.</li>
           <li>You pay for the whole year up front, in one payment after the year&rsquo;s first cleaning.</li>
           <li>The plan renews every year until you cancel.</li>
-          <li>Cancelling costs {fee} of the plan&rsquo;s annual total.</li>
           <li>
-            To cancel, <Contact />.
+            You can cancel any time, with no cancellation fee. To cancel, <Contact />.
           </li>
         </ul>
       ),
@@ -173,8 +171,8 @@ export const planTerms: LegalDoc = {
             renewal year is paid the same way: up front, in one payment after that year&rsquo;s first cleaning, at the plan price.
           </p>
           <p>
-            Your price per cleaning stays the same unless we tell you about a change in writing before your renewal year starts. If
-            your price goes up, you can cancel before that year&rsquo;s first cleaning without the cancellation fee.
+            Your price per cleaning stays the same unless we tell you about a change in writing before your renewal year starts, so
+            you can cancel first if you&rsquo;d rather.
           </p>
         </>
       ),
@@ -190,9 +188,7 @@ export const planTerms: LegalDoc = {
             cancellation by text or email, and we won&rsquo;t schedule any more visits.
           </p>
           <p>
-            <strong>Cancelling costs {fee} of your plan&rsquo;s annual total</strong> for the current plan year. For example, on the{" "}
-            {money(exampleAnnual)} plan above, the fee is {money(planCancellationFee(exampleAnnual))}. We&rsquo;ll send you an invoice
-            for it.
+            <strong>There&rsquo;s no cancellation fee.</strong>
           </p>
         </>
       ),
@@ -204,8 +200,8 @@ export const planTerms: LegalDoc = {
       body: (
         <p>
           We may end your plan if we can&rsquo;t safely reach your gutters, if an invoice isn&rsquo;t paid, or if we stop serving your
-          address. If we end it for a reason that isn&rsquo;t your doing, there&rsquo;s no cancellation fee, and we refund any
-          cleanings you&rsquo;ve paid for but haven&rsquo;t received.
+          address. If we end it for a reason that isn&rsquo;t your doing, we refund any cleanings you&rsquo;ve paid for but
+          haven&rsquo;t received.
         </p>
       ),
     },
@@ -329,8 +325,9 @@ export const terms: LegalDoc = {
             hear from us; we use their details to contact them about a cleaning, and to know who to thank, and for nothing else.
           </p>
           <p>
-            <strong>Your thank-you</strong> is your choice of ${referralRules.cashReward} cash or ${referralRules.planCredit} off a
-            recurring plan. If you choose the plan, we&rsquo;ll call you to set it up. A referral only counts when the person you
+            <strong>Your thank-you</strong> is your choice of ${referralRules.cashReward} cash or ${referralRules.planCredit} off the
+            first year of a recurring plan. The ${referralRules.planCredit} applies to that first plan year only, not to renewals, and
+            isn&rsquo;t cash. If you choose the plan, we&rsquo;ll call you to set it up. A referral only counts when the person you
             referred books a cleaning and we&rsquo;ve fully cleaned their house, and your thank-you is paid after that cleaning, not
             before. Nothing is owed for a referral that doesn&rsquo;t become a booking, or before the cleaning is done.
           </p>

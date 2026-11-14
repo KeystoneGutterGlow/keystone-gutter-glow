@@ -33,7 +33,7 @@ export function getPlanFrequency(id: string) {
 /** The plan rules every customer agrees to. Change them here and on the terms page together. */
 export const planRules = {
   /** Bump this whenever the Recurring Plan Terms change, so each agreement records which version it was. */
-  termsVersion: "2026-11-12",
+  termsVersion: "2026-11-14",
   /** Every cleaning on a plan is this much off the regular price */
   discountPercent: 10,
   /** Notice before every visit, in hours */
@@ -42,8 +42,8 @@ export const planRules = {
   paidInFullAfterFirst: true,
   /** Renews every plan year until the customer cancels */
   autoRenews: true,
-  /** Cancelling costs this share of the plan's annual total */
-  cancellationFeePercent: 30,
+  /** Cancelling is free: no cancellation fee (Sam, 2026-11-14) */
+  cancellationFee: false,
 };
 
 /**
@@ -74,7 +74,3 @@ export function planAnnualTotal(pricePerCleaning: number, frequencyId: string): 
   return f ? pricePerCleaning * f.perYear : null;
 }
 
-/** The cancellation fee for a given annual total, rounded to the cent. */
-export function planCancellationFee(annualTotal: number): number {
-  return Math.round(annualTotal * planRules.cancellationFeePercent) / 100;
-}

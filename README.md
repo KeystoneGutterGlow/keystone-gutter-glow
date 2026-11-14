@@ -431,7 +431,7 @@ To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. r
 ## Referral program
 
 **The rules (Sam, 2026-11-12, in `content/referral.ts`):**
-- The person who refers gets their choice of **$25 cash or $50 off a recurring plan**. If they pick the plan, Jimmy calls them to set it up.
+- The person who refers gets their choice of **$25 cash or $50 off the first year of a recurring plan** (first year only, not renewals; 2026-11-14). If they pick the plan, Jimmy calls them to set it up.
 - The person they refer gets **$30 off a cleaning**.
 - To refer someone, the customer fills in a form with their own details and their friend's. Jimmy gets in touch with the friend and sends them their own link to book with $30 off.
 - The thank-you is paid **after the friend's house is fully cleaned**, and a referral only counts when it's an actual booking.
@@ -501,11 +501,11 @@ They're built from `content/` (prices, phone, email, policies), so they can't dr
 - Every cleaning on a plan is 10% off the regular price (since 2026-11-12, terms version 2026-11-12).
 - The year is paid up front: the whole annual total in one payment, after the year's first cleaning.
 - The plan renews every year until cancelled.
-- Cancelling costs 30% of the annual total.
+- No cancellation fee (Sam removed it 2026-11-14, terms version 2026-11-14; before that it was 30% of the annual total).
 - To cancel, call or text (214) 642-5081, or email Jimmy.
 
 **The agreement box** (`components/plan/PlanAgreement.tsx`) appears in two places: in the booking review step whenever a plan is chosen, and in the "Make it recurring" dialog.
-- **What it shows.** The key terms are in plain sight with the customer's own numbers: the plan price against the regular price, the annual total paid up front, and the cancellation fee in dollars. Below them is the checkbox "I have read and agree to the Recurring Plan Terms, and I understand them".
+- **What it shows.** The key terms are in plain sight with the customer's own numbers: the plan price against the regular price, the annual total paid up front, and that there's no fee to cancel. Below them is the checkbox "I have read and agree to the Recurring Plan Terms, and I understand them".
 - **How it behaves.** It's never pre-ticked. Changing the plan, house or rinse clears it.
 - **Enforced on the server.** `/api/bookings` and `/api/plan-requests` refuse a plan without `planTerms: true` (`lib/booking/validate.ts`, `lib/plan/validate.ts`).
 - **The record.** Each plan booking's notes record the plan, its price against the regular price, the year's total and "Agreed to the Recurring Plan Terms (version 2026-11-12)", and Jimmy's notification email says the same. Bookings made before 2026-11-12 say version 2026-11-11, the terms without the discount. When the terms change, bump `planRules.termsVersion`, so every agreement says which version it was.
@@ -513,12 +513,11 @@ They're built from `content/` (prices, phone, email, policies), so they can't dr
 **Not legal advice. Before relying on these pages, have a Pennsylvania attorney review them.** In particular:
 1. **Additions that need Jimmy's OK.** The plan terms include five fairness points that Sam's list didn't cover:
    - A plan year is 12 months from the first cleaning.
-   - Prices stay the same at renewal unless Jimmy gives written notice first, and a price rise lets the customer cancel without the fee.
+   - Prices stay the same at renewal unless Jimmy gives written notice first, so the customer can cancel before it applies.
    - Cancellations are confirmed by text or email.
-   - If Jimmy ends a plan for a reason that isn't the customer's doing, there's no fee and prepaid unused cleanings are refunded.
+   - If Jimmy ends a plan for a reason that isn't the customer's doing, prepaid unused cleanings are refunded.
    - Changes to the terms apply from the next plan year.
 2. **Questions the terms don't answer yet:**
-   - Does the 30% fee apply to someone who cancels before their renewal starts, that is, someone who just doesn't want another year?
    - When someone cancels partway through a year they've paid in full, what happens to the cleanings they've paid for but not received?
    - If someone cancels mid-year, do they keep the 10% on the cleanings they've had, or owe the difference? The terms say nothing, so today they keep it.
 3. **Pennsylvania's Home Improvement Consumer Protection Act (HICPA)** requires many home-service contractors to register with the Attorney General and put specific terms in their contracts. Ask whether gutter cleaning is covered for Jimmy.

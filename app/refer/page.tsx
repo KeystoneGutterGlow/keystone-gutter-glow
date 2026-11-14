@@ -18,7 +18,7 @@ import styles from "./refer.module.css";
 
 export const metadata: Metadata = {
   title: "Refer a neighbor",
-  description: `Refer a neighbor to Keystone Gutter Glow. They get $${referralRules.friendDiscount} off a gutter cleaning, and you get $${referralRules.cashReward} cash or $${referralRules.planCredit} off a recurring plan.`,
+  description: `Refer a neighbor to Keystone Gutter Glow. They get $${referralRules.friendDiscount} off a gutter cleaning, and you get $${referralRules.cashReward} cash or $${referralRules.planCredit} off the first year of a recurring plan.`,
   alternates: { canonical: referralPaths.refer },
 };
 
@@ -46,7 +46,7 @@ const steps = [
   },
   {
     title: "You get your thank-you",
-    body: `$${cashReward} cash, paid after their cleaning. Or $${planCredit} off a recurring plan, and Jimmy calls you to set it up.`,
+    body: `$${cashReward} cash, paid after their cleaning. Or $${planCredit} off the first year of a recurring plan, and Jimmy calls you to set it up.`,
   },
 ];
 
@@ -57,7 +57,7 @@ const faqs = [
   },
   {
     q: `How does the $${planCredit} off a recurring plan work?`,
-    a: `Pick it on the form and Jimmy will call you to set it up. Plans are a cleaning every 3, 4 or 6 months, or once a year.`,
+    a: `Pick it on the form and Jimmy will call you to set it up. It comes off the first year of your plan only, not renewals. Plans are a cleaning every 3, 4 or 6 months, or once a year.`,
   },
   {
     q: `How does the person I refer get their $${friendDiscount} off?`,
@@ -93,8 +93,8 @@ export default function ReferPage() {
             <p className={styles.kicker}>Referrals</p>
             <h1 className={styles.title}>Send a neighbor our way.</h1>
             <p className={styles.intro}>
-              They get ${friendDiscount} off a gutter cleaning. You get ${cashReward} cash, or ${planCredit} off a recurring plan,
-              once we&rsquo;ve cleaned their gutters.
+              They get ${friendDiscount} off a gutter cleaning. You get ${cashReward} cash, or ${planCredit} off the first year of a
+              recurring plan, once we&rsquo;ve cleaned their gutters.
             </p>
             <a href="#refer" className="btn">
               Refer someone
@@ -119,7 +119,8 @@ export default function ReferPage() {
                   {referralRewards.plan.label}
                 </p>
                 <p className={styles.rewardHint}>
-                  Paid after their gutters are cleaned. Pick ${planCredit} off a plan and Jimmy will call you to set it up.
+                  Paid after their gutters are cleaned. The ${planCredit} comes off your plan&rsquo;s first year only; pick it and Jimmy
+                  will call you to set it up.
                 </p>
               </div>
               <div className={styles.rewardItem}>

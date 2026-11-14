@@ -131,7 +131,7 @@ export function ReferForm() {
           )}
           <p>
             {sent.reward === "plan"
-              ? `Jimmy will call you to set up your $${referralRules.planCredit} off a recurring plan. It's yours once ${friend} has booked and we've cleaned their gutters.`
+              ? `Jimmy will call you to set up your $${referralRules.planCredit} off the first year of a recurring plan. It's yours once ${friend} has booked and we've cleaned their gutters.`
               : `Your $${referralRules.cashReward} comes once ${friend} has booked and we've cleaned their gutters.`}
           </p>
           <button type="button" className="btn btn--sky" onClick={another}>
@@ -230,7 +230,7 @@ export function ReferForm() {
         {form.reward === "plan" && (
           <p className={styles.callNote} role="status">
             Jimmy will call you{form.phone ? ` at ${formatPhone(form.phone)}` : ""} to set up your $
-            {referralRules.planCredit} off a recurring plan.
+            {referralRules.planCredit} off the first year of a recurring plan.
           </p>
         )}
         <p className={styles.when}>Either one is paid after they&rsquo;ve booked and we&rsquo;ve cleaned their gutters.</p>

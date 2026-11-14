@@ -205,7 +205,7 @@ export function Done({
         <Link href={referralPaths.refer} className="textlink">
           Send a neighbor our way
         </Link>
-        : they get ${referralRules.friendDiscount} off, and you get ${referralRules.cashReward} cash or ${referralRules.planCredit} off a plan.
+        : they get ${referralRules.friendDiscount} off, and you get ${referralRules.cashReward} cash or ${referralRules.planCredit} off a plan&rsquo;s first year.
       </p>
     </div>
   );

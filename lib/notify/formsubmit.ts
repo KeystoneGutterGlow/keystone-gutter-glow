@@ -96,7 +96,7 @@ export function bookingNotice(
             `${extra.referral.by} chose ${referralRewards[extra.referral.reward].label}, due once this house is fully cleaned.`
           : undefined,
         "Recurring plan": extra.plan
-          ? `${extra.plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): ${planRules.discountPercent}% off every cleaning, the year paid up front after the first cleaning, renews yearly until cancelled, ${planRules.cancellationFeePercent}% of the annual total to cancel.`
+          ? `${extra.plan.label}. Agreed to the Recurring Plan Terms (version ${planRules.termsVersion}): ${planRules.discountPercent}% off every cleaning, the year paid up front after the first cleaning, renews yearly until cancelled, no fee to cancel.`
           : undefined,
         Name: b.customer.name,
         Phone: formatPhone(b.customer.phone),

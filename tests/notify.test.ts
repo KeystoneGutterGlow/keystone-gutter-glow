@@ -147,13 +147,13 @@ describe("a booking's notice", () => {
       "$228 a cleaning (plan price, 10% off $254). Year total $426, invoiced up front after this first cleaning, after the $30 referral discount",
     );
     expect(f.Referral).toBe(
-      `Referred by Pat Neighbor (code ${friendCode}): $30 off this cleaning. Pat Neighbor chose $50 off a recurring plan, due once this house is fully cleaned.`,
+      `Referred by Pat Neighbor (code ${friendCode}): $30 off this cleaning. Pat Neighbor chose $50 off the first year of a recurring plan, due once this house is fully cleaned.`,
     );
     const { rows } = await db.query<{ price_dollars: number; notes: string }>("select price_dollars, notes from public.bookings where ref = $1", [
       body.booking.ref,
     ]);
     expect(rows[0]!.price_dollars).toBe(198);
-    expect(rows[0]!.notes).toMatch(new RegExp(`^Referral ${friendCode}: \\$30 off this cleaning \\(regular \\$228\\), referred by Pat Neighbor, who chose \\$50 off a recurring plan\\.`));
+    expect(rows[0]!.notes).toMatch(new RegExp(`^Referral ${friendCode}: \\$30 off this cleaning \\(regular \\$228\\), referred by Pat Neighbor, who chose \\$50 off the first year of a recurring plan\\.`));
     const used = await db.query<{ booking_ref: string }>("select booking_ref from referrals where code = $1", [friendCode]);
     expect(used.rows[0]!.booking_ref).toBe(body.booking.ref);
 

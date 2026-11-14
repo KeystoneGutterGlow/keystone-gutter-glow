@@ -121,7 +121,7 @@ describe("booking with a referral code", () => {
     expect(status).toBe(201);
     expect(body.booking).toMatchObject({ priceDollars: 139, referralOff: 30, referredBy: "Pat Example" });
     expect(row!.notes).toBe(
-      `Referral ${code}: $30 off this cleaning (regular $169), referred by Pat Example, who chose $50 off a recurring plan. ` +
+      `Referral ${code}: $30 off this cleaning (regular $169), referred by Pat Example, who chose $50 off the first year of a recurring plan. ` +
         "Their thank-you is due once this house is fully cleaned. Gate code 1234",
     );
     expect((await getBookingStore().findReferral(code))?.bookingRef).toBe(body.booking.ref);
@@ -207,7 +207,9 @@ describe("the referral form", () => {
       /^Pat Example referred Sam Neighbor\. Get in touch with Sam and send them their personal link, which takes \$30 off one cleaning: https?:\/\/.+\/referred\/K7PQ2M9X$/,
     );
     expect(f.Code).toMatch(/^K7PQ2M9X \(works for one booking/);
-    expect(f["Thank-you"]).toBe("$50 off a recurring plan for Pat Example. Call them to set it up. Only once Sam has booked and their house is fully cleaned.");
+    expect(f["Thank-you"]).toBe(
+      "$50 off the first year of a recurring plan for Pat Example. Call them to set it up. Only once Sam has booked and their house is fully cleaned.",
+    );
     expect(f["Their phone"]).toBe("(215) 555-0100");
     expect(f["Friend's phone"]).toBe("(215) 555-0111");
     expect(f["Friend's email"]).toBeUndefined();

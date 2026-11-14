@@ -1,7 +1,7 @@
 "use client";
 
 import { legalPaths } from "@/content/legalPaths";
-import { getPlanFrequency, planAnnualTotal, planCancellationFee, planPrice, planRules } from "@/content/plans";
+import { getPlanFrequency, planAnnualTotal, planPrice, planRules } from "@/content/plans";
 import { site } from "@/content/site";
 import styles from "./PlanAgreement.module.css";
 
@@ -81,18 +81,7 @@ export function PlanAgreement({
           It <strong>renews automatically every year until you cancel</strong>.
         </li>
         <li>
-          Cancelling costs <strong>{planRules.cancellationFeePercent}% of the annual total</strong>
-          {annual !== null && (
-            <>
-              {" "}
-              ({from}
-              {money(planCancellationFee(annual))})
-            </>
-          )}
-          .
-        </li>
-        <li>
-          To cancel, call or text <a href={site.phone.href}>{site.phone.display}</a> or email{" "}
+          You can cancel any time, and <strong>there&rsquo;s no fee to cancel</strong>. To cancel, call or text <a href={site.phone.href}>{site.phone.display}</a> or email{" "}
           <a href={`mailto:${site.email}`}>{site.email}</a>.
         </li>
       </ul>

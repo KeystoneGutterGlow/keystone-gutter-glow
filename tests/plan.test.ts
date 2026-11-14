@@ -200,3 +200,27 @@ describe("POST /api/plan-requests", () => {
     expect((await post({ ...valid, company: "spam" })).status).toBe(201);
   });
 });
+
+describe("cancelling a plan", () => {
+  it("is free: no cancellation fee anywhere in the plan terms, the agreement or Jimmy's email", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { createElement, Fragment } = await import("react");
+    const { planTerms } = await import("@/content/legal");
+    const { PlanAgreement } = await import("@/components/plan/PlanAgreement");
+    const terms = renderToStaticMarkup(createElement(Fragment, null, ...planTerms.sections.map((s) => s.body)));
+    const box = renderToStaticMarkup(
+      createElement(PlanAgreement, { id: "t", frequencyId: "6-months", regularPrice: 229, checked: false, onChange: () => {} }),
+    );
+    for (const html of [terms, box]) {
+      expect(html).toMatch(/no (cancellation )?fee/);
+      expect(html).not.toMatch(/% of the (plan&#x27;s |plan’s )?annual total|Cancelling costs/);
+    }
+    expect(planRules).not.toHaveProperty("cancellationFeePercent");
+  });
+
+  it("gives the referrer's $50 off the first year of a plan only", async () => {
+    const { referralRewards, referralOffer } = await import("@/content/referral");
+    expect(referralRewards.plan.label).toBe("$50 off the first year of a recurring plan");
+    expect(referralOffer).toContain("$50 off the first year of a recurring plan");
+  });
+});
