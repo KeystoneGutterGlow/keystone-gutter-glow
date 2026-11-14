@@ -1,565 +1,470 @@
-# Keystone Gutter Glow: website
+# Keystone Gutter Glow: how the website works
 
-The website for keystonegutterglow.com: a scrolling gutter-cleaning site with online booking, and a firewood site with Stripe checkout. **Firewood is switched off for now** (Jimmy, 2026-11-09): no deployment shows any way to it. See "Firewood switched off" below.
+This is for Jimmy, and for Claude when Jimmy asks it to change something. It covers what you can't see by opening the website: how booking works behind the scenes, where every booking and referral is stored, what reaches your inbox, what you have to do by hand, and how to change things like your availability.
 
-- Next.js 16 (App Router) + TypeScript. Plain CSS Modules, no UI library, no Tailwind.
-- Postgres through Supabase for bookings and orders. Stripe's hosted page for payments.
-- The visual system and the reasoning behind it are in [DESIGN.md](DESIGN.md).
+What the site says to customers (prices, copy, the legal pages) is on the site itself. When this file and the code disagree, the code wins. Tell Claude to fix this file.
 
-## Local setup
+## Contents
 
-Needs Node 20.9 or newer.
+1. [The pieces, and where each one lives](#the-pieces-and-where-each-one-lives)
+2. [What you do by hand](#what-you-do-by-hand)
+3. [Changing your availability](#changing-your-availability)
+4. [How booking works](#how-booking-works)
+5. [Recurring plans](#recurring-plans)
+6. [Referrals](#referrals)
+7. [The emails you get](#the-emails-you-get)
+8. [The database](#the-database)
+9. [Changing prices, plans and other rules](#changing-prices-plans-and-other-rules)
+10. [Google Ads](#google-ads)
+11. [Settings on Vercel (environment variables)](#settings-on-vercel-environment-variables)
+12. [Moving to keystonegutterglow.com and showing up on Google](#moving-to-keystonegutterglowcom-and-showing-up-on-google)
+13. [Firewood (switched off)](#firewood-switched-off)
+14. [Working on the code, with or without Claude](#working-on-the-code-with-or-without-claude)
+15. [Still to confirm](#still-to-confirm)
+
+---
+
+## The pieces, and where each one lives
+
+| Piece | What it does | Where you manage it |
+|---|---|---|
+| **This code** (GitHub repo `keystone-gutter-glow`) | The whole website. Built with Next.js (TypeScript). | This folder, and GitHub |
+| **Vercel** | Hosts the site. Every push to the `main` branch goes live in about a minute. Holds the site's settings (environment variables) and runs the daily keep-alive job. | vercel.com, project `keystone-gutter-glow` |
+| **Supabase** | The database: every booking and referral. Postgres, free plan, US East. | In Vercel: Storage, then `keystone-gutter-glow`, then **Open in Supabase**. You sign in through Vercel; there's no separate Supabase password. |
+| **FormSubmit** (formsubmit.co) | Emails you every booking, plan and referral. Free; no account or key. | Nothing to manage. It sends to the address in `content/site.ts`. |
+| **Zoho** | Your mailbox for jimmyesmond@keystonegutterglow.com | zoho.com |
+| **Google Ads** | Ads, plus counting each booking as a conversion | ads.google.com |
+
+The live address is **https://keystone-gutter-glow.vercel.app** for now. keystonegutterglow.com still shows the old site until the domain is moved (see [Moving to keystonegutterglow.com](#moving-to-keystonegutterglowcom-and-showing-up-on-google)).
+
+Nothing is ever charged online. You invoice every customer yourself.
+
+---
+
+## What you do by hand
+
+The website takes bookings and tells you about them. Everything after that is yours. Nothing below happens automatically.
+
+| When | What you do |
+|---|---|
+| A booking arrives | You get a "New booking KGG-XXXXX" email. Reply to it to reach the customer (Reply goes to them). If the email looks odd, open its **Check it's real** link. |
+| Someone asked for an arrival time | It's in the booking's additional information. Get back to them. |
+| Before each visit on a recurring plan | Text or email them **72 hours and again 24 hours** before. The plan terms promise this. |
+| After each cleaning | Send the before-and-after photos and the invoice. A plan's first cleaning gets the invoice **for the whole year**. |
+| A customer cancels or moves a visit | Cancel or move it in Supabase (see [Useful database jobs](#useful-database-jobs)). Free with 24 hours' notice. |
+| Someone isn't happy | You promised to come back within 48 hours of them telling you, at no charge. |
+| Recurring plans | Book the later visits with the customer. Each plan year, invoice the year after its first cleaning. Plans renew every year until the customer cancels. **Nothing tracks renewals for you.** |
+| A referral email arrives | Text or email the friend their personal link (it's in the email). If the referrer chose $50 off a plan, call them. |
+| A referred friend's house is cleaned | Pay the referrer their thank-you ($25 cash, or set up the $50 off their plan's first year), then fill in `thanked_at` on their row in the `referrals` table. |
+| Every week or two | Download a backup of the database (see [Backups](#backups)). The free plan doesn't keep any. |
+
+---
+
+## Changing your availability
+
+All of your availability is in one file, **`content/booking.ts`**, in the `bookingRules` block. Change it, then commit and push to `main`. The site updates in about a minute. The booking form and the server both read this same block, so they always agree.
+
+```ts
+export const bookingRules = {
+  timeZone: "America/New_York",
+  scheduleMode: "day-only",   // customers pick a day, not a time
+  maxJobsPerDay: 4,           // the most bookings on one day
+  slots: [ ... ],             // internal only, see below
+  closedWeekdays: [0],        // days of the week you never work: 0 = Sunday ... 6 = Saturday
+  blackoutDates: [],          // single days off, "YYYY-MM-DD"
+  minLeadDays: 1,             // 1 = the earliest booking is tomorrow
+  horizonDays: 60,            // how far ahead the calendar opens
+};
+```
+
+| You want to | Change |
+|---|---|
+| Take a day off, a holiday or a vacation | Add each date to `blackoutDates`, e.g. `["2026-11-26", "2026-12-24", "2026-12-25"]`. A week away is seven dates. |
+| Stop working a weekday, e.g. only weekends | `closedWeekdays`. Weekends only: `[1, 2, 3, 4, 5]`. Monday to Saturday (today): `[0]`. |
+| Take fewer jobs a day | `maxJobsPerDay: 3`. Nothing else is needed. |
+| Take more than 4 a day | Set `maxJobsPerDay`, **and** raise the database's own limit in Supabase's SQL editor: `update booking_settings set max_jobs_per_day = 5;`. The database uses whichever of the two is lower. It can't go above the number of `slots` (5) without adding more slots. |
+| Need more notice before a job | `minLeadDays: 2` means the earliest booking is the day after tomorrow. |
+| Open the calendar further ahead | `horizonDays: 90` |
+
+**Things to know**
+- **Existing bookings stay put.** Blocking a day doesn't cancel bookings already on it. Check Supabase for that day, and contact those customers.
+- **The `slots` list is internal.** Customers only pick a day. The server files each job under the first free slot so the database can stop double booking. Leave the slots alone, unless you want more than 5 jobs a day.
+- **"Today" is Bucks County time,** whatever time zone the server or the customer is in.
+
+**Asking Claude to do it.** Something like this works:
+
+> "Block off November 26 and December 22 to January 2 in the booking calendar, then push it."
+> "From now on I only work Saturdays. Change the booking rules and push."
+> "Make it 3 jobs a day."
+
+Claude should edit `bookingRules` in `content/booking.ts`, run `npm test`, then commit and push to `main`. For more than 4 jobs a day, it should also give you the SQL line to run in Supabase.
+
+---
+
+## How booking works
+
+```
+Booking form (browser)                    Server (Vercel)                         Database (Supabase)
+--------------------------------          ---------------------------------       ----------------------------
+1. House, rinse, plan (optional)
+2. Picks a day  ------------------------> /api/availability: which days are open
+3. Address and contact
+4. Review, then Book  ------------------> /api/bookings: checks everything again,
+                                          works out the price itself      ------> create_booking(): one atomic
+                                                                                   step, refuses a full day
+5. Sends your email (FormSubmit) <------- hands back the email to send
+6. /booking-confirmed (Google Ads counts the booking here)
+```
+
+**What the server checks, whatever the browser sends**
+- **The address.** It must be in Pennsylvania, **and its ZIP must be on the service-area list.** That's the 116 ZIPs inside 20 miles of Jamison, in `content/area.ts`. Anything else is refused: New Jersey, Pittsburgh, even a ZIP just past the edge. The ZIP check on the home page uses the same list.
+- **The day.** Not in the past, not today (unless you change `minLeadDays`), not past the horizon, not a closed weekday or blackout date, and not full.
+- **The price.** The server works it out from `content/pricing.ts`, the plan discount and any referral. It ignores any price the browser sends. See `content/quote.ts`.
+- **A plan needs agreement.** A plan booking needs the "I agree to the Recurring Plan Terms" box ticked. The version of the terms they agreed to is saved with the booking.
+- **Spam.** A hidden "honeypot" field catches bots, and each address can only make so many requests a minute.
+
+**Two people can't book the last spot**
+- The database itself enforces the daily limit, with a per-day lock and a one-booking-per-slot rule. So if two people press Book for the last spot at the same moment, one gets it and the other is sent back to pick another day.
+- **Double taps and retries.** Each attempt carries an "idempotency key", so a double tap or a dropped connection gives back the same booking instead of making a second one. The key only stays the same while the booking stays the same: if the customer changes the day or anything else, the next try is a new booking attempt.
+
+**After booking**
+- The customer lands on `/booking-confirmed`. It shows their reference number, day, address and price, plus "Add to my calendar". It also has "Make it recurring" (see [Recurring plans](#recurring-plans)).
+- The confirmation lives only in that browser tab. **No email goes to the customer.** The site doesn't promise one.
+- **If your email fails to send** (FormSubmit down, the customer goes offline), the booking is still saved. The customer is told you haven't been notified yet, and gets "Try sending again" and your number.
+
+**Prices** (`content/pricing.ts`): one-story $169, townhome $199, two-story $229, "bigger than that" from $249, and the rinse +$25. "From" prices are confirmed with the customer before the visit. Prices are whole dollars, because the database stores whole dollars.
+
+---
+
+## Recurring plans
+
+**The rules** (`planRules` in `content/plans.ts`; the full wording is on `/recurring-plan-terms`):
+- Every 3, 4 or 6 months, or once a year. Every 6 months is recommended.
+- **10% off every cleaning**, rounded down to the whole dollar so it's never less than 10%. Two-story: $229 becomes $206.
+- **The whole year is paid up front**, in one invoice after the year's first cleaning. For a two-story every 6 months, that's $412.
+- **It renews every year until the customer cancels.** They cancel by call, text or email.
+- **There's no cancellation fee.**
+- **No refunds.** Payments already made aren't refunded, including for cleanings they haven't had yet.
+- 72- and 24-hour notice before every visit. They don't need to be home.
+- If **you** end a plan for a reason that isn't the customer's doing, you refund the cleanings they've paid for but not had.
+
+**Two ways a plan starts**
+1. **While booking.** The customer picks a plan on the first step and ticks the agreement. The booking is saved at the plan price.
+2. **"Make it recurring" on the confirmation page, after a one-time booking.** The plan starts with the cleaning they just booked.
+   - **The booking changes.** The server moves that booking to the plan price and adds the plan to its notes. It keeps any referral discount.
+   - **You get an email.** It's "Recurring plan added to booking KGG-…", showing the old price and the new one.
+   - **Safeguards:**
+     - It only works on a booking still to come, made with the same email.
+     - Sending it twice changes nothing the second time.
+     - A booking already on a different plan is refused.
+   - **If the database can't be reached** at that moment, the request still reaches you by email, and you change the booking's price by hand.
+   - Code: `lib/plan/attach.ts`.
+
+**How to spot a plan booking.** Its notes start with "Recurring plan: Every 6 months, 10% off ($206 a cleaning instead of $229; $412 for the year, …). Agreed to the Recurring Plan Terms (version 2026-11-14.2)."
+
+**Terms versions.**
+- `2026-11-11`: before the 10% discount.
+- `2026-11-12`: with the discount and a 30% cancellation fee.
+- `2026-11-14`: no fee.
+- `2026-11-14.2`: no fee, and no refunds on cancelling.
+
+Don't charge anyone a cancellation fee, whatever version they agreed to. Whenever the plan terms change, bump `planRules.termsVersion`.
+
+---
+
+## Referrals
+
+**The rules** (`content/referral.ts`):
+- The person who refers gets **$25 cash**, or **$50 off the first year of a recurring plan** (first year only, not renewals). Their choice.
+- The friend gets **$30 off a cleaning.**
+- The thank-you is paid **only after the friend has booked and their house is fully cleaned**. A referral that never becomes a booking is worth nothing.
+
+**How it flows**
+1. **The customer fills in `/refer`.** They give their name and phone, their thank-you choice, and the friend's name and phone or email. They tick a box saying the friend is happy to hear from you.
+2. **The server saves it** in the `referrals` table with a **personal 8-character code**, like `K7PQ2M9X`. If the same person sends the same friend again before that code is used, it reuses the same row and code instead of making a second one.
+3. **You get a "New referral" email.** It has the friend's details, their personal link (`…/referred/K7PQ2M9X`), what you'll owe and when, and a **Check it's real** link. The person who referred never sees the code.
+4. **You send the friend their link.**
+5. **The friend books on that page.** The $30 comes off. If they choose a plan, the $30 comes off the first cleaning, and so off the first year's payment.
+
+**What stops abuse** (checked by the server, and the database for the last one):
+- **The code has to exist.** Codes can't be guessed: there are about 650 billion.
+- **The booking must use the friend's details.** It has to use the phone number or email the referrer gave for the friend. A forwarded link doesn't work for anyone else.
+- **The referrer can't use it.** The referrer's own phone or email is refused, and the referral form won't take the referrer's own phone or email as the friend's.
+- **It works once.** The database uses the code up in the same step as the booking, so two tries at once still give one booking. A booking that fails (full day) leaves the code unused.
+- **Who referred them** comes from the database, never from anything the customer types.
+
+**Your referral list is the `referrals` table** in Supabase. `booking_ref` fills in when the friend books, and you fill in `thanked_at` when you've paid. See [Useful database jobs](#useful-database-jobs) for the "who do I owe?" query.
+
+**What a link page can show**
+- **Real and unused:** the $30-off prices and the booking form.
+- **Used:** "This referral link has been used."
+- **Unknown or mistyped:** "That referral link isn't valid."
+- **Plain `/referred` with no code:** it explains that the discount comes with a personal link.
+
+These pages are hidden from Google.
+
+---
+
+## The emails you get
+
+Every email comes from FormSubmit to jimmyesmond@keystonegutterglow.com. It's sent from the customer's browser right after the server accepts the request. The server never emails anyone itself.
+
+| Subject | When | What's in it |
+|---|---|---|
+| New booking KGG-XXXXX: date | Someone booked | Reference, day, address, house, price (and plan or referral details), name, phone, email, notes, **Check it's real** link |
+| Recurring plan added to booking KGG-XXXXX | "Make it recurring" after booking | The plan, the booking's old and new price, the year's total, the Check link |
+| Recurring plan request | The rare case the booking couldn't be updated | The plan and the customer's details. Change the booking by hand. |
+| New referral: friend, from referrer | Someone used `/refer` | Both people's details, the friend's personal link and code, the thank-you owed, the Check link |
+
+**Reply** goes straight to the customer. A referral without an email address has no Reply address.
+
+**Is an email real?** Anyone who knows your address could send you something that looks like a booking. Every real email has a **Check it's real** link.
+- **Real email:** the link opens a page showing that booking or referral straight from the database.
+- **Fake email:** a made-up email can't have a working link. Its link says "This link wasn't made by the website."
+- **How it works:** the links are signed with a secret only the server knows. That's `NOTICE_SECRET` if it's set, otherwise one made from the Supabase server key. If either one changes, links in older emails stop working; nothing else is affected.
+- **Don't forward these emails.** The pages are hidden from Google, but they show customer details to anyone with the link.
+
+**If the emails stop**
+1. Check spam.
+2. Check the `bookings` table. Bookings always save, emailed or not.
+3. **Send yourself a test:**
+   1. In Vercel, under Settings then Environment Variables, set `NOTIFY_TEST_ENABLED` to `true` for Production.
+   2. Redeploy.
+   3. Open `/notify-test` and press "Send a test message".
+   4. Set the variable back to off and redeploy. The page is a 404 while it's off, so strangers can't use it to fill your inbox.
+4. **After moving to a new domain**, FormSubmit sees a new site and sends one more "Activate Form" email. Click it.
+
+**Switching emails off.** Remove `FORMSUBMIT_ENABLED` in Vercel and redeploy. Bookings keep working; you just aren't told. FormSubmit never runs on preview deployments or the demo store, so test bookings never reach you.
+
+---
+
+## The database
+
+Supabase (Postgres). Open it from Vercel: Storage, then `keystone-gutter-glow`, then **Open in Supabase**. **Table Editor** is a spreadsheet view; **SQL Editor** runs queries.
+
+### Tables
+
+**`bookings`**, one row per booking:
+
+| Column | Meaning |
+|---|---|
+| `ref` | The reference the customer sees, e.g. `KGG-7F3K2` |
+| `service_date` | The day booked |
+| `slot_id` | Internal slot (`08:00` … `16:00`). Customers never see it. It isn't an arrival time. |
+| `package_id` | `one-story`, `townhome`, `two-story` or `large` |
+| `rinse` | Whether they added the rinse |
+| `price_dollars` | The price of **this** cleaning, after any plan or referral discount |
+| `price_is_estimate` | `true` for "from" prices, to confirm before the visit |
+| `customer_name`, `customer_email`, `customer_phone` | Contact (phone is 10 digits, no punctuation) |
+| `street`, `city`, `zip` | Where the gutters are |
+| `notes` | Their additional information, plus the plan line and referral line when there are any |
+| `status` | `confirmed` or `cancelled`. A cancelled booking frees its spot. |
+| `idempotency_key`, `id`, `created_at` | Internal |
+
+**`referrals`**, one row per referral: `code`, `referrer_name`, `referrer_phone`, `referrer_email`, `reward` (`cash` or `plan`), `friend_name`, `friend_phone`, `friend_email`, `friend_town`, `notes`, `created_at`. Then:
+- `booking_ref`, `booked_at`: filled in when the friend books.
+- `thanked_at`: **you** fill this in when you've paid the thank-you.
+
+**`booking_settings`**, one row: `max_jobs_per_day`, the database's own daily limit (4).
+
+**`firewood_orders`**: for the switched-off firewood shop. Empty.
+
+### What protects it
+- **Row-level security** is on for every table. The public key can't read or write anything.
+- **Only the website's server key** (`SUPABASE_SERVICE_ROLE_KEY`, in Vercel) can. Never share it or put it in the website's browser code.
+- **`create_booking()`** is the one database function the site books through. It enforces the daily limit and the one-booking-per-slot rule, and uses up referral codes.
+- **A trigger** re-checks the daily limit even for rows added by hand.
+
+### Useful database jobs
+
+Paste these into the **SQL Editor** and press Run. Change the quoted values first.
+
+```sql
+-- Upcoming bookings
+select ref, service_date, customer_name, customer_phone, city, price_dollars, notes
+from bookings where status = 'confirmed' and service_date >= current_date
+order by service_date;
+
+-- Cancel a booking (frees the spot)
+update bookings set status = 'cancelled' where ref = 'KGG-XXXXX';
+
+-- Move a booking to another day. If that day already has a booking in the same slot, also
+-- change slot_id to a free one: '08:00', '10:00', '12:00', '14:00' or '16:00'.
+update bookings set service_date = '2026-12-01' where ref = 'KGG-XXXXX';
+
+-- Everyone on a recurring plan
+select ref, service_date, customer_name, customer_phone, notes
+from bookings where status = 'confirmed' and notes like '%Recurring plan:%'
+order by service_date;
+
+-- Referral thank-yous you owe (friend booked, cleaning date has passed, not paid yet)
+select r.referrer_name, r.referrer_phone, r.reward, r.friend_name, b.ref, b.service_date
+from referrals r join bookings b on b.ref = r.booking_ref
+where r.thanked_at is null and b.status = 'confirmed' and b.service_date < current_date
+order by b.service_date;
+
+-- Mark a thank-you as paid
+update referrals set thanked_at = now() where code = 'K7PQ2M9X';
+
+-- Let a friend use their link again (say their booking was cancelled)
+update referrals set booking_ref = null, booked_at = null where code = 'K7PQ2M9X';
+```
+
+The database won't let a move go over the daily limit: the update is refused with "day_full".
+
+### Free plan: pausing and backups
+
+**Pausing.** Supabase pauses a free database after a week with no activity. A paused database means nobody can book: the booking form shows "call us".
+- **What stops it:** Vercel runs `/api/keepalive` every day at 13:00 UTC (`vercel.json`). It does one small read, which counts as activity. You can see it in Vercel under Settings, then Cron Jobs.
+- **If it pauses anyway:** open the project in Supabase and press **Restore**.
+
+### Backups
+
+The free plan keeps **no backups**. If a row is deleted or the project is lost, it's gone. Two options:
+- **Free:** every week or two, in Table Editor, open `bookings` and use **Export to CSV**. Do the same for `referrals`. Keep the files somewhere safe.
+- **Supabase Pro ($25/month):** daily backups, and it never pauses.
+
+### Changing the database's structure
+
+Structure changes live in `db/migrations/` as numbered SQL files. All four have been run on the live database: `001` bookings, `002` hardening, `003` firewood orders, `004` referrals.
+- **A new change** gets a new numbered file, written so it's safe to run twice.
+- **Run it** in Supabase's SQL Editor **before** pushing code that needs it.
+- **Tests** run every migration against a real in-memory Postgres (`tests/sql.test.ts`).
+
+---
+
+## Changing prices, plans and other rules
+
+Everything a customer sees comes from the `content/` folder. Change it there and every page, the server's checks and the search markup follow.
+
+| File | What's in it |
+|---|---|
+| `content/pricing.ts` | House types, prices, the rinse. **The server charges from this.** |
+| `content/plans.ts` | Plan frequencies and `planRules`: discount, notice hours, no fee, no refunds, terms version |
+| `content/referral.ts` | Referral amounts: $30, $25, $50 |
+| `content/booking.ts` | Availability (see [Changing your availability](#changing-your-availability)), and the "additional information" box wording |
+| `content/area.ts` | The service-area ZIP list, the 20-mile circle, and the towns |
+| `content/site.ts` | Business name, phone, email, policies (24-hour reschedule, 48-hour come-back, late-cancel fee), the "Insured" flag |
+| `content/legal.tsx` | Terms of Service, Privacy Policy, Recurring Plan Terms |
+| `content/faqs.ts` | FAQ (also feeds Google's FAQ markup) |
+| `content/owner.ts`, `services.ts`, `machine.ts` | Your section, what a cleaning includes, the vacuum tour |
+
+**Rules worth knowing before changing anything**
+- **Plan terms.** If you change anything in `planRules` or the plan terms, bump `planRules.termsVersion` and update `content/legal.tsx`, so every new agreement records the right version.
+- **Prices.** Prices are whole dollars. The plan price is rounded down.
+- **Service area.** Widening it means rebuilding the ZIP list in `content/area.ts`. Ask Claude; the file says how it was built (Census ZIP centers within the radius, Pennsylvania only).
+- **Your home address** is never in the code or on the site. Only a center rounded to about half a mile is.
+
+---
+
+## Google Ads
+
+- **The tag.** Google tag container `GTM-MVK64PHQ` loads on every page of the live site, and only there: never on previews or local runs (`lib/ads.ts`, `app/layout.tsx`). It fires your Google Ads tag (account `18566097431`). That was confirmed working on 2026-11-14.
+- **Conversions.** Each booking counts once as a **Purchase** conversion (`AW-18566097431/YzNNCIGmpLUdEJfUgJVF`). It's worth $1, with the booking reference as the transaction ID. It fires on `/booking-confirmed`, once per booking, and never when that page is opened without a booking.
+- **Checking it.** In Google Ads, under Goals then Conversions, the first real booking should appear within a few hours. Don't make a test booking on the live site: it writes to the real database and emails you.
+
+---
+
+## Settings on Vercel (environment variables)
+
+In Vercel: the project, then **Settings**, then **Environment Variables**. After changing one, **redeploy** (Deployments, then the latest one's "⋯" menu, then Redeploy).
+
+| Variable | What it does | Live site now |
+|---|---|---|
+| `BOOKING_STORE` | `supabase` = real bookings | `supabase` |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | The database connection (added by Vercel's Supabase integration) | set |
+| `FORMSUBMIT_ENABLED` | `true` = email you every booking, plan and referral | `true` |
+| `NOTIFY_TEST_ENABLED` | `true` = `/notify-test` works. Only while testing. | off |
+| `NOTICE_SECRET` | Optional secret for the Check it's real links | not set (uses the Supabase key) |
+| `CRON_SECRET` | Optional. Only Vercel's scheduler can run the keep-alive. | not set |
+| `SITE_URL` | The site's real address, once the domain moves | not set |
+| `ALLOW_INDEXING` | `true` = Google may list the site | **not set: the site is hidden from Google** |
+| `GOOGLE_SITE_VERIFICATION` | Search Console's HTML-tag token | not set |
+| `FIREWOOD_PREVIEW`, `SITE_MODE`, `STRIPE_*`, `RESEND_API_KEY` | Firewood only (switched off) | |
+| `BOOKING_DEMO_MODE`, `BOOKING_DEMO_SEED` | Demo store for preview copies. Never on the real site. | |
+
+All of them are explained in `.env.example`.
+
+---
+
+## Moving to keystonegutterglow.com and showing up on Google
+
+Right now every page tells Google not to list it (`noindex`), and keystonegutterglow.com still shows the old GitHub Pages site. To switch over:
+
+1. **Point the domain at Vercel.** In Vercel, open Settings, then Domains. Add `keystonegutterglow.com`, then add the DNS records Vercel shows at the domain registrar. Remove the old GitHub Pages records. Keep the Zoho email records.
+2. **Set `SITE_URL`.** Once Vercel says the domain is valid, set `SITE_URL=https://keystonegutterglow.com` on Production. From then on the `.vercel.app` address redirects to the domain. Email links (Check it's real, referral links) use the new address too; old links keep working through the redirect.
+3. **Let Google list the site.** Set `ALLOW_INDEXING=true` on Production, then redeploy.
+4. **Reactivate FormSubmit.** It sends one more "Activate Form" email for the new address. Click it.
+5. **Google Search Console** (your Google account): add the domain, verify it with the DNS record it gives, and submit `https://keystonegutterglow.com/sitemap.xml`.
+6. **Google Business Profile.** Set it up as a service-area business, so your address stays hidden. Add Bucks, Montgomery and Philadelphia Counties, and not New Jersey. Ask real customers for reviews.
+
+---
+
+## Firewood (switched off)
+
+There's a complete firewood shop in the code, with Stripe card payment, an order page and an order database table. It's been **switched off since 2026-11-09**: `firewoodSwitch.off` is `true` in `content/season.ts`, so every firewood page is a 404 and checkout is closed.
+
+Before turning it back on, all of these are needed:
+- a Stripe account in your name;
+- a decision on how you hear about paid orders (FormSubmit can't send those, because they're confirmed by Stripe, not a browser);
+- every price and rule in `content/firewood.ts` confirmed;
+- sales tax sorted out.
+
+The code refuses real payments until all of that is true (`lib/firewood/gate.ts`). Ask Claude to walk you through it when the time comes.
+
+---
+
+## Working on the code, with or without Claude
+
+**Running it on your computer** (needs Node 20.9 or newer):
 
 ```bash
 npm install
-npm run dev            # http://localhost:3000
-```
-
-Nothing else is required. In development, bookings and orders go to an in-memory demo store seeded with sample bookings. (`/firewood` is visible in development too, except while firewood is switched off, as it is now.) Copy `.env.example` to `.env.local` to change any of that.
-
-## Tests
-
-```bash
-npm test               # everything below, no server or credentials needed
+npm run dev        # http://localhost:3000, with a demo calendar and fake bookings
+npm test           # about 200 checks, no internet or passwords needed
 npm run typecheck
 npm run build
 ```
 
-- `tests/booking-rules.test.ts`: dates, availability, validation
-- `tests/booking-api.test.ts`: the real API routes: simultaneous requests, the daily cap, retries, production safety
-- `tests/sql.test.ts`: every migration on PGlite (real Postgres in WASM), plus the Supabase adapters run against those tables
-- `tests/firewood.test.ts`: prices, order validation, the payment gate, the seasonal switch, and the off switch
-- `tests/notify.test.ts`: FormSubmit notices. A booking through the real migrations hands back a notice with every detail, addressed to Jimmy's email. The fifth booking of a day is refused with no notice. Notices are off unless switched on, and never on previews or the demo store. The server never contacts FormSubmit. The browser only reports success when FormSubmit confirms.
-- `tests/referral.test.ts`: the referral program: codes, $30 off with a real code (alone and with a plan), a used or unknown code refused, the referral form's checks, and Jimmy's referral email. `tests/sql.test.ts` checks the referrals table and the code handling in `create_booking()` on real Postgres, and `tests/notify.test.ts` runs a referral from form to booking on it.
-- `tests/plan.test.ts`: recurring plans, including that a plan can't be booked or requested without the Recurring Plan Terms box ticked, and that the agreed version is recorded
-- `tests/ads.test.ts`: the Google tag's IDs and setup script, production only, and the Purchase conversion firing once per booking with the booking number
-- `tests/stripe.test.ts`: checkout, webhook signatures, duplicate events. Signature checks use Stripe's real code. Session creation is a stand-in, so no network or key is needed.
+The local copy never touches the real database or your inbox. It uses an in-memory demo store, and emails are off.
 
-`npm run test:booking` runs another 15 checks over HTTP against a running dev server (`BASE=http://localhost:3000 npm run test:booking`).
+**Putting a change live:** commit, then push to `main`. Vercel builds it and it's live in about a minute. If the build fails, the old version stays up.
 
-**Not covered by these tests:** a live Supabase project, a real Stripe test payment, and the per-day lock under two real database connections (PGlite has only one). The launch checklist below includes all three.
-
-## Environment variables
-
-All are documented in [.env.example](.env.example). All are server-side. Static pages read them at build time, so redeploy after changing one on Vercel.
-
-| Variable | What it does | Default |
-|---|---|---|
-| `BOOKING_STORE` | `supabase` for real data. Anything else is the demo store. | demo store |
-| `BOOKING_DEMO_MODE` | `true` lets a production build use the demo store. For the mockup only. | off |
-| `BOOKING_DEMO_SEED` | `off` starts the demo store empty. | seeded |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Database connection. Never prefix with `NEXT_PUBLIC_`. | none |
-| `SITE_MODE` | `gutter` or `firewood`. What `/` shows. | `gutter` |
-| `FIREWOOD_PREVIEW` | `true` shows `/firewood` and the mode switch without changing `/`. Ignored, like `SITE_MODE=firewood`, while firewood is switched off in `content/season.ts`. | off |
-| `STRIPE_SECRET_KEY` | Stripe key. Test key until launch. | checkout off |
-| `STRIPE_WEBHOOK_SECRET` | Verifies webhooks. Checkout stays closed without it. | checkout off |
-| `STRIPE_ALLOW_LIVE_PAYMENTS` | One of four requirements for real payments. Leave unset. | off |
-| `FORMSUBMIT_ENABLED` | `true` emails Jimmy every booking and plan request through FormSubmit. Production only; ignored on previews and the demo store. Read "Activating and testing" first. | off |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Firewood order emails only (Stripe webhook). Dormant. | none |
-| `SITE_URL` | The canonical address: canonical tags, sitemap, robots.txt, social cards, JSON-LD and Stripe's return page all use it. Once set on Production, the old `*.vercel.app` production address redirects to it. | Vercel production domain |
-| `ALLOW_INDEXING` | `true` lets search engines index the site. Unset means `noindex` everywhere. | noindex |
-| `GOOGLE_SITE_VERIFICATION` | The token from Search Console's "HTML tag" method, added as a meta tag on every page. | none |
-
-## Deploying
-
-The site is set up for Vercel: import the repo, no build settings needed (`vercel.json` pins the Next.js preset). Every push to `main` deploys to production. Other branches get a preview URL.
-
-- **Set `BOOKING_DEMO_MODE=true` on the mockup project before merging this branch.** Production builds no longer fall back to demo data on their own. Without Supabase or that variable, the booking section shows a call-us message and takes no bookings. That's deliberate: a real customer's booking should never land in memory and vanish.
-- **Indexing is off by default.** Every page is `noindex`, responses carry `X-Robots-Tag`, and `robots.txt` disallows everything, so previews can't compete with the live site in Google. When the real domain points here, set `ALLOW_INDEXING=true` and redeploy.
-- **Links follow the deployment.** Canonical, Open Graph, sitemap and schema URLs all come from one value, `publicUrl` in `lib/env.ts`: `SITE_URL` if set, otherwise Vercel's production domain. Previews use the production address too, so a preview is never treated as the canonical site. No page hard-codes an address.
-
-## Where to edit business content
-
-All business content lives in `content/`. The pages, the APIs and the SEO markup all read from it.
-
-| File | What's in it |
-|---|---|
-| `content/site.ts` | Name, phone, email, policies (reschedule window, return visit, late-cancel fee) |
-| `content/pricing.ts` | House types, prices, rinse add-on. **The server computes totals from this.** |
-| `content/machine.ts` | "Why choose Keystone Gutter Glow": the vacuum tour's chapters and the machine's specs. |
-| `content/booking.ts` | Scheduling mode, daily cap, start times, closed weekdays, blackout dates, lead time, horizon |
-| `content/firewood.ts` | Firewood sizes, prices, charges, delivery rules, policies, each with a confirmation status |
-| `content/season.ts` | The gutter/firewood switch, and `firewoodSwitch`, the off switch for firewood |
-| `content/services.ts` | The four parts of a cleaning (matched to the drawing callouts) |
-| `content/faqs.ts` | FAQ. Also generates the FAQPage schema. |
-| `content/area.ts` | Towns, ZIPs (for the "do we come to you?" check), map coordinates |
-| `content/owner.ts` | Jimmy's section. Every field is a `draft: true` placeholder until his bio arrives. |
-| `content/referral.ts` | The referral program's rules and amounts ($25 cash or $50 off a plan, $30 off for the friend) and its two pages, `/refer` and `/referred`. |
-| `content/nav.ts` | The sections in each left rail |
-
-Commit the change and push. Vercel redeploys on its own.
-
-## Seasonal mode
-
-One variable decides which business the site shows:
-
-| `SITE_MODE` | `/` | Other pages |
-|---|---|---|
-| `gutter` (default) | Gutter site | `/firewood` is a 404 on production. It's visible in dev and on Vercel previews, or anywhere with `FIREWOOD_PREVIEW=true`. |
-| `firewood` | Firewood site | Gutter site at `/gutters`, with the booking flow intact. The mode switch is shown. |
-
-To change season: set `SITE_MODE` in Vercel and redeploy. Nothing changes on its own, and no date triggers it.
-
-**Firewood switched off (2026-11-09).** Jimmy doesn't want any way to reach the firewood site for now, so `firewoodSwitch.off` is `true` in `content/season.ts`. That one line overrides everything above, on every deployment, preview and dev server:
-- There's no hero button, no phone-menu, rail or footer link, and no mode switch.
-- `/firewood`, `/firewood/order` and `/firewood/opengraph-image` are real 404s. `app/firewood/layout.tsx` does the order page's check, above its loading screen, so the status is 404 rather than 200.
-- The sitemap lists only `/`, `/gutters` redirects to `/`, and the search markup and share-image text don't mention firewood.
-- Checkout stays shut (`firewood_hidden`).
-
-All the firewood code, content and tests stay. The tests run the firewood logic switched on, and separately check that the off switch hides it. To bring firewood back, set `off: false` and redeploy. `FIREWOOD_PREVIEW=true` is still set on Production, so firewood then shows there again with `/` staying the gutter site. To keep it hidden after that, remove the variable.
-
-## Why choose Keystone Gutter Glow (the vacuum tour)
-
-The section after "Vacuum vs. scoop" (`components/machine/`) is a scroll-driven tour of Jimmy's machine, a Cyclone Classic Pro with the 40 ft carbon clamping pole kit. It follows one leaf from the gutter to the tank:
-
-- **Chapters are plain text** in `content/machine.ts`. Every figure there (3 × 1,200 W, 342.6 CFM, 95 in water lift, 16 gal stainless tank, 16 ft × 2 in hose, ten 4 ft carbon sections, 135° bend, 38 in, 52 lb) is from the manufacturer's published spec sheet, and the page says so under the tour.
-- **The drawing** (`MachineScene.tsx`) is one picture of the whole setup at true scale (50 units = 1 ft). `MachineTour.tsx` moves a camera over it by changing the SVG's viewBox as each chapter reaches the middle of the screen. `CAMERA`, `LEAF_AT` and `LABELS` in that file hold one entry per chapter, in chapter order, so adding a chapter means adding to all three.
-- **Phones and tablets** pin the drawing and a caption to the screen together while you scroll a track behind them. Each chapter swaps into the caption in place, so no text slides under the drawing. The script sizes the caption to the longest chapter and gives the drawing the rest. On short phones (under 640px tall) the figure row and the ladder line are hidden, since the numbers are already in the text. With scripts off, every chapter shows in a plain column.
-- **The drawing is server-rendered** and passed into the client component, so none of its code ships to the browser.
-- **Reduced motion:** the camera cuts between chapters instead of gliding, and the fans, exhaust, spin and debris stop.
-- The hero keeps its own unbranded drawing. The stand-in rig photo in "Vacuum vs. scoop" was removed, because it showed a different machine. A real photo of Jimmy's vacuum can go in later.
-
-## Booking
+**Where things are**
 
 ```
-BookingApp (client)  ->  /api/availability  (GET: month summary, one day's times, next opening)
-                     ->  /api/bookings      (POST: validate, re-check, create)
-                              |
-                       lib/booking/service.ts     rules in availability.ts (pure functions)
-                              |
-                       lib/booking/store/          BookingStore interface
-                         memory.ts   (demo and development only)
-                         supabase.ts (Postgres via PostgREST; no client library)
+content/      everything the business decides: prices, rules, text, the legal pages
+app/          pages and API routes (app/api/*: availability, bookings, plan-requests, referrals, keepalive)
+components/   the pieces of each page (booking form, plan dialog, referral form, ...)
+lib/booking/  booking logic: dates, availability rules, validation, the database stores
+lib/notify/   the emails to you (formsubmit.ts) and the Check it's real links (check.ts)
+lib/plan/     adding a plan to an existing booking
+lib/referral/ referral codes and the referral form's checks
+db/migrations SQL for the database's structure
+tests/        the automated checks
+DESIGN.md     why the site looks the way it does
 ```
 
-The flow: the customer picks a day. On submit, the server validates everything again, re-checks the date, computes the price itself, files the job under a free internal slot, and asks the store to create the booking atomically. If the day filled up in the meantime, the API returns `409` with fresh availability, and the UI sends the customer back to the calendar.
-
-After a successful booking the form moves to `/booking-confirmed` (see "Google Ads").
-
-**Double booking is blocked in storage, not in the UI.**
-- A partial unique index on `(service_date, slot_id)` allows one confirmed booking per time.
-- A trigger takes a per-day advisory lock and refuses a booking over the cap, even for a raw `INSERT`.
-- A unique idempotency key means a double tap or dropped connection returns the original booking instead of a second one, or a false "slot taken".
-- `create_booking()` returns `{ ok, reason }`. Row-level security is on, and the anon role has no access.
-
-### Scheduling rules
-
-Bookings run Monday through Saturday. Customers pick a day, not a time. The form explains that a precise arrival time isn't normally given, and anyone who needs one asks in the "Additional information we should know" box, which reaches Jimmy with the booking.
-
-The cap is still four jobs a day. The agreement's Addendum A1 asks for three, and that stays unchanged until Jimmy confirms it. To change it, edit one line in `content/booking.ts`:
-
-```ts
-maxJobsPerDay: 3,
-```
-
-No database change is needed: the app sends its cap with each booking, and the database enforces the lower of that and `booking_settings.max_jobs_per_day`. To go above four, raise that database value too.
-
-### Recurring plans
-
-There are two ways in, both offering Jimmy's four frequencies with every 6 months recommended (`content/plans.ts`). Nothing is charged online either way; Jimmy invoices.
-
-**Plans are 10% off (Sam, 2026-11-12).** Every cleaning on a plan, the first included, costs `planPrice(regular)`: 10% off the regular price (house plus rinse), rounded down to the whole dollar. Rounding down keeps the saving at 10% or a little more, so the "10% off" ads are always true, and the booking database stores whole dollars. One-story $169 → $152, townhome $199 → $179, two-story $229 → $206, bigger houses from $249 → from $224. The server works the price out itself, so a plan booking is saved at the plan price and Jimmy's email shows both prices and the year's total. To change the discount, change `planRules.discountPercent` and bump `planRules.termsVersion`; every price, ad and the terms page follow.
-
-**Where the offer shows:**
-- the hero, under "Book a cleaning" ("10% off every cleaning on a recurring plan", which picks the recommended plan);
-- the desktop side rail, above the Book button, on every gutter page;
-- each house under Prices ("$206 on a plan"), and the plan box under them (`#plans`), with a worked example;
-- the booking form: the schedule picker ("Plans are 10% off", and what each plan saves a year for the chosen house), struck-through house prices once a plan is picked, the work order, the review step and the plan agreement;
-- the confirmation ("Make it recurring and save 10%") and the plan dialog;
-- the FAQ (cost, how often, schedule, when to pay), the footer link, and the page description for search results.
-
-**Paying for the year up front** is spelled out wherever a plan is sold: the plan box, the schedule picker, the work order ("The year, $412, is paid up front after the first cleaning"), the review step's year line and fine print, the agreement box, the confirmation, the FAQ and the terms. It's the same rule as before, confirmed by Sam on 2026-11-12: the whole year in one payment, invoiced after the first cleaning, not before it.
-
-- **While booking.** The house step asks "Want this on a schedule?", defaulting to just this once. The choice goes in the booking's notes, so it reaches Jimmy with the booking and needs no database change.
-- **From Prices.** "Set up a recurring plan" and the four frequency buttons under Prices pick that plan in the booking form, jump to it, and say so at the top ("Every 3 months plan selected…"). The plan then travels with the booking, so these work on every deployment, with or without email (`BookLink`'s `plan` intent).
-- **Agreement.** Both ways of signing up need the Recurring Plan Terms box ticked (see "Legal pages and recurring plans").
-- **After booking without a plan.** "Make it recurring" on the confirmation opens a dialog that posts to `/api/plan-requests`, which emails Jimmy. That email is the only record, so this path needs FormSubmit switched on (`FORMSUBMIT_ENABLED`). A real deployment without it doesn't show the button at all (`lib/plan/open.ts`): Prices says "You choose when you book" and links to booking instead, and the booking confirmation drops "Make it recurring". A demo deployment keeps the button and says plainly that nothing was sent.
-
-## Database setup
-
-**Status (2026-11-05): done.** Supabase project `keystone-gutter-glow` (ref `rsmilcleohxlqzbgwmcl`, Free plan, US East) is connected to the Vercel project's Production environment only. All four migrations have been run; 004_referrals.sql on 2026-11-12, checked afterwards (table, row-level security, grants, and a fake code refused). Row-level security is on for every table, and the public (anon) key can neither read the tables nor call `create_booking()`. Production has `BOOKING_STORE=supabase`. The booking rules were tested inside the database, then the test rows were deleted: a booking, a retried request returning the same booking, a taken spot and a full day all behaved correctly. Not tested yet: the site reaching the database with its server key over HTTPS, which first happens on the launch deploy. The first item under "Database" in the launch checklist covers it.
-
-To open it: Vercel, then Storage, then keystone-gutter-glow, then "Open in Supabase" (or `npx vercel integration open supabase keystone-gutter-glow`). It's reached through the Vercel login, not a separate Supabase account.
-
-How it was set up, for a rebuild. The database is a free Supabase project created through Vercel's Supabase integration, so Vercel adds its keys to the project's environment variables itself and nobody copies a key by hand. Connect it to **Production only**: previews keep `BOOKING_DEMO_MODE=true`, so testing a preview never puts a fake booking in the real schedule.
-
-```
-npx vercel integration add supabase --billing-plan free --meta region=iad1 --name keystone-gutter-glow -e production --no-env-pull
-```
-
-That asks you to accept Supabase's terms, then creates the project in US East (closest to Bucks County). Run it from the project folder, or it isn't connected to the project. If that happens, `npx vercel integration resource connect keystone-gutter-glow keystone-gutter-glow -e production --yes` connects it. Then:
-
-1. In Vercel, open Storage, then the database, then "Open in Supabase". In its SQL editor, run these in order. Each is safe to re-run.
-   1. `db/migrations/001_bookings.sql`: bookings, the cap trigger, `create_booking()`
-   2. `db/migrations/002_booking_hardening.sql`: idempotency, the app-supplied cap, grants
-   3. `db/migrations/003_firewood_orders.sql`: firewood orders
-   4. `db/migrations/004_referrals.sql`: referrals, and `create_booking()` using up a referral code with its booking
-2. Add `BOOKING_STORE=supabase` to Production: `npx vercel env add BOOKING_STORE production`, value `supabase`.
-3. It takes effect on the next production deploy, which is the launch merge. The production site running now doesn't see new variables until it's redeployed.
-
-The integration's `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are the two this app reads. It also adds `NEXT_PUBLIC_SUPABASE_*` variables. They're harmless because nothing here reads them, and row-level security with anon access revoked keeps the tables closed to them anyway.
-
-**Free-plan limits.** Free projects pause after a week with no database activity. Every page view asks the database for the next opening, so normal traffic keeps it awake. If it does pause, booking shows the call-us message until someone presses Restore in Supabase. Supabase Pro ($25/month) never pauses and adds daily backups. That's Jimmy's call, not something to switch on without his approval. The service-role key bypasses row-level security, so it must stay server-side. To cancel a booking, set its `status` to `cancelled` in the Supabase table editor. That frees the slot.
-
-## Firewood and Stripe
-
-```
-OrderForm  ->  /api/firewood/status    (is payment open? test mode?)
-           ->  /api/firewood/checkout  validate, price, save as pending, create Checkout Session
-                    |
-             Stripe's hosted page (card details never touch this site)
-                    |
-    /api/stripe/webhook   verified signature -> order moves to paid -> emails, once
-    /firewood/order       shows the order's real status
-```
-
-- **Prices come from the server.** It ignores any amount the browser sends and calculates the total from `content/firewood.ts`. If the page is stale, the customer sees the new total before paying.
-- **Stripe can't take negative lines,** so the $30 dumping reduction is folded into the size's line on Stripe's page. The customer's own summary keeps it itemized, and the totals match.
-- **Duplicates are harmless.** The same click maps to the same order and session. A repeated webhook finds nothing to change and sends no second email.
-- **A mismatch stops for review.** If Stripe's amount differs from the order's, the order goes to `needs_review` and the owner email says so.
-- **No tax or fees are invented.** None are added until Jimmy decides.
-- **Delivery rules are Jimmy's.** Any day of the week, at least a week ahead, always available. No refunds, and 4 days' notice to reschedule, shown before payment and after it. Rescheduling is by phone or text, so the 4 days aren't enforced by the software.
-
-### Unconfirmed values
-
-Each group in `content/firewood.ts` has a status: `placeholder`, `contract` (from the agreement, not yet confirmed) or `confirmed`. While any group isn't `confirmed`, live payments are refused. Visitors never see this list. It lives in `content/firewood.ts`, and `configBlockers()` in `lib/firewood/gate.ts` reports it. To confirm one, correct the value and change its status.
-
-### Setting up Stripe in test mode
-
-1. Jimmy creates the Stripe account. It has to be his, because he's the merchant of record.
-2. From the dashboard, in test mode, copy the secret key into `STRIPE_SECRET_KEY`.
-3. Locally, install the Stripe CLI and run:
-   ```bash
-   stripe listen --forward-to localhost:3000/api/stripe/webhook
-   ```
-   Put the `whsec_...` it prints in `STRIPE_WEBHOOK_SECRET` and restart the dev server.
-4. Order at `/firewood` with card `4242 4242 4242 4242`, any future date, any CVC. The order page should say the payment was received.
-5. For a Vercel preview, add a test-mode webhook endpoint in the dashboard at `https://<preview-url>/api/stripe/webhook`. Subscribe it to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` and `checkout.session.expired`. Put its signing secret in the preview's environment.
-
-### What must be true for real payments
-
-All four, checked in `lib/firewood/gate.ts`:
-
-1. A live key in `STRIPE_SECRET_KEY`
-2. `STRIPE_ALLOW_LIVE_PAYMENTS=true`
-3. Every group in `content/firewood.ts` marked `confirmed`
-4. `BOOKING_STORE=supabase`
-
-A test key is refused on the real domain (`ALLOW_INDEXING=true`), so no customer can mistake it for a real order.
-
-## Notifications to Jimmy (FormSubmit)
-
-Every gutter booking and recurring-plan request is emailed to Jimmy at the address on the site, `email` in `content/site.ts` (jimmyesmond@keystonegutterglow.com), through **FormSubmit** (formsubmit.co). It's free and needs no account, API key or domain setup.
-
-**Status (2026-11-10): ON in production, waiting for Jimmy to activate it.** `FORMSUBMIT_ENABLED=true` is set on Production, and FormSubmit's activation email went to Jimmy from `/notify-test`. Until he clicks "Activate Form", submissions are held by FormSubmit and he gets activation emails instead. Bookings always save to the database. Jimmy's mailbox works: keystonegutterglow.com's mail is on Zoho.
-
-**How it works**
-1. The customer submits. The server checks everything as before: validation, the honeypot, rate limits, and the booking itself in the database, which enforces the four-a-day limit. A request the server refuses never produces a notification.
-2. With notifications on, the server's answer includes a ready-made notice (`lib/notify/formsubmit.ts`): Jimmy's FormSubmit address plus every detail. That's the reference, day, address, house, price, any recurring plan, name, phone, email and notes, with Reply-To set to the customer.
-3. The browser posts it to FormSubmit's AJAX endpoint, `https://formsubmit.co/ajax/<Jimmy's email>` (`lib/notify/notice.ts`), so the customer stays on the page. The server never contacts FormSubmit itself.
-4. The page says it worked **only** when FormSubmit answers `"success": "true"`:
-   - **Booking.** The button reads "Checking the schedule…", then "Sending it to Jimmy…". If FormSubmit fails (down, offline, refused, not yet activated), the booking is already saved, so the page says "Your day is held, but Jimmy hasn't been told yet". It offers "Try sending again", and the phone number with the booking reference. The customer can't accidentally book twice.
-   - **Recurring-plan request.** This email is the only record, so a failure says "We couldn't send that, and Jimmy hasn't seen it" and the form stays filled in, ready to try again.
-
-**FormSubmit is email delivery only.** It doesn't store bookings, check availability or enforce the daily cap; Supabase does all of that, unchanged. If a customer closes the tab in the second before the send finishes, Jimmy may not get that one email (the request uses `keepalive`, which usually still completes). The booking is in the `bookings` table either way.
-
-**Spam protection**
-- The site's own honeypot field: bots that fill it get a fake success, and no notice is created.
-- Server-side validation and per-address rate limits on bookings, plan requests and the test page.
-- A booking notice only exists once a real booking is saved in a real slot.
-- FormSubmit's `_honey` honeypot, plus its own spam filtering.
-- `sendNotice` refuses to post anywhere but `https://formsubmit.co/ajax/`.
-
-AJAX can't show FormSubmit's reCAPTCHA, so it's turned off (`_captcha=false`). Customer auto-replies (`_autoresponse`) don't work over AJAX either, so customers get the on-screen confirmation and their calendar file, not an email.
-
-**Where it's allowed to run.** Only when `FORMSUBMIT_ENABLED=true`. Even then, never on a Vercel preview or with the demo store, so fake or test bookings can't reach Jimmy.
-
-### Activating and testing (do this when Jimmy is expecting it)
-
-Until Jimmy activates FormSubmit, **every** submission sends him another "Activate Form" email instead of the notification. FormSubmit keeps those submissions for 30 days and delivers them once he activates. So switch it on only right before he can click the link, and activate it with the test page rather than waiting for a customer.
-
-1. **Tell Jimmy first.** Tell him to expect an email from FormSubmit (formsubmit.co) titled something like "Activate Form", and to check spam.
-2. **Turn it on.** In Vercel, open keystone-gutter-glow, then Settings, then Environment Variables. Add `FORMSUBMIT_ENABLED` with the value `true`, for the **Production** environment only. Then go to Deployments, open the latest production deployment's "⋯" menu, and choose Redeploy.
-3. **Check it's on.** Open https://keystone-gutter-glow.vercel.app/notify-test. It should show a "Send a test message" button. If it says notifications are off, the variable or the redeploy didn't take.
-4. **Activate.** Press "Send a test message". It should say "FormSubmit needs activating". Jimmy gets the activation email and clicks **Activate Form**. FormSubmit then also delivers the test message, "Test: Keystone Gutter Glow website notifications".
-5. **Confirm.** Press "Send a test message" again. It should now say "FormSubmit confirmed it", and Jimmy gets a second test email within a few minutes (check spam).
-6. **End-to-end booking test (optional, writes to the real database).**
-   - Book on the live site with your own name, email and phone, on a day far ahead. The button shows "Sending it to Jimmy…", then "You're on the schedule.", with "Jimmy has your booking details" under "What happens now".
-   - Jimmy gets "New booking KGG-…" with every detail. Pressing Reply in his email answers you.
-   - On the confirmation, "Make it recurring", tick the plan terms box, then "Send my request". It should end at "Your plan request is with Jimmy." and send him "Recurring plan request: …".
-   - Afterwards, delete the test booking in Supabase: Table Editor, then `bookings`, find the reference, and delete the row.
-
-**Later**
-- `/notify-test` stays available, unlinked and `noindex`, for checking that notifications still arrive.
-- Connecting the custom domain makes FormSubmit see a new site address, so expect one more activation email. Repeat steps 3 to 5 on `https://<domain>/notify-test`.
-- After activation, FormSubmit's email includes a random-string alias for the address. It isn't needed: the address is already published on the site.
-- To switch notifications off: remove `FORMSUBMIT_ENABLED` and redeploy. Bookings keep working.
-- Privacy: customer details pass through FormSubmit, which keeps submissions for 30 days. The Privacy Policy (`/privacy`) says so.
-
-**Firewood orders** are the one notification FormSubmit can't send: they're confirmed by Stripe's webhook on the server, where there's no browser. `lib/notify/email.ts` (Resend) is kept for that path only, and it's dormant: firewood is switched off and no `RESEND_API_KEY` is set. Before firewood returns, choose either Resend with a key, or Stripe's own "successful payment" emails to Jimmy.
-
-## Google Ads (tag and booking conversion)
-
-Set up 2026-11-11 from Jimmy's Google Ads account. The IDs are public by design; they're in `lib/ads.ts`.
-
-- **Google tag** (container `GTM-MVK64PHQ`): Google's two scripts, in `<head>` on every page (`app/layout.tsx`). React puts Next's own preloads and styles first, so the tag sits after them; it still loads asynchronously, early in the page.
-- **Purchase conversion** (`AW-18566097431/YzNNCIGmpLUdEJfUgJVF`, value 1.0 USD): fires on `/booking-confirmed`, the page the booking form sends people to once their booking is saved. It's Google's event snippet, with the booking number as `transaction_id`, so a reload or reopened tab can't count the same booking twice. It fires once per booking per browser tab, and never when someone opens the page without a booking.
-- **Production only.** The tag loads only on Vercel's production deployment (`VERCEL_ENV=production`). Previews, local runs and tests never count as visits or conversions. In QA, Google's domains are blocked and the conversion is read from `window.dataLayer` (`tests/ads.test.ts` covers the snippet).
-- **Checking it.** In Google Ads, open Goals, then Conversions. The tag shows as active once the site has had visits, and a real booking shows up as a Purchase conversion within a few hours. Don't make a test booking on the live site: it writes to the real database and emails Jimmy. Google's Tag Assistant (tagassistant.google.com) shows the tag firing on any page.
-- **Privacy.** The tag sets Google cookies and tells Google about visits. The Privacy Policy (`/privacy`) says so and links Google's opt-out.
-
-### The confirmation page (`/booking-confirmed`)
-
-When a booking succeeds, the form tells Jimmy (FormSubmit), saves the confirmation for that browser tab, and moves to `/booking-confirmed`. The button reads "Booked. Opening your confirmation…".
-
-`components/booking/confirmation.ts` keeps the confirmation in memory and in `sessionStorage`, so a reload still shows it. The page shows the same card as before (`components/booking/Done.tsx`): the reference, day, address, price, calendar file, "Make it recurring", and "Try sending again" if Jimmy's email didn't go through. Opened without a booking, it says so and links to booking. It's `noindex`, kept out of the sitemap, and disallowed in robots.txt.
-
-## Map
-
-The service-area map uses Leaflet with OpenStreetMap's public tiles (`components/area/AreaMap.tsx`). There's no key and no cost. The tiles name the towns themselves. The only label the site adds is Jamison, which the tiles leave out at that zoom.
-
-**Service area: 20 miles, Pennsylvania only (2026-11-11, at Sam's request; Addendum A1 said 10).** Anything within 20 miles of the rounded center in `content/area.ts`, on the Pennsylvania side of the Delaware River, counts. Jimmy can't do business in New Jersey.
-- **The list.** `areaZips` lists every Pennsylvania ZIP whose Census 2020 ZIP-area center is inside the circle, with its post-office name, county and distance. That's 116 ZIPs and 83 town names, in Bucks, Montgomery and Philadelphia Counties. The 25 New Jersey ZIPs that are also within 20 miles are left out on purpose.
-- **Outside Pennsylvania is refused.** A New Jersey (or any non-Pennsylvania) ZIP gets "We only work in Pennsylvania" from the ZIP check. The booking form and the plan dialog won't accept the address, and the server refuses it too (`validateContact` in `lib/booking/validate.ts`).
-- **What it drives:**
-  - the "Do we come to you?" check
-  - the county summary and the "Every town" list under the map
-  - the booking form's town suggestions and out-of-area note
-  - firewood delivery
-  - the search markup's `areaServed` (counties)
-  - the state on every address, and the Pennsylvania-only rule: `stateForZip`
-- **Just outside.** Pennsylvania ZIPs just past 20 miles (Kintnersville, Milford Square, Center City and West Philadelphia, the Main Line, Pottstown…) are told to ask rather than refused.
-- **How it was built.** The ZIP areas and their centers come from the Census TIGERweb ZCTA layer, and each county from the TIGERweb county containing that center. Names come from GeoNames, via the Zippopotam API. The 33 ZIPs inside 10 miles keep their hand-checked names and other names (Warwick, Holland, Ivyland…), and 19067 is named Yardley (Morrisville as another name).
-
-**Map.** It only loads as it nears the screen, and the required attribution stays on it. Each visitor's browser requests the tiles from OpenStreetMap, which therefore sees their IP address, so the privacy policy should mention it. OpenStreetMap's tile servers are meant for light use, which suits a local business site. If traffic ever grows a lot, point the tile URL at a paid provider.
-
-## Loading and speed
-
-- **Skeletons.** Anything that arrives after the page shows a skeleton the shape of what's coming: the "Next opening" card and its phone line (placeholder text in the real styles, so nothing moves when the answer lands), the booking calendar, the map until its first tiles load, the firewood payment line, and `/firewood/order` while it checks the order (`loading.tsx`). They use `.skel` and `.skel-text` in `globals.css`, and the sheen stops under reduced motion.
-- **Plant drawings are drawn once.** `BotanicalDefs` (in the root layout) holds each leaf and blossom shape, and every plant places copies with `<use>`. Writing them out in full made the home page HTML about 486 KB. It's about 310 KB now.
-- **Fonts:** Zilla Slab 600 and 700, Atkinson Hyperlegible 400 and 700, all self-hosted by `next/font`.
-- **Measured on the production build (2026-11-06), a phone with 4× CPU slowdown and slow 4G:** main content shows in about 1.4 s, layout shift 0, about 294 KB transferred.
-
-## SEO
-
-**What's in place**
-
-- **Pages.** `/` is the gutter-cleaning page (title "Gutter Cleaning in Bucks County, PA", one H1, H2 per section). `/firewood` is the firewood page with its own title, description and share card. There's deliberately no separate `/gutter-cleaning` page: the home page already is that page, and a second one would repeat it and split Google's signals between two URLs.
-- **Metadata.** Every page has a unique title and description, a canonical URL, Open Graph and Twitter cards with generated share images (`/opengraph-image`, `/firewood/opengraph-image`), and `lang="en-US"`. Shared defaults live in `app/layout.tsx`.
-- **JSON-LD** (`lib/schema.ts`), built from `content/` so it can't drift from the page:
-  - Home: `WebSite`, `HomeAndConstructionBusiness`, a gutter-cleaning `Service` with real prices, and `FAQPage`.
-  - Firewood: the business, a firewood-delivery `Service`, and a `BreadcrumbList`.
-  - `areaServed` lists the counties the service area covers: Bucks, Montgomery and Philadelphia.
-  - Not included, because none of them are confirmed: street address, coordinates, opening hours, ratings and reviews. `tests/seo.test.ts` fails if any of them appear.
-  - The FAQ markup is valid, but Google currently shows FAQ rich results only for government and health sites, so don't expect them.
-- **Crawling.** `robots.txt` and `sitemap.xml` are generated. When indexing is on, robots.txt allows everything except `/api/` and `/firewood/order`, and points at the sitemap. The sitemap lists `/`, plus `/firewood` whenever firewood is public (or `/gutters` in firewood mode). The sitemap also lists `/refer`. `/referred`, the $30-off booking page, is always `noindex` and left out of the sitemap, since only people Jimmy sends there should find it. `/firewood/order` is `noindex`.
-- **Local content.** The "Where we work" section names the counties inside the circle and lists every town by county (in a closed "Every town inside the circle" list), from the same ZIP data the ZIP check uses. The FAQ answers cost, how often and which towns, built from `content/` so the answers can't drift.
-
-**Indexing is currently OFF on production (2026-11-09).** `ALLOW_INDEXING` isn't set, so every page is `noindex` and robots.txt blocks crawling. It stays off until these are sorted, because indexing brings real customers:
-1. Notifications only reach Jimmy once he activates FormSubmit; until then a booking reaches the database but he isn't told.
-2. There are no privacy, terms or cancellation pages yet, though the site takes names, addresses and phone numbers.
-3. The final domain isn't connected. Indexing the `.vercel.app` address now builds Google's history on an address that will later redirect.
-
-To turn it on: set `ALLOW_INDEXING=true` on Production in Vercel and redeploy. robots.txt, the meta robots tag and the `X-Robots-Tag` header all follow that one variable.
-
-**Connecting the custom domain** (nothing in the code changes):
-1. In Vercel, open the project, then Settings, then Domains. Add the domain, and add the DNS records Vercel shows at the domain's registrar.
-2. Once Vercel says the domain is valid, set `SITE_URL=https://<the domain>` on Production. Use the exact form you want as canonical, with or without `www`. Set it only after the domain works, because from the next deploy the `.vercel.app` production address redirects to it.
-3. Set `ALLOW_INDEXING=true` on Production, if the list above is done.
-4. Redeploy production.
-5. Check:
-   - `https://keystone-gutter-glow.vercel.app/` answers 308 and points to the domain. API routes deliberately don't redirect.
-   - `https://<domain>/robots.txt` shows `Allow: /` and the sitemap line.
-   - `https://<domain>/sitemap.xml` lists the domain's URLs.
-   - A page's canonical tag shows the domain.
-6. Elsewhere:
-   - Point Stripe's webhook at `https://<domain>/api/stripe/webhook`.
-   - Send a test from `https://<domain>/notify-test`. FormSubmit sees a new site address, so Jimmy gets one more activation email to click.
-   - Add the domain to Search Console (below).
-
-**Google Search Console** (Jimmy's Google account; can't be done from here):
-1. In Search Console, add a **Domain** property for the custom domain, and verify it with the DNS TXT record Google shows.
-   - Or add a URL-prefix property, choose the "HTML tag" method, and put the token in `GOOGLE_SITE_VERIFICATION` on Production, then redeploy.
-2. Submit `https://<domain>/sitemap.xml` under Sitemaps.
-3. Use URL Inspection on the home page and press "Request indexing".
-4. Run the home page through Google's Rich Results Test, which needs the site to be crawlable.
-
-**Google Business Profile** (Jimmy has to do this himself, from his Google account; it needs verification by Google):
-- Create the profile as a **service-area business**, so the home address stays hidden. Pick the category "Gutter cleaning service".
-- Add the service area: Bucks, Montgomery and Philadelphia Counties, or the towns in `content/area.ts` (Google allows up to 20 service areas). Don't add New Jersey.
-- Add the phone number (214) 642-5081, the website address, and the hours he actually works (bookings run Monday to Saturday).
-- Add real photos of his work and his vacuum.
-- Ask real customers for Google reviews after each job. Don't add reviews or ratings to the site's markup unless they're real and shown on the page.
-- Add "Firewood delivery" as a second service, and keep the business name exactly as it appears on the site.
-
-## Production launch checklist
-
-**Accounts (Jimmy's)**
-- [ ] Vercel project transferred, with billing on his side
-- [x] Supabase project created (see Database setup)
-- [ ] Jimmy's decision on Supabase Free or Pro
-- [ ] Stripe account created and verified, with his bank details
-- [ ] Domain pointed at Vercel
-- [ ] FormSubmit activated by Jimmy (see "Activating and testing")
-- [ ] Google Ads shows the tag as active and records a Purchase conversion from a real booking (see "Google Ads")
-
-**Database**
-- [x] Migrations 001 to 003 run
-- [x] Migration 004 (referrals) run, 2026-11-12
-- [ ] After the launch deploy, a test booking made on the site appears in the `bookings` table (then delete it)
-- [ ] Two people booking the last spot at once on the deployed site gives one booking and one "just taken" message (`BASE=<url> npm run test:booking` does this, but it writes bookings, so delete them afterward)
-
-**Gutter site**
-- [ ] Items under "Things to confirm" below answered
-- [ ] Daily job cap confirmed (four or three), and `content/booking.ts` updated
-- [ ] `FORMSUBMIT_ENABLED=true` on Production and FormSubmit activated, so booking notices and recurring plan requests reach Jimmy (the stand-alone plan button stays hidden until then)
-- [ ] Terms of Service, Privacy Policy and Recurring Plan Terms reviewed by a Pennsylvania attorney and approved by Jimmy (see "Legal pages and recurring plans")
-- [ ] Custom domain connected and `SITE_URL` set, then `ALLOW_INDEXING=true` (see SEO, "Connecting the custom domain"), and `BOOKING_DEMO_MODE` removed
-- [ ] Search Console verified, sitemap submitted; Google Business Profile created as a service-area business
-
-**Firewood, before it's switched back on**
-- [ ] `firewoodSwitch.off` set to `false` in `content/season.ts` (see "Firewood switched off")
-- [ ] How Jimmy hears about paid orders decided: Resend with a key, or Stripe's payment emails (see "Notifications to Jimmy")
-- [ ] Every group in `content/firewood.ts` answered and marked `confirmed`
-- [ ] A full test-mode order on a preview: pay, webhook, order page, both emails
-- [ ] Canceled checkout and an expired session both tested
-- [ ] Live webhook endpoint added, and the live signing secret set
-- [ ] Live key and `STRIPE_ALLOW_LIVE_PAYMENTS=true` set
-- [ ] One real low-value order placed and refunded
-- [ ] `SITE_MODE=firewood` set, and the site redeployed
-
-## Referral program
-
-**The rules (Sam, 2026-11-12, in `content/referral.ts`):**
-- The person who refers gets their choice of **$25 cash or $50 off the first year of a recurring plan** (first year only, not renewals; 2026-11-14). If they pick the plan, Jimmy calls them to set it up.
-- The person they refer gets **$30 off a cleaning**.
-- To refer someone, the customer fills in a form with their own details and their friend's. Jimmy gets in touch with the friend and sends them their own link to book with $30 off.
-- The thank-you is paid **after the friend's house is fully cleaned**, and a referral only counts when it's an actual booking.
-
-**How it works:**
-1. **`/refer`, "Refer a neighbor".** Every "Refer a neighbor" link goes here: the rail, the phone menu, the footer, the band above booking, and the booking confirmation.
-   - **The form** (`components/refer/ReferForm.tsx`) asks for:
-     - the customer's name, phone and optional email;
-     - their thank-you. Picking the plan shows "Jimmy will call you…";
-     - the friend's name, phone and/or email, and town;
-     - a required box confirming the friend is happy to hear from Jimmy.
-   - **What `/api/referrals` does.** It checks the form, then **saves the referral in the `referrals` table with a personal code**, like `K7PQ2M9X`. The browser then emails Jimmy through FormSubmit, "New referral: …". The email has the friend's details, their personal link (`/referred/K7PQ2M9X`), and what Jimmy owes and when.
-   - **The customer never sees the code.** Jimmy sends it to the friend.
-2. **Jimmy texts or emails the friend their link.**
-3. **`/referred/<code>`, the friend's page.** It looks the code up on every visit.
-   - **Real and unused:** the page shows "Referred by Pat", the four prices with $30 off and the booking form with $30 off.
-   - **Used:** the page says the link has been used and offers the regular price or a call.
-   - **Unknown, or plain `/referred`:** the page explains that the discount comes with a personal link from Jimmy.
-   - These pages are `noindex` and left out of the sitemap.
-4. **When the friend books.** The code goes with the booking.
-   - **The server looks the referral up.** Who referred them comes from the referral, not from anything typed.
-   - **Then `create_booking()` in the database checks the code again.** It refuses a code that doesn't exist or was already used. If the code is good, it links the referral to the new booking **in the same transaction**. So a link works for exactly one booking, even with two tries at the same moment. A booking that fails (day full, slot taken) leaves the code unused. A retried request gets its own booking back.
-   - **A used or fake code** gets "This referral link has already been used…" or "…isn't valid", and nothing is booked.
-   - **Without a code**, the price is the regular one, whatever the browser sends.
-
-**Prices (`content/quote.ts`, the same in the form and on the server):**
-- **One cleaning:** $30 off. One-story $169 becomes $139, two-story $229 becomes $199, bigger houses go from $249 to from $219.
-- **With a recurring plan:** the 10% plan discount applies, and the $30 comes off the first cleaning, and so off the first year's up-front payment. For a two-story with rinse every 6 months: $228 a cleaning, $456 a year, so the first cleaning is $198 and the first year $426.
-- **What's saved.** The booking is saved at the discounted price. Its notes start with "Referral CODE: $30 off this cleaning (regular $X), referred by NAME, who chose $25 cash. Their thank-you is due once this house is fully cleaned." Jimmy's booking email says the same.
-
-**Jimmy's referral list is the `referrals` table in Supabase** (Vercel, then Storage, then "Open in Supabase", then Table editor, then `referrals`):
-- `booking_ref` and `booked_at` fill in when the friend books.
-- After that house is cleaned, Jimmy pays the thank-you (`reward` is `cash` or `plan`) and fills in `thanked_at`.
-- So "who do I owe?" means rows with a `booking_ref`, a finished cleaning, and no `thanked_at`.
-- To let a friend use their link again, for example after a cancelled booking, clear `booking_ref` and `booked_at`.
-- If FormSubmit didn't deliver an email, the referral is still in the table. If the customer then sent it again, there may be two rows for one friend; only one link will be used.
-
-**The database change:** `db/migrations/004_referrals.sql` adds the `referrals` table (row-level security on, closed to the public key). It also replaces `create_booking()` with the version that handles codes, and otherwise behaves exactly the same. It was run on 2026-11-12, before this code was deployed. On a rebuild, run it before deploying: without it, referrals can't be saved and referral links show "can't check your link". Normal bookings keep working either way.
-
-**Not decided, so the site doesn't promise them:**
-- whether the $30 combines with the plan discount (the site says it does, on the first cleaning);
-- how the $50 plan credit is applied (Jimmy sets it up on the call);
-- limits per person or household;
-- whether existing customers can be referred;
-- how long a link stays valid (today, until it's used).
-
-The Terms of Service has a "Referrals" section with these rules. One sentence in it is my addition and needs Jimmy's OK: "We may change or end the referral program; referrals made before a change keep their terms". The Privacy Policy covers the friend's details and says referrals are kept in the booking database.
-
-## Legal pages and recurring plans
-
-**Pages** (drafted 2026-11-11, text in `content/legal.tsx`, layout in `components/legal/`):
-- `/terms`: Terms of Service. Covers booking, what a cleaning includes, access, prices and payment, rescheduling and cancelling, the 48-hour come-back promise, care and liability (with a cap on liability), the website, Pennsylvania law and Bucks County courts, and changes.
-- `/privacy`: Privacy Policy. Covers what's collected, who processes it (Vercel, Supabase, FormSubmit, Google, OpenStreetMap), Google Ads cookies and how to opt out, retention, the right to see, correct or delete, security, and children.
-- `/recurring-plan-terms`: Recurring Plan Terms, from Sam's rules (below).
-
-They're linked from:
-- the footer of every page;
-- the booking review step: "By booking, you agree to our Terms of Service and Privacy Policy, and to calls, texts and emails about your booking";
-- the plan agreement box;
-- Prices and the FAQ.
-
-They're built from `content/` (prices, phone, email, policies), so they can't drift from the rest of the site.
-
-**Recurring plan rules** (`planRules` in `content/plans.ts`):
-- We show up on each scheduled date, and text or email 72 and 24 hours before.
-- The customer doesn't need to be home.
-- Every cleaning on a plan is 10% off the regular price (since 2026-11-12, terms version 2026-11-12).
-- The year is paid up front: the whole annual total in one payment, after the year's first cleaning.
-- The plan renews every year until cancelled.
-- No cancellation fee (Sam removed it 2026-11-14, terms version 2026-11-14; before that it was 30% of the annual total).
-- To cancel, call or text (214) 642-5081, or email Jimmy.
-
-**The agreement box** (`components/plan/PlanAgreement.tsx`) appears in two places: in the booking review step whenever a plan is chosen, and in the "Make it recurring" dialog.
-- **What it shows.** The key terms are in plain sight with the customer's own numbers: the plan price against the regular price, the annual total paid up front, and that there's no fee to cancel. Below them is the checkbox "I have read and agree to the Recurring Plan Terms, and I understand them".
-- **How it behaves.** It's never pre-ticked. Changing the plan, house or rinse clears it.
-- **Enforced on the server.** `/api/bookings` and `/api/plan-requests` refuse a plan without `planTerms: true` (`lib/booking/validate.ts`, `lib/plan/validate.ts`).
-- **The record.** Each plan booking's notes record the plan, its price against the regular price, the year's total and "Agreed to the Recurring Plan Terms (version 2026-11-12)", and Jimmy's notification email says the same. Bookings made before 2026-11-12 say version 2026-11-11, the terms without the discount. When the terms change, bump `planRules.termsVersion`, so every agreement says which version it was.
-
-**Not legal advice. Before relying on these pages, have a Pennsylvania attorney review them.** In particular:
-1. **Additions that need Jimmy's OK.** The plan terms include five fairness points that Sam's list didn't cover:
-   - A plan year is 12 months from the first cleaning.
-   - Prices stay the same at renewal unless Jimmy gives written notice first, so the customer can cancel before it applies.
-   - Cancellations are confirmed by text or email.
-   - If Jimmy ends a plan for a reason that isn't the customer's doing, prepaid unused cleanings are refunded.
-   - Changes to the terms apply from the next plan year.
-2. **Questions the terms don't answer yet:**
-   - When someone cancels partway through a year they've paid in full, what happens to the cleanings they've paid for but not received?
-   - If someone cancels mid-year, do they keep the 10% on the cleanings they've had, or owe the difference? The terms say nothing, so today they keep it.
-3. **Pennsylvania's Home Improvement Consumer Protection Act (HICPA)** requires many home-service contractors to register with the Attorney General and put specific terms in their contracts. Ask whether gutter cleaning is covered for Jimmy.
-4. **Jimmy is 16.** The LLC is the business that contracts with customers. Have the attorney confirm that's set up properly.
-5. **Federal online-renewal rules (ROSCA).** Plans sold online that renew automatically need clear terms, express consent and a simple way to cancel. The summary box, the checkbox and phone/text/email cancellation are meant to meet that; have the attorney confirm.
-6. **"Insured" in the footer** comes from Jimmy's old site. Confirm he has liability insurance, or remove it (`site.insured` in `content/site.ts`).
-7. **If firewood returns,** add Stripe to the Privacy Policy and the firewood order terms to the Terms of Service.
-
-## Things to confirm with Jimmy
-
-Everything factual came from the current site or the agreement. These items were either unclear or assumed:
-
-- **Daily cap.** The site allows four jobs a day. Addendum A1 says three.
-- **Firewood ZIPs.** Delivery uses the same ZIP list as gutter cleaning (now 20 miles, Pennsylvania only), as Jimmy asked. Firewood is paid up front, so ZIPs outside it are told to call.
-- **Failed deliveries.** "No refunds" covers a customer changing their mind. Jimmy still has to approve what happens if a delivery doesn't happen. That keeps the "Cancellation and refunds" group unconfirmed.
-- **Sales tax.** Still unanswered, so none is added and live payments stay blocked. The site no longer shows this to visitors. `content/firewood.ts` is where the open items are listed.
-- **Biography.** It publishes Jimmy's age and school, as Addendum A1 asks. He's a minor, so his parent or guardian should approve it, and the age needs updating when he turns 17. "No liabilities on anyone" is his wording and is a legal-sounding claim worth a second look.
-- **Service-origin address.** Only coordinates rounded to about half a mile are in the code (`serviceRadius` in `content/area.ts`). The address itself isn't in this repo or on the site.
-- **Late-cancel fee.** Addendum A1 says $50 inside 24 hours. It isn't shown until `lateCancelFeeDollars` is set in `content/site.ts`.
-- **"Ground-based" / ladder-free.** This is in the old site's schema markup, but its 2-story description also says "insured for elevated work". The copy says the pole reaches 40 ft and that the pole does the reaching, so the cleaning is done from the ground. It doesn't promise "no ladders" outright.
-- **The vacuum kit.** The tour describes the Cyclone Classic Pro 16-gallon kit with the 40 ft carbon clamping poles, the exact listing Sam sent on 2026-11-06. The listing was on preorder that day, so confirm Jimmy has this machine before the page says he cleans with it.
-- **"Insured".** This is on the old site's trust bar and shown in the footer. Confirm it, and add a policy or registration number if he has one.
-- **Newtown.** It was only in the old site's hidden schema, not its visible town list. It's inside the circle, so it's served. Yardley is in now that the area is 20 miles.
-- **"Houses and townhomes only."** This is inferred from the site saying "residential" everywhere.
-- **Photos, coming from Jimmy.** His portrait next to the equipment, before-and-after pairs from real jobs, and his actual vacuum. The old stand-in rig photo (a UK manufacturer shot) has been removed; the vacuum tour draws Jimmy's actual machine instead. The hero's drawing of the setup is unbranded and stays either way. The before/after pair is from the current site's gallery. Placeholders say exactly what to shoot.
-- **Removed from the old site** because nothing backs them up: the "5.0" rating (the reviews list was empty), "100% debris captured", and "2× more thorough".
-
-## Agreement, Addendum A status
-
-| Requirement | Status |
-|---|---|
-| A1 No italics, polished buttons and layout | Done |
-| A1 Referral page easier to reach | Band above booking, plus buttons or links in the rail, phone menu, footer and booking confirmation. The program went live 2026-11-12 (see "Referral program"). |
-| A1 Alt text and accessible controls | Automated accessibility checks are clean. Client photos are still to come. |
-| A1 No time slots, arrival explanation | Done |
-| A1 Three jobs a day | Built, still set to four until Jimmy confirms |
-| A1 Vacuum visual resembling GutterPro-style equipment | Done: an unbranded drawing in the hero of a worker steadying the pole up to the gutter, leaves going into the nozzle, and a hose to a three-motor stainless vacuum on a wheeled cart (`components/hero/Rig.tsx`). |
-| A1 10-mile radius shown from the private address | Done, then set to 20 miles and Pennsylvania only at Sam's request (2026-11-11). Shown on a real OpenStreetMap map, at every screen size. Every Pennsylvania ZIP inside it is accepted. |
-| A1 Biography with age, school and quotation | Done with Jimmy's text and his photo (2026-11-11). |
-| A1 Recurring-plan request form | Built and tested. Reaches Jimmy through FormSubmit once it's switched on and activated; hidden on a real deployment until then. Choosing a plan while booking works without email. |
-| A1 Terms, privacy and cancellation policy pages | Drafted 2026-11-11: `/terms` (with cancellation), `/privacy`, `/recurring-plan-terms`. Needs attorney review and Jimmy's approval. |
-| A2 Separate winter mode with switch, colors and igniting log visual | Done. Firewood is sold all year, so the page has no snow or winter wording; "winter mode" is only the code's name for it. |
-| A2 Prices, options and itemized total | Done, from config, marked unconfirmed |
-| A3 Hosted checkout and order confirmation | Built and tested without a live account |
-| A3 Order notification to the owner | Built on Resend (server-side, from the Stripe webhook), dormant. FormSubmit can't send it; see "Notifications to Jimmy". |
+**Guidelines for Claude**
+- **Rules live in one place.** Change the rule in `content/` and let pages and the server read it. Don't copy numbers into pages.
+- **Check with `npm test`** after any change. Add a test for any new rule.
+- **The server decides prices and eligibility**, never the browser.
+- **The live database.** Never change it except through a numbered migration in `db/migrations/` that Jimmy runs, and never make test bookings or referrals on the live site.
+- **No new fees, refunds, taxes or promises.** Never invent them on Jimmy's behalf: ask him.
+- **Plan terms.** When they change, bump `planRules.termsVersion`.
+- **Privacy.** Don't put Jimmy's home address anywhere.
+- **Finishing.** Commit and push to `main` only when Jimmy says to. Afterwards, check https://keystone-gutter-glow.vercel.app.
+
+---
+
+## Still to confirm
+
+- **"Insured"** shows in the footer. Make sure it's true, or set `insured: false` in `content/site.ts`.
+- **The vacuum.** The vacuum tour describes the Gutter Pro Vac Cyclone Classic Pro with the 40 ft pole. If yours is different, the figures in `content/machine.ts` need changing.
+- **Late cancellations.** The site says a one-time cleaning cancelled inside 24 hours "may" have a fee. To set an amount, put it in `lateCancelFeeDollars` in `content/site.ts`. To drop the idea, ask Claude to remove the wording.
+- **Daily limit.** It's 4 jobs a day. Your agreement mentions 3.
+- **Legal review.** Have an attorney review the Terms, Privacy Policy and Recurring Plan Terms. Open questions include:
+  - whether Pennsylvania's home improvement contractor registration (HICPA) applies to gutter cleaning;
+  - federal rules on online auto-renewal (ROSCA), including whether to send a reminder before each renewal;
+  - text-message consent;
+  - running the LLC while you're under 18.
