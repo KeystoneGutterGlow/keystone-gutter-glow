@@ -1,8 +1,28 @@
+import Image from "next/image";
 import { BeforeAfter } from "./BeforeAfter";
 import styles from "./Work.module.css";
 
-// The one real before/after from Jimmy's current site, split into its two halves for the slider.
-// Placeholder slots for more jobs were removed at Sam's request (2026-11-11); add real pairs only.
+// Real jobs only. The slider is the before/after from Jimmy's old site, split into its two halves.
+// The pair under it (oak leaves, 2026-11-18) was shot from two different spots, so it's shown side by
+// side rather than in the slider, which needs two photos taken from the same place.
+
+const oakPair = {
+  before: {
+    src: "/images/oak-leaves-before.webp",
+    width: 828,
+    height: 622,
+    alt: "Looking down a front gutter packed with brown oak leaves. Below, the vacuum hose runs across the driveway to the car.",
+    // The photo is wider than its frame: keep the gutter in view
+    position: "44% 50%",
+  },
+  after: {
+    src: "/images/oak-leaves-after.webp",
+    width: 828,
+    height: 1104,
+    alt: "The same gutter after vacuuming: bare aluminum with a few dark streaks, above a driveway with recycling bins.",
+    position: "50% 50%",
+  },
+};
 
 export function Work() {
   return (
@@ -35,6 +55,30 @@ export function Work() {
           </p>
         </div>
       </div>
+
+      <figure className={`wrap ${styles.pair}`}>
+        <div className={styles.pairShots}>
+          {(["before", "after"] as const).map((k) => (
+            <div key={k} className={styles.shot}>
+              <Image
+                src={oakPair[k].src}
+                alt={oakPair[k].alt}
+                width={oakPair[k].width}
+                height={oakPair[k].height}
+                sizes="(max-width: 899px) 50vw, 410px"
+                className={styles.shotImg}
+                style={{ objectPosition: oakPair[k].position }}
+              />
+              <span className={`${styles.shotTag} ${k === "before" ? styles.shotBefore : styles.shotAfter}`} aria-hidden="true">
+                {k === "before" ? "Before" : "After"}
+              </span>
+            </div>
+          ))}
+        </div>
+        <figcaption className={styles.pairCaption}>
+          Another job: a front gutter packed with oak leaves, and the same gutter after the vacuum.
+        </figcaption>
+      </figure>
     </section>
   );
 }

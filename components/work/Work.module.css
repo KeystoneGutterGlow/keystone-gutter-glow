@@ -113,6 +113,53 @@
   outline-offset: 3px;
 }
 
+/* ---------- A second job, side by side ---------- */
+
+.pair {
+  margin-top: clamp(40px, 5vw, 72px);
+  margin-bottom: 0;
+}
+.pairShots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 832px;
+}
+.shot {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: var(--alu-1);
+}
+.shotImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.shotTag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 5px 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.shotBefore {
+  background: #3b2c1f;
+  color: #fff;
+}
+.shotAfter {
+  background: var(--sky);
+  color: var(--navy-deep);
+}
+.pairCaption {
+  max-width: 40rem;
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
 @media (max-width: 899px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
@@ -129,5 +176,14 @@
   }
   .text h2 {
     margin-top: 0;
+  }
+  .pairShots {
+    gap: 8px;
+  }
+  .shotTag {
+    top: 8px;
+    left: 8px;
+    padding: 3px 7px;
+    font-size: 0.75rem;
   }
 }
