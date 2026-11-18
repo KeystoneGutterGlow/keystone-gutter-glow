@@ -6,21 +6,70 @@ What the site says to customers (prices, copy, the legal pages) is on the site i
 
 ## Contents
 
-1. [The pieces, and where each one lives](#the-pieces-and-where-each-one-lives)
-2. [What you do by hand](#what-you-do-by-hand)
-3. [Changing your availability](#changing-your-availability)
-4. [How booking works](#how-booking-works)
-5. [Recurring plans](#recurring-plans)
-6. [Referrals](#referrals)
-7. [The emails you get](#the-emails-you-get)
-8. [The database](#the-database)
-9. [Changing prices, plans and other rules](#changing-prices-plans-and-other-rules)
-10. [Google Ads](#google-ads)
-11. [Settings on Vercel (environment variables)](#settings-on-vercel-environment-variables)
-12. [Moving to keystonegutterglow.com and showing up on Google](#moving-to-keystonegutterglowcom-and-showing-up-on-google)
-13. [Firewood (switched off)](#firewood-switched-off)
-14. [Working on the code, with or without Claude](#working-on-the-code-with-or-without-claude)
-15. [Still to confirm](#still-to-confirm)
+1. [Taking over from Sam](#taking-over-from-sam)
+2. [The pieces, and where each one lives](#the-pieces-and-where-each-one-lives)
+3. [What you do by hand](#what-you-do-by-hand)
+4. [Changing your availability](#changing-your-availability)
+5. [How booking works](#how-booking-works)
+6. [Recurring plans](#recurring-plans)
+7. [Referrals](#referrals)
+8. [The emails you get](#the-emails-you-get)
+9. [The database](#the-database)
+10. [Changing prices, plans and other rules](#changing-prices-plans-and-other-rules)
+11. [Google Ads](#google-ads)
+12. [Settings on Vercel (environment variables)](#settings-on-vercel-environment-variables)
+13. [Moving to keystonegutterglow.com and showing up on Google](#moving-to-keystonegutterglowcom-and-showing-up-on-google)
+14. [Firewood (switched off)](#firewood-switched-off)
+15. [Working on the code, with or without Claude](#working-on-the-code-with-or-without-claude)
+16. [Still to confirm](#still-to-confirm)
+
+---
+
+## Taking over from Sam
+
+Sam (DivWebDesign) built the site under the Website Development Agreement. Under its section 5, you now have the complete source code (this folder), and the hosting, the accounts and keeping the site running are yours. Today the code, the hosting and the database are still in Sam's accounts. Your email, Google Ads and the domain are already yours. Do these with Sam, in this order.
+
+Some of these services require account holders to be 18 or older. If one does, a parent or guardian should own that account and add you to it.
+
+1. **GitHub (the code).**
+   1. Make a GitHub account and send Sam your username.
+   2. Sam opens the repository `keystone-gutter-glow`, then Settings, General, **Transfer ownership**, and enters your username.
+   3. Accept the email GitHub sends you. The repository stays private.
+2. **Vercel (hosting) and Supabase (the database).** Make a Vercel account.
+   - **First, try moving the project as is.**
+     1. Sam opens the project in Vercel, then Settings, General, **Transfer Project**, and picks your account.
+     2. If Vercel offers to move the Supabase database (under Storage) along with it, do that too. Then everything stays the same: the address, the settings, your bookings and the daily keep-alive job.
+     3. Afterwards, under Settings, then Git, connect the project to your GitHub copy of the code.
+   - **If Vercel won't transfer it to your account**, set up a fresh copy:
+     1. Sam exports the `bookings` and `referrals` tables to CSV. That's Supabase, then Table Editor, then Export.
+     2. You import your GitHub repository into Vercel, and add Supabase under Storage (free plan, Production only).
+     3. Run the four files in `db/migrations` in Supabase's SQL Editor, in order, then import the CSV files.
+     4. Set `BOOKING_STORE=supabase` and `FORMSUBMIT_ENABLED=true` for Production, and deploy.
+     5. FormSubmit emails you one "Activate Form" link for the new address. Click it.
+     6. Sam deletes his copy, so bookings don't go to two places.
+
+     Claude can walk you through it. Ask: "Help me set up this website on my own Vercel and Supabase accounts. The README explains the pieces."
+3. **Your domain.** To move the site onto keystonegutterglow.com, and turn on Google search listing once it's there, follow [Moving to keystonegutterglow.com](#moving-to-keystonegutterglowcom-and-showing-up-on-google).
+
+**Approve the legal pages and business statements.** Section 6 of the agreement makes this your call.
+- These pages were drafted from your rules but **haven't been reviewed by a lawyer**: `/terms` (including the referral rules and liability limits), `/privacy` and `/recurring-plan-terms`. Read them, and have a Pennsylvania attorney look them over before you rely on them.
+- Also check the claims in [Still to confirm](#still-to-confirm): "Insured", the vacuum model, and your biography, age and school, which your parent or guardian should be OK with.
+
+**What the agreement covers from here.**
+- **Defects (section 4).** Sam fixes reproducible defects in the agreed work that you report within 14 days after launch. Two rounds of reasonable revisions within scope are included.
+- **No maintenance (sections 4 and 5).** After handover there's no ongoing maintenance. Hosting, accounts, updates and keeping the site running are yours.
+- **Ownership (section 5).** You own the custom code, design and copy made for you. Third-party parts keep their own licenses:
+
+  | Part | License |
+  |---|---|
+  | Next.js, React | MIT |
+  | Leaflet (the map) | BSD 2-Clause |
+  | Map tiles and data | © OpenStreetMap contributors (ODbL). The credit on the map must stay. |
+  | Fonts (Zilla Slab, Atkinson Hyperlegible) | SIL Open Font License |
+  | Stripe library (firewood, dormant) | MIT |
+  | Logo, your photo, the before-and-after photos | Yours |
+
+  The vacuum figures in the tour are facts from the maker's published spec sheet. None of their images or logos are used.
 
 ---
 
