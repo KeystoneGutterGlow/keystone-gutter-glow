@@ -17,9 +17,9 @@ export function Area() {
         <div className={styles.intro}>
           <h2 id="area-title">Where we work</h2>
           <p>
-            We work within {serviceRadius.miles} miles of our base in Jamison, in Pennsylvania. That takes in most of Bucks County,
-            much of Montgomery County and the northern part of Philadelphia. Anywhere inside the circle on the Pennsylvania side of
-            the Delaware River is in our area. We don&rsquo;t work in New Jersey.
+            We work within {serviceRadius.miles} miles of our base in Jamison, in Pennsylvania. That takes in much of Bucks County,
+            eastern Montgomery County and the northern part of Philadelphia. Our area stops at the Delaware River: we don&rsquo;t
+            work in New Jersey.
           </p>
           <ZipCheck />
           <OakSprig className={styles.oak} />
@@ -30,8 +30,8 @@ export function Area() {
             <AreaMap />
           </div>
           <p className={styles.mapNote}>
-            The dashed circle is {serviceRadius.miles} miles from our base in Jamison. The part across the river is New Jersey,
-            which we don&rsquo;t serve. Near the edge, check your ZIP: only the ZIPs inside the circle can book.
+            The shaded area is everywhere within {serviceRadius.miles} miles of our base in Jamison, on the Pennsylvania side of
+            the river. Near the edge, check your ZIP: only the ZIPs inside it can book.
           </p>
           <h3 className={styles.townsTitle}>Counties we cover</h3>
           <p className={styles.counties}>{countyList()} Counties, Pennsylvania</p>

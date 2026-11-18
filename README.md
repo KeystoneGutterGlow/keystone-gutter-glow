@@ -117,7 +117,7 @@ Booking form (browser)                    Server (Vercel)                       
 ```
 
 **What the server checks, whatever the browser sends**
-- **The address.** It must be in Pennsylvania, **and its ZIP must be on the service-area list.** That's the 116 ZIPs inside 20 miles of Jamison, in `content/area.ts`. Anything else is refused: New Jersey, Pittsburgh, even a ZIP just past the edge. The ZIP check on the home page uses the same list.
+- **The address.** It must be in Pennsylvania, **and its ZIP must be on the service-area list.** That's the 71 Pennsylvania ZIPs inside 15 miles of Jamison, in `content/area.ts`. Anything else is refused: New Jersey, Levittown, Norristown, Pittsburgh, even a ZIP just past the edge. The ZIP check on the home page uses the same list, and the map shades the same area: the 15-mile circle cut off at the Delaware River, so none of New Jersey is included.
 - **The day.** Not in the past, not today (unless you change `minLeadDays`), not past the horizon, not a closed weekday or blackout date, and not full.
 - **The price.** The server works it out from `content/pricing.ts`, the plan discount and any referral. It ignores any price the browser sends. See `content/quote.ts`.
 - **A plan needs agreement.** A plan booking needs the "I agree to the Recurring Plan Terms" box ticked. The version of the terms they agreed to is saved with the booking.
@@ -343,7 +343,7 @@ Everything a customer sees comes from the `content/` folder. Change it there and
 | `content/plans.ts` | Plan frequencies and `planRules`: discount, notice hours, no fee, no refunds, terms version |
 | `content/referral.ts` | Referral amounts: $30, $25, $50 |
 | `content/booking.ts` | Availability (see [Changing your availability](#changing-your-availability)), and the "additional information" box wording |
-| `content/area.ts` | The service-area ZIP list, the 20-mile circle, and the towns |
+| `content/area.ts` | The service area: the ZIP list (15 miles, Pennsylvania only), the radius, the map's shape (`serviceShape`), and the towns |
 | `content/site.ts` | Business name, phone, email, policies (24-hour reschedule, 48-hour come-back, late-cancel fee), the "Insured" flag |
 | `content/legal.tsx` | Terms of Service, Privacy Policy, Recurring Plan Terms |
 | `content/faqs.ts` | FAQ (also feeds Google's FAQ markup) |
@@ -352,7 +352,7 @@ Everything a customer sees comes from the `content/` folder. Change it there and
 **Rules worth knowing before changing anything**
 - **Plan terms.** If you change anything in `planRules` or the plan terms, bump `planRules.termsVersion` and update `content/legal.tsx`, so every new agreement records the right version.
 - **Prices.** Prices are whole dollars. The plan price is rounded down.
-- **Service area.** Widening it means rebuilding the ZIP list in `content/area.ts`. Ask Claude; the file says how it was built (Census ZIP centers within the radius, Pennsylvania only).
+- **Service area.** Every listed ZIP has its distance in miles, so **shrinking** the radius is a filter: drop the ZIPs past the new radius and set `serviceRadius.miles`. **Widening** it means adding ZIPs back from the Census data. Either way, rebuild `serviceShape` (the map's shaded area: the circle clipped to Pennsylvania's Census boundary, so New Jersey stays out). Ask Claude; `content/area.ts` says how both were built.
 - **Your home address** is never in the code or on the site. Only a center rounded to about half a mile is.
 
 ---

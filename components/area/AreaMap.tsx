@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef } from "react";
-import { mapLabels, serviceRadius } from "@/content/area";
+import { mapLabels, serviceRadius, serviceShape } from "@/content/area";
 import styles from "./Area.module.css";
 
 // A real map of the service area: OpenStreetMap tiles and the service circle. The tiles name the
@@ -38,18 +38,20 @@ export function AreaMap() {
       // The skeleton shimmer stops once the first tiles are in
       tiles.once("load", () => delete el.dataset.loading);
 
-      const circle = L.circle([serviceRadius.lat, serviceRadius.lon], {
-        radius: serviceRadius.miles * METERS_PER_MILE,
+      // The service area: the circle, cut off at the Delaware River so none of New Jersey is shaded
+      // (content/area.ts, serviceShape). The map is framed on the whole circle, so the river shows.
+      L.polygon(serviceShape, {
         color: "#0d2a4e",
         weight: 2,
         dashArray: "8 7",
         fillColor: "#3bb0ee",
-        fillOpacity: 0.12,
+        fillOpacity: 0.14,
         interactive: false,
       }).addTo(map);
-      map.fitBounds(circle.getBounds(), { padding: [14, 14] });
+      const frame = L.latLng(serviceRadius.lat, serviceRadius.lon).toBounds(serviceRadius.miles * METERS_PER_MILE * 2);
+      map.fitBounds(frame, { padding: [14, 14] });
       map.setMinZoom(map.getZoom() - 1);
-      map.setMaxBounds(circle.getBounds().pad(0.9));
+      map.setMaxBounds(frame.pad(0.9));
 
       for (const place of mapLabels) {
         L.marker([place.lat, place.lon], {
@@ -87,7 +89,7 @@ export function AreaMap() {
       className={styles.mapBox}
       data-loading=""
       role="group"
-      aria-label={`Map of the area around Jamison, Pennsylvania, with a ${serviceRadius.miles}-mile circle. Everywhere inside it on the Pennsylvania side of the Delaware River is in our area. The part in New Jersey isn't.`}
+      aria-label={`Map of our service area: everywhere within ${serviceRadius.miles} miles of Jamison, Pennsylvania, on the Pennsylvania side of the Delaware River. None of New Jersey is included.`}
     />
   );
 }

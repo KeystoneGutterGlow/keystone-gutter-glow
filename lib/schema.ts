@@ -31,7 +31,7 @@ function businessNode() {
     telephone: site.phone.schema,
     email: site.email,
     priceRange: `$${Math.min(...packages.map((p) => p.price))}+`,
-    description: `Residential gutter cleaning by vacuum within ${serviceRadius.miles} miles of Jamison, Pennsylvania: most of Bucks County, much of Montgomery County and the northern part of Philadelphia. Pennsylvania only. Every gutter run vacuumed, downspouts cleared and flow-tested, before-and-after photos, and online booking.${firewood ? " Firewood delivery too." : ""}`,
+    description: `Residential gutter cleaning by vacuum within ${serviceRadius.miles} miles of Jamison, Pennsylvania: much of Bucks County, eastern Montgomery County and the northern part of Philadelphia. Pennsylvania only. Every gutter run vacuumed, downspouts cleared and flow-tested, before-and-after photos, and online booking.${firewood ? " Firewood delivery too." : ""}`,
     areaServed: areaServed(),
     founder: { "@type": "Person", name: site.owner },
     knowsAbout: ["Gutter cleaning", "Gutter vacuuming", "Downspout clearing", "Gutter rinsing", ...(firewood ? ["Firewood delivery"] : [])],

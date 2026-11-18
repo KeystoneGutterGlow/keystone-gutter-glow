@@ -3,7 +3,7 @@ import { bookingRules, type BookingRules } from "@/content/booking";
 import { checkDate, dayDetail, firstOpening, rangeSummary } from "@/lib/booking/availability";
 import { addDays, addMonths, daysInMonth, diffDays, formatLong, isISODate, todayIn, weekday } from "@/lib/booking/dates";
 import { isUsPhone, normalizePhone, OUTSIDE_AREA_ERROR, parseBookingRequest, validateContact } from "@/lib/booking/validate";
-import { areaCounties, areaZips, lookupArea, serviceRadius, stateForZip } from "@/content/area";
+import { areaCounties, areaZips, lookupArea, serviceRadius, serviceShape, stateForZip } from "@/content/area";
 
 const rules: BookingRules = bookingRules;
 // A Tuesday, so the closed-Sunday rule is easy to reason about.
@@ -169,21 +169,23 @@ describe("service area lookup", () => {
     expect(lookupArea("123")).toEqual({ status: "invalid" });
   });
 
-  it("covers everything within 20 miles in Pennsylvania, and nothing past it", () => {
-    expect(serviceRadius.miles).toBe(20);
+  it("covers everything within 15 miles in Pennsylvania, and nothing past it", () => {
+    expect(serviceRadius.miles).toBe(15);
     // The old 10-mile area, the towns just past it, and well-known places further out
     for (const zip of ["18974", "19044", "19040", "18954", "18966", "18938", "19006", "19053", "19067", "18977", "19047"]) {
       expect(lookupArea(zip).status).toBe("yes");
     }
-    for (const zip of ["18951", "19406", "19401", "19446", "19020", "19111"]) expect(lookupArea(zip).status).toBe("yes");
+    for (const zip of ["19446", "19020", "19111", "19118", "19462"]) expect(lookupArea(zip).status).toBe("yes");
     expect(areaZips.every((z) => z.miles <= serviceRadius.miles)).toBe(true);
-    expect(areaZips).toHaveLength(116);
+    expect(areaZips).toHaveLength(71);
     expect(areaZips.filter((z) => z.miles <= 10)).toHaveLength(33);
     expect(new Set(areaZips.map((z) => z.zip)).size).toBe(areaZips.length);
-    // Just past 20 miles, still Pennsylvania: outside the area
-    for (const zip of ["18930", "19131", "19103", "19464"]) expect(lookupArea(zip)).toEqual({ status: "outside" });
+    // Past 15 miles, still Pennsylvania: outside the area (Levittown, Bristol, Norristown, Quakertown, King of Prussia...)
+    for (const zip of ["19054", "19007", "19401", "18951", "19406", "18930", "19131", "19103", "19464"]) {
+      expect(lookupArea(zip)).toEqual({ status: "outside" });
+    }
     expect(lookupArea("Yardley")).toEqual({ status: "yes", town: "Yardley" });
-    expect(lookupArea("King of Prussia")).toEqual({ status: "yes", town: "King of Prussia" });
+    expect(lookupArea("King of Prussia")).toEqual({ status: "unknown" });
   });
 
   it("leaves New Jersey out entirely, even the parts inside 20 miles", () => {
@@ -194,13 +196,38 @@ describe("service area lookup", () => {
     expect(lookupArea("19801")).toEqual({ status: "outOfState", state: "DE" });
   });
 
+  it("draws the map's area inside the 15-mile circle and on the Pennsylvania side of the river only", () => {
+    // Points in degrees, measured in miles from the center the same way the ZIP distances were
+    const miles = ([lat, lon]: [number, number]) =>
+      Math.hypot((lon - serviceRadius.lon) * 69.172 * Math.cos((serviceRadius.lat * Math.PI) / 180), (lat - serviceRadius.lat) * 69.0);
+    const inside = ([lat, lon]: [number, number]) => {
+      let c = false;
+      for (let i = 0, j = serviceShape.length - 1; i < serviceShape.length; j = i++) {
+        const [yi, xi] = serviceShape[i]!;
+        const [yj, xj] = serviceShape[j]!;
+        if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    };
+    expect(serviceShape.length).toBeGreaterThan(50);
+    expect(Math.max(...serviceShape.map(miles))).toBeLessThan(15.05);
+    // Pennsylvania towns near the river are in
+    for (const p of [[40.2546, -75.0868], [40.3643, -74.9513], [40.2457, -74.846], [40.229, -74.9368], [40.3101, -75.1299]] as Array<[number, number]>) {
+      expect(inside(p)).toBe(true);
+    }
+    // New Jersey across the river is out: Lambertville, Stockton, Titusville, Ewing, Trenton
+    for (const p of [[40.3659, -74.9429], [40.4073, -74.9799], [40.3018, -74.8604], [40.2696, -74.7999], [40.2206, -74.7597]] as Array<[number, number]>) {
+      expect(inside(p)).toBe(false);
+    }
+  });
+
   it("refuses addresses outside Pennsylvania when booking", () => {
     const contact = { name: "Pat", email: "pat@example.com", phone: "2155550100", street: "1 Test Ln", city: "Lambertville" };
     expect(validateContact({ ...contact, zip: "08530" }).zip).toMatch(/only work in Pennsylvania/);
     expect(validateContact({ ...contact, zip: "18929" }).zip).toBeUndefined();
-    // Only the ZIPs inside the 20-mile circle can book: just past the edge, or across the state, is refused
-    for (const zip of ["19464", "15213", "16501", "19103"]) expect(validateContact({ ...contact, zip }).zip).toBe(OUTSIDE_AREA_ERROR);
-    expect(OUTSIDE_AREA_ERROR).toBe("That ZIP is outside our area. We only work within 20 miles of Jamison, in Pennsylvania.");
+    // Only the ZIPs inside the 15-mile area can book: just past the edge, or across the state, is refused
+    for (const zip of ["19054", "19401", "19464", "15213", "16501", "19103"]) expect(validateContact({ ...contact, zip }).zip).toBe(OUTSIDE_AREA_ERROR);
+    expect(OUTSIDE_AREA_ERROR).toBe("That ZIP is outside our area. We only work within 15 miles of Jamison, in Pennsylvania.");
   });
 
   it("knows each address's state from its ZIP", () => {
